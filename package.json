@@ -9,9 +9,24 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.6",
+    "@mui/material": "^7.3.6",
+    "@mui/x-data-grid": "^8.24.0",
+    "@mui/x-date-pickers": "^8.23.0",
+    "@supabase/mcp-server-supabase": "^0.5.10",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.90.0",
+    "@types/recharts": "^1.8.29",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "mcp-remote": "^0.1.37",
     "next": "16.1.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-colorful": "^5.6.1",
+    "react-dom": "19.2.3",
+    "recharts": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
