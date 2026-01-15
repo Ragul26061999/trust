@@ -1,313 +1,338 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../../lib/auth-context';
-import { ThemeProvider as AppThemeProvider, useTheme as useCustomTheme } from '../../lib/theme-context';
 import { useRouter } from 'next/navigation';
+import ProtectedLayout from '../protected-layout';
 import {
   Box,
-  Container,
-  AppBar,
-  Toolbar,
   Typography,
   Card,
   CardContent,
   IconButton,
   Avatar,
-  Fab,
-  Menu,
-  MenuItem,
-  CssBaseline,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Divider,
+  Button,
+  TextField,
+  InputAdornment,
+  Grid,
+  Tooltip,
 } from '@mui/material';
-import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import BusinessIcon from '@mui/icons-material/Business';
-import EventIcon from '@mui/icons-material/Event';
-import AnalyticsIcon from '@mui/icons-material/Analytics';
-import NotesIcon from '@mui/icons-material/Notes';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import AddIcon from '@mui/icons-material/Add';
+import {
+  Search as SearchIcon,
+  Notifications as NotificationsIcon,
+  NoteAlt as NoteIcon,
+  AccessTime as ClockIcon,
+  Analytics as AnalyticsIcon,
+  CalendarToday as CalendarIcon,
+  Business as ProfessionalIcon,
+  Person as PersonalIcon,
+  ArrowForward as ArrowForwardIcon,
+  GridView as DashboardIcon,
+} from '@mui/icons-material';
 
 const DashboardContent = () => {
-  const { theme } = useCustomTheme();
-  const { user, logout, loading } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
+  if (!user) return null;
 
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogoutClick = () => {
-    logout();
-    handleClose();
-  };
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
-
-  const navigateToSection = (path: string) => {
-    router.push(path);
-  };
-
-  const cardsData = [
+  const categories = [
     {
-      id: 1,
-      title: 'Note Taking',
-      icon: <NotesIcon fontSize="large" />,
-      description: 'Capture ideas and important information anytime.',
-      backgroundColor: '#E8F5E8',
-      iconColor: '#388E3C',
+      text: 'Note Taking',
+      icon: <NoteIcon sx={{ fontSize: 32 }} />,
       path: '/note-taking',
+      color: '#6750A4',
+      desc: 'Capture ideas and organize your thoughts.',
+      count: '12 Notes'
     },
     {
-      id: 3,
-      title: 'User Clock',
-      icon: <AccessTimeIcon fontSize="large" />,
-      description: 'Track your time and schedule efficiently.',
-      backgroundColor: '#FFF3E0',
-      iconColor: '#F57C00',
+      text: 'User Clock',
+      icon: <ClockIcon sx={{ fontSize: 32 }} />,
       path: '/user-clock',
+      color: '#E91E63',
+      desc: 'Track your time and daily productivity.',
+      count: 'Active'
     },
     {
-      id: 4,
-      title: 'Analytical Section',
-      icon: <AnalyticsIcon fontSize="large" />,
-      description: 'Visualize your data with insightful analytics.',
-      backgroundColor: '#F3E5F5',
-      iconColor: '#7B1FA2',
+      text: 'Analytical',
+      icon: <AnalyticsIcon sx={{ fontSize: 32 }} />,
       path: '/analytical',
+      color: '#2196F3',
+      desc: 'Deep dive into your project metrics.',
+      count: '3 Reports'
     },
     {
-      id: 5,
-      title: 'Calendar',
-      icon: <EventIcon fontSize="large" />,
-      description: 'Manage your appointments and events.',
-      backgroundColor: '#EDE7F6',
-      iconColor: '#303F9F',
+      text: 'Calendar',
+      icon: <CalendarIcon sx={{ fontSize: 32 }} />,
       path: '/calendar',
+      color: '#4CAF50',
+      desc: 'Schedule and manage your events.',
+      count: '5 Events'
     },
     {
-      id: 6,
-      title: 'Professional Section',
-      icon: <BusinessIcon fontSize="large" />,
-      description: 'Organize your professional tasks and goals.',
-      backgroundColor: '#E1F5FE',
-      iconColor: '#0097A7',
+      text: 'Professional',
+      icon: <ProfessionalIcon sx={{ fontSize: 32 }} />,
       path: '/professional',
+      color: '#FF9800',
+      desc: 'Manage your work projects and tasks.',
+      count: '8 Tasks'
     },
     {
-      id: 7,
-      title: 'Personal Section',
-      icon: <AccountCircleIcon fontSize="large" />,
-      description: 'Focus on personal activities and wellbeing.',
-      backgroundColor: '#F1F8E9',
-      iconColor: '#689F38',
+      text: 'Personal',
+      icon: <PersonalIcon sx={{ fontSize: 32 }} />,
       path: '/personal',
+      color: '#9C27B0',
+      desc: 'Keep track of your personal milestones.',
+      count: '4 Goals'
     },
   ];
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <Typography>Loading...</Typography>
-      </Box>
-    );
-  }
+  const filteredCategories = categories.filter(cat =>
+    cat.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    cat.desc.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  if (!user) {
-    return null; // Will redirect to login
-  }
+  const progressData = [
+    { label: 'Weekly Goal', value: 3, total: 8, color: '#6750A4' },
+    { label: 'Focus Score', value: 7, total: 10, color: '#4CAF50' },
+    { label: 'Completion Rate', value: 2, total: 5, color: '#2196F3' },
+  ];
+
+  const activities = [
+    { id: 1, user: 'System', action: 'Note "Weekly Plan" updated', time: '2m ago', icon: '📝', color: '#6750A4' },
+    { id: 2, user: 'Calendar', action: 'Meeting starts in 15m', time: '15m ago', icon: '⏰', color: '#FF9800' },
+    { id: 3, user: 'Stats', action: 'New report generated', time: '1h ago', icon: '📊', color: '#2196F3' },
+  ];
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        bgcolor: 'background.default',
-        backgroundImage: theme.backgroundImage ? `url(${theme.backgroundImage})` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      <AppBar position="static" elevation={0} sx={{ bgcolor: 'transparent', mb: 3, boxShadow: 'none' }}>
-        <Toolbar sx={{ color: 'text.primary' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-            <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>T</Avatar>
-            <Typography
-              variant="h6"
-              component="div"
-              sx={{ ml: 1, fontWeight: 600, display: { xs: 'none', sm: 'block' }, color: 'text.primary' }}
-            >
-              Trust Dashboard
-            </Typography>
-          </Box>
-
-          <Box sx={{ flexGrow: 1 }} />
-
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="subtitle1" sx={{ mr: 2, color: 'text.primary' }}>
-              {user?.email || 'User'}
-            </Typography>
-            <IconButton
-              color="primary"
-              onClick={handleClick}
-              sx={{ borderRadius: 2 }}
-              aria-controls={open ? 'user-menu' : undefined}
-              aria-haspopup="true"
-              aria-expanded={open ? 'true' : undefined}
-            >
-              <AccountCircleIcon />
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', animation: 'fadeIn 0.5s ease-out' }}>
+      {/* Header */}
+      <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', mb: 0.5 }}>
+            Welcome back, {user.email?.split('@')[0]}
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
+            Here is what's happening in your workspace today.
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Search OS..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 20, color: 'primary.main' }} />
+                </InputAdornment>
+              ),
+              sx: {
+                borderRadius: 4,
+                bgcolor: 'background.paper',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                '& fieldset': { border: 'none' },
+                '&:hover': { bgcolor: 'grey.50' }
+              }
+            }}
+            sx={{ width: 280 }}
+          />
+          <Tooltip title="Notifications">
+            <IconButton sx={{ bgcolor: 'background.paper', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', border: '1px solid', borderColor: 'divider' }}>
+              <NotificationsIcon color="action" />
             </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
 
-            <Menu
-              id="user-menu"
-              anchorEl={anchorEl}
-              open={open}
-              onClose={handleClose}
-              onClick={handleClose}
-              PaperProps={{
-                elevation: 0,
-                sx: {
-                  overflow: 'visible',
-                  filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                  mt: 1.5,
-                  '& .MuiAvatar-root': {
-                    width: 32,
-                    height: 32,
-                    ml: -0.5,
-                    mr: 1,
-                  },
-                  '&:before': {
-                    content: '""',
-                    display: 'block',
-                    position: 'absolute',
-                    top: 0,
-                    right: 14,
-                    width: 10,
-                    height: 10,
-                    bgcolor: 'background.paper',
-                    transform: 'translateY(-50%) rotate(45deg)',
-                    zIndex: 0,
-                  },
-                },
-              }}
-              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-            >
-              <MenuItem onClick={handleLogoutClick}>
-                <AccountCircleIcon fontSize="small" sx={{ mr: 1 }} />
-                Logout
-              </MenuItem>
-            </Menu>
-          </Box>
-        </Toolbar>
-      </AppBar>
+      <Grid container spacing={4}>
+        {/* Dynamic Navigation Cards */}
+        <Grid size={{ xs: 12, lg: 9 }}>
+          {filteredCategories.length > 0 ? (
+            <Grid container spacing={3}>
+              {filteredCategories.map((category) => (
+                <Grid key={category.text} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Card
+                    onClick={() => router.push(category.path)}
+                    sx={{
+                      borderRadius: 5,
+                      cursor: 'pointer',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      border: '1px solid transparent',
+                      height: '100%',
+                      bgcolor: 'background.paper',
+                      '&:hover': {
+                        transform: 'translateY(-8px)',
+                        boxShadow: `0 20px 40px ${category.color}15`,
+                        borderColor: `${category.color}40`,
+                      }
+                    }}
+                  >
+                    <CardContent sx={{ p: 4 }}>
+                      <Box sx={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: 4,
+                        bgcolor: `${category.color}10`,
+                        color: category.color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mb: 3
+                      }}>
+                        {category.icon}
+                      </Box>
+                      <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, color: 'text.primary' }}>
+                        {category.text}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, lineHeight: 1.6, minHeight: 40 }}>
+                        {category.desc}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{
+                          fontWeight: 800,
+                          color: category.color,
+                          bgcolor: `${category.color}10`,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: 2
+                        }}>
+                          {category.count}
+                        </Typography>
+                        <ArrowForwardIcon sx={{ fontSize: 18, color: 'divider' }} />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 10 }}>
+              <Typography variant="h6" color="text.secondary">No matching categories found.</Typography>
+            </Box>
+          )}
+        </Grid>
 
-      <Container maxWidth="lg" sx={{ py: 2 }}>
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 3,
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            justifyContent: 'center',
-            width: '100%',
-            maxWidth: '1200px',
-            margin: '0 auto',
-          }}
-        >
-          {cardsData.map((card) => (
-            <Card
-              key={card.id}
-              onClick={() => navigateToSection(card.path)}
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                border: 'none',
-                borderRadius: 3,
-                backgroundColor: card.backgroundColor,
-                cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                position: 'relative',
-                overflow: 'hidden',
-                '&:before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 4,
-                  backgroundColor: card.iconColor,
-                  opacity: 0,
-                  transition: 'opacity 0.3s ease',
-                },
-                '&:hover': {
-                  transform: 'translateY(-8px) scale(1.02)',
-                  boxShadow: '0px 12px 30px rgba(0, 0, 0, 0.16)',
-                  '&:before': {
-                    opacity: 1,
-                  },
-                },
-              }}
-            >
-              <CardContent sx={{ flexGrow: 1, textAlign: 'center', pt: 4, pb: 3 }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    mb: 2,
-                    color: card.iconColor,
-                    transition: 'transform 0.3s ease',
-                    '&:hover': {
-                      transform: 'scale(1.1)',
-                    },
-                  }}
-                >
-                  {card.icon}
+        {/* Info Sidebar */}
+        <Grid size={{ xs: 12, lg: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {/* Real-time Metrics */}
+            <Card sx={{ borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
+              <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, bgcolor: 'primary.main' }} />
+              <CardContent sx={{ p: 4 }}>
+                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'grey.800' }}>Live Updates</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
+                  {progressData.map((item) => (
+                    <Box key={item.label}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'grey.600', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {item.label}
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'grey.900' }}>
+                          {Math.round((item.value / item.total) * 100)}%
+                        </Typography>
+                      </Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={(item.value / item.total) * 100}
+                        sx={{
+                          height: 8,
+                          borderRadius: 4,
+                          bgcolor: 'grey.50',
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 4,
+                            backgroundImage: `linear-gradient(90deg, ${item.color} 0%, ${item.color}CC 100%)`
+                          }
+                        }}
+                      />
+                    </Box>
+                  ))}
                 </Box>
-                <Typography variant="h6" component="h3" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mb: 1 }}>
-                  {card.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
-                  {card.description}
-                </Typography>
               </CardContent>
             </Card>
-          ))}
-        </Box>
-      </Container>
 
-      <Fab
-        color="primary"
-        aria-label="add"
-        onClick={() => router.push('/add-on')}
-        sx={{
-          position: 'fixed',
-          bottom: 32,
-          right: 32,
-          zIndex: 1000,
-        }}
-      >
-        <AddIcon />
-      </Fab>
+            {/* Quick Activity */}
+            <Card sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+              <CardContent sx={{ p: 4 }}>
+                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'grey.800' }}>Recent Logs</Typography>
+                <List disablePadding>
+                  {activities.map((activity, idx) => (
+                    <Box key={activity.id}>
+                      <ListItem alignItems="flex-start" sx={{ px: 0, py: 2.5 }}>
+                        <ListItemAvatar sx={{ minWidth: 52 }}>
+                          <Avatar sx={{
+                            bgcolor: `${activity.color}10`,
+                            color: activity.color,
+                            borderRadius: 3,
+                            width: 40,
+                            height: 40,
+                            fontSize: '1.2rem'
+                          }}>
+                            {activity.icon}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'grey.900' }}>
+                              {activity.user} <span style={{ fontWeight: 500, color: '#797781' }}>{activity.action}</span>
+                            </Typography>
+                          }
+                          secondary={
+                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontWeight: 700, color: 'grey.400', textTransform: 'uppercase', letterSpacing: 1 }}>
+                              {activity.time}
+                            </Typography>
+                          }
+                        />
+                      </ListItem>
+                      {idx < activities.length - 1 && <Divider component="li" sx={{ my: 0.5, opacity: 0.3 }} />}
+                    </Box>
+                  ))}
+                </List>
+                <Button fullWidth variant="text" sx={{ mt: 2, fontWeight: 800, color: 'primary.main', py: 1.5, borderRadius: 3 }}>
+                  View All Logs
+                </Button>
+              </CardContent>
+            </Card>
+          </Box>
+        </Grid>
+      </Grid>
+
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          height: 6px;
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #E0DFE4;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #C8C6CD;
+        }
+      `}</style>
     </Box>
   );
 };
 
 export default function Dashboard() {
   return (
-    <AppThemeProvider>
-      <CssBaseline />
+    <ProtectedLayout>
       <DashboardContent />
-    </AppThemeProvider>
+    </ProtectedLayout>
   );
 }

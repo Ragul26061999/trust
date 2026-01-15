@@ -2,11 +2,13 @@
   "name": "turest",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "mcp-test": "node scripts/start-mcp.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -17,7 +19,7 @@
     "@mui/x-date-pickers": "^8.23.0",
     "@supabase/mcp-server-supabase": "^0.5.10",
     "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.90.0",
+    "@supabase/supabase-js": "^2.90.1",
     "@types/recharts": "^1.8.29",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
