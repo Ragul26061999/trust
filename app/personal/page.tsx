@@ -37,6 +37,7 @@ import {
     MenuItem,
     Select,
     FormControl,
+    FormControlLabel,
     InputLabel,
     Tooltip,
     Divider,
@@ -66,11 +67,13 @@ import {
     BarChart as AnalyticsIcon,
     ExpandMore as ExpandMoreIcon,
     CheckCircle as CheckCircleIcon,
-    Edit as EditIcon
+    RadioButtonUnchecked as RadioButtonUncheckedIcon,
+    Edit as EditIcon,
+    Insights as InsightsIcon
 } from '@mui/icons-material';
 import ProtectedLayout from '../protected-layout';
 import { useAuth } from '../../lib/auth-context';
-import { getCalendarEntries, addCalendarEntry, deleteCalendarEntry } from '../../lib/personal-calendar-db';
+import { getCalendarEntries, addCalendarEntry, updateCalendarEntry, deleteCalendarEntry, getCustomCalendars, addCustomCalendar } from '../../lib/personal-calendar-db';
 
 // Category Definitions
 const CATEGORIES = [
@@ -79,7 +82,7 @@ const CATEGORIES = [
     { id: 'event', label: 'Event', color: '#6366f1', icon: <EventIcon sx={{ fontSize: '0.8rem' }} /> },
     { id: 'task', label: 'Task', color: '#3b82f6', icon: <TaskIcon sx={{ fontSize: '0.8rem' }} /> },
     { id: 'goal', label: 'Goal', color: '#8b5cf6', icon: <GoalIcon sx={{ fontSize: '0.8rem' }} /> },
-    { id: 'adls', label: 'ADLs', color: '#14b8a6', icon: <AdlIcon sx={{ fontSize: '0.8rem' }} /> },
+    { id: 'adls', label: "ADL's", color: '#14b8a6', icon: <AdlIcon sx={{ fontSize: '0.8rem' }} /> },
     { id: 'family', label: 'Family', color: '#f97316', icon: <FamilyIcon sx={{ fontSize: '0.8rem' }} /> },
     { id: 'entertainment', label: 'Entertainment', color: '#ec4899', icon: <EntertainmentIcon sx={{ fontSize: '0.8rem' }} /> },
     { id: 'household', label: 'Household', color: '#f43f5e', icon: <HouseholdIcon sx={{ fontSize: '0.8rem' }} /> },
@@ -90,6 +93,17 @@ interface CalendarEntry {
     title: string;
     date: Date;
     category: string;
+    category_data?: any;
+    priority?: string;
+    status?: string;
+    description?: string;
+}
+
+interface CustomCalendar {
+    id: string;
+    name: string;
+    color: string;
+    visible: boolean;
 }
 
 const PersonalCalendarPage = () => {
@@ -101,10 +115,15 @@ const PersonalCalendarPage = () => {
     const [loading, setLoading] = useState(true);
     const [openDialog, setOpenDialog] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('event');
+    const [selectedPriority, setSelectedPriority] = useState('Medium');
     const [newEntryTitle, setNewEntryTitle] = useState('');
     const [newEntryDate, setNewEntryDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [newEntryTime, setNewEntryTime] = useState(format(new Date(), 'HH:mm'));
+    const [categoryData, setCategoryData] = useState<any>({});
     const [editingEntry, setEditingEntry] = useState<CalendarEntry & { dateStr: string, timeStr: string } | null>(null);
+    const [multipleEntries, setMultipleEntries] = useState<{ title: string, date: string }[]>([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]);
+    const [goalDuration, setGoalDuration] = useState('day');
+    const [goalRecurring, setGoalRecurring] = useState(false);
     const [visibleCategories, setVisibleCategories] = useState<Record<string, boolean>>(
         CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat.id]: true }), {})
     );
@@ -112,20 +131,20 @@ const PersonalCalendarPage = () => {
     const [showSearchBar, setShowSearchBar] = useState(false);
     const [openSettings, setOpenSettings] = useState(false);
     const [categoriesExpanded, setCategoriesExpanded] = useState(true);
-    const [analyticsOpen, setAnalyticsOpen] = useState(false);
     const [otherCalendarsExpanded, setOtherCalendarsExpanded] = useState(true);
-    const [otherCalendars, setOtherCalendars] = useState([
-        { id: 'work', name: 'Work Calendar', color: '#3b82f6', visible: true },
-        { id: 'family-shared', name: 'Family Shared', color: '#10b981', visible: true },
-        { id: 'holidays', name: 'Holidays', color: '#f59e0b', visible: false }
-    ]);
+    const [otherCalendars, setOtherCalendars] = useState<CustomCalendar[]>([]);
     const [showAddCalendarDialog, setShowAddCalendarDialog] = useState(false);
     const [newCalendarName, setNewCalendarName] = useState('');
     const [newCalendarColor, setNewCalendarColor] = useState('#6366f1');
-    // Fetch entries from DB
+
+    const handleCategoryDataChange = (field: string, value: any) => {
+        setCategoryData((prev: any) => ({ ...prev, [field]: value }));
+    };
+    // Fetch entries and custom calendars from DB
     useEffect(() => {
         if (user) {
             fetchEntries();
+            fetchCustomCalendars();
         }
     }, [user]);
 
@@ -141,12 +160,34 @@ const PersonalCalendarPage = () => {
                 id: entry.id,
                 title: entry.title,
                 category: entry.category,
+                category_data: entry.category_data,
+                priority: entry.priority,
+                status: entry.status || 'pending',
+                description: entry.description,
                 date: isValid(date) ? date : new Date()
             };
         });
 
         setEntries(mappedEntries);
         setLoading(false);
+    };
+
+    const fetchCustomCalendars = async () => {
+        if (!user) return;
+
+        const dbCalendars = await getCustomCalendars(user.id);
+
+        // Map DB calendars to local state format
+        const mappedCalendars: CustomCalendar[] = dbCalendars.map(calendar => {
+            return {
+                id: calendar.id,
+                name: calendar.name,
+                color: calendar.color,
+                visible: calendar.is_visible
+            };
+        });
+
+        setOtherCalendars(mappedCalendars);
     };
 
     // Calendar Logic
@@ -194,29 +235,190 @@ const PersonalCalendarPage = () => {
     };
 
     const handleAddEntry = async () => {
-        if (!newEntryTitle || !user) return;
+        if ((!newEntryTitle && (selectedCategory !== 'task' && selectedCategory !== 'adls')) || !user) return;
 
-        const entryDateTime = new Date(`${newEntryDate}T${newEntryTime}`);
-        const entryToAdd = {
-            user_id: user.id,
-            title: newEntryTitle,
-            category: selectedCategory,
-            entry_date: entryDateTime.toISOString()
-        };
+        let entriesToAdd = [];
 
-        const addedEntry = await addCalendarEntry(entryToAdd);
+        if (selectedCategory === 'task' || selectedCategory === 'adls') {
+            // Handle multiple entries for tasks and ADLs
+            entriesToAdd = multipleEntries
+                .filter(entry => entry.title.trim() !== '')
+                .map(entry => {
+                    const entryDateTime = new Date(`${entry.date}T${newEntryTime}`);
+                    return {
+                        user_id: user.id,
+                        title: entry.title,
+                        category: selectedCategory,
+                        entry_date: entryDateTime.toISOString(),
+                        category_data: categoryData || {},
+                        priority: selectedPriority,
+                        status: 'pending',
+                        description: ''
+                    };
+                });
+        } else if (selectedCategory === 'goal') {
+            // Handle goals based on duration
+            const entryDateTime = new Date(`${newEntryDate}T${newEntryTime}`);
 
-        if (addedEntry) {
-            const mappedAdded: CalendarEntry = {
+            // Create entries based on goal duration
+            const goalEntries = createGoalEntry(entryDateTime);
+            entriesToAdd = Array.isArray(goalEntries) ? goalEntries : [goalEntries];
+
+            // If recurring, create additional entries
+            if (goalRecurring) {
+                const additionalEntries = generateRecurringGoals(entryDateTime);
+                entriesToAdd = [...entriesToAdd, ...additionalEntries];
+            }
+        } else {
+            // Handle single entry for other categories
+            const entryDateTime = new Date(`${newEntryDate}T${newEntryTime}`);
+            entriesToAdd = [{
+                user_id: user.id,
+                title: newEntryTitle,
+                category: selectedCategory,
+                entry_date: entryDateTime.toISOString(),
+                category_data: categoryData || {},
+                priority: selectedPriority,
+                status: 'pending',
+                description: ''
+            }];
+        }
+
+        // Add all entries
+        const addedEntries = [];
+        for (const entry of entriesToAdd) {
+            const addedEntry = await addCalendarEntry(entry);
+            if (addedEntry) {
+                addedEntries.push(addedEntry);
+            }
+        }
+
+        if (addedEntries.length > 0) {
+            const mappedAddedEntries = addedEntries.map(addedEntry => ({
                 id: addedEntry.id,
                 title: addedEntry.title,
                 category: addedEntry.category,
+                category_data: addedEntry.category_data,
+                priority: addedEntry.priority,
+                description: addedEntry.description,
                 date: parseISO(addedEntry.entry_date)
-            };
-            setEntries([...entries, mappedAdded]);
+            }));
+
+            setEntries([...entries, ...mappedAddedEntries]);
             setNewEntryTitle('');
+            setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]); // Reset multiple entries
             setOpenDialog(false);
         }
+    };
+
+    // Helper function to create a goal entry based on duration
+    const createGoalEntry = (entryDateTime: Date) => {
+        if (!user) return []; // Return empty array if user is not authenticated
+
+        const baseEntry = {
+            user_id: user.id,
+            title: newEntryTitle,
+            category: selectedCategory,
+            category_data: categoryData || {},
+            priority: selectedPriority,
+            status: 'pending',
+            description: ''
+        };
+
+        switch (goalDuration) {
+            case 'day':
+                return {
+                    ...baseEntry,
+                    title: `${newEntryTitle} (Day Goal)`,
+                    entry_date: entryDateTime.toISOString()
+                };
+            case 'week':
+                // For a week goal, create entries for each day of the week
+                const weekEntries = [];
+                for (let i = 0; i < 7; i++) {
+                    const dayDate = new Date(entryDateTime);
+                    dayDate.setDate(entryDateTime.getDate() + i);
+                    weekEntries.push({
+                        ...baseEntry,
+                        title: `${newEntryTitle} (Week Goal - Day ${i + 1})`,
+                        entry_date: dayDate.toISOString()
+                    });
+                }
+                return weekEntries;
+            case 'month':
+                // For a month goal, create entries for each day of the month
+                const monthEntries = [];
+                const daysInMonth = new Date(entryDateTime.getFullYear(), entryDateTime.getMonth() + 1, 0).getDate();
+                for (let i = 0; i < daysInMonth; i++) {
+                    const dayDate = new Date(entryDateTime);
+                    dayDate.setDate(entryDateTime.getDate() + i);
+                    monthEntries.push({
+                        ...baseEntry,
+                        title: `${newEntryTitle} (Month Goal - Day ${i + 1})`,
+                        entry_date: dayDate.toISOString()
+                    });
+                }
+                return monthEntries;
+            case 'year':
+                // For a year goal, create entries for each month of the year
+                const yearEntries = [];
+                for (let i = 0; i < 12; i++) {
+                    const monthDate = new Date(entryDateTime);
+                    monthDate.setMonth(entryDateTime.getMonth() + i);
+                    yearEntries.push({
+                        ...baseEntry,
+                        title: `${newEntryTitle} (Year Goal - Month ${i + 1})`,
+                        entry_date: monthDate.toISOString()
+                    });
+                }
+                return yearEntries;
+            default:
+                return {
+                    ...baseEntry,
+                    entry_date: entryDateTime.toISOString()
+                };
+        }
+    };
+
+    // Helper function to generate recurring goals
+    const generateRecurringGoals = (startDate: Date) => {
+        if (!user) return []; // Return empty array if user is not authenticated
+
+        // This is a simplified implementation - in a real app, you'd calculate based on duration and recurrence pattern
+        const recurringEntries = [];
+
+        // For demonstration, let's create 3 more occurrences
+        for (let i = 1; i <= 3; i++) {
+            const recurringDate = new Date(startDate);
+
+            switch (goalDuration) {
+                case 'day':
+                    recurringDate.setDate(startDate.getDate() + i);
+                    break;
+                case 'week':
+                    recurringDate.setDate(startDate.getDate() + (i * 7));
+                    break;
+                case 'month':
+                    recurringDate.setMonth(startDate.getMonth() + i);
+                    break;
+                case 'year':
+                    recurringDate.setFullYear(startDate.getFullYear() + i);
+                    break;
+            }
+
+            recurringEntries.push({
+                user_id: user.id,
+                title: `${newEntryTitle} (Recurring)`,
+                category: selectedCategory,
+                entry_date: recurringDate.toISOString(),
+                category_data: categoryData || {},
+                priority: selectedPriority,
+                status: 'pending',
+                description: ''
+            });
+        }
+
+        return recurringEntries;
     };
 
     const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -224,6 +426,15 @@ const PersonalCalendarPage = () => {
         const success = await deleteCalendarEntry(id);
         if (success) {
             setEntries(entries.filter((entry: CalendarEntry) => entry.id !== id));
+        }
+    };
+
+    const toggleEntryStatus = async (e: React.MouseEvent, entry: CalendarEntry) => {
+        e.stopPropagation();
+        const newStatus = entry.status === 'completed' ? 'pending' : 'completed';
+        const success = await updateCalendarEntry(entry.id, { status: newStatus });
+        if (success) {
+            setEntries(entries.map(e => e.id === entry.id ? { ...e, status: newStatus } : e));
         }
     };
 
@@ -235,6 +446,8 @@ const PersonalCalendarPage = () => {
         });
         setNewEntryTitle(entry.title);
         setSelectedCategory(entry.category);
+        setCategoryData(entry.category_data || {});
+        setSelectedPriority(entry.priority || 'Medium');
         setNewEntryDate(format(entry.date, 'yyyy-MM-dd'));
         setNewEntryTime(format(entry.date, 'HH:mm'));
         setOpenDialog(true);
@@ -243,36 +456,61 @@ const PersonalCalendarPage = () => {
     const handleUpdateEntry = async () => {
         if (!editingEntry || !user) return;
 
-        const entryDateTime = new Date(`${newEntryDate}T${newEntryTime}`);
-        
-        // In a real implementation, you would have an updateCalendarEntry function
-        // For now, we'll delete the old entry and add a new one
-        await deleteCalendarEntry(editingEntry.id);
-        
-        const entryToUpdate = {
-            user_id: user.id,
-            title: newEntryTitle,
-            category: selectedCategory,
-            entry_date: entryDateTime.toISOString()
-        };
+        let updates;
 
-        const updatedEntry = await addCalendarEntry(entryToUpdate);
-
-        if (updatedEntry) {
-            const mappedUpdated: CalendarEntry = {
-                id: updatedEntry.id,
-                title: updatedEntry.title,
-                category: updatedEntry.category,
-                date: parseISO(updatedEntry.entry_date)
+        if (selectedCategory === 'task' || selectedCategory === 'adls') {
+            // Handle multiple entries for tasks and ADLs
+            // For simplicity in update, we'll update the single entry
+            updates = {
+                title: newEntryTitle,
+                category: selectedCategory,
+                entry_date: new Date(`${newEntryDate}T${newEntryTime}`).toISOString(),
+                category_data: categoryData || {},
+                priority: selectedPriority,
+                description: ''
             };
-            
-            // Replace the old entry with the updated one
-            setEntries(entries.map(entry => 
-                entry.id === editingEntry.id ? mappedUpdated : entry
+        } else if (selectedCategory === 'goal') {
+            // Handle goal updates
+            updates = {
+                title: `${newEntryTitle} (${goalDuration.charAt(0).toUpperCase() + goalDuration.slice(1)} Goal)`,
+                category: selectedCategory,
+                entry_date: new Date(`${newEntryDate}T${newEntryTime}`).toISOString(),
+                category_data: categoryData || {},
+                priority: selectedPriority,
+                description: ''
+            };
+        } else {
+            updates = {
+                title: newEntryTitle,
+                category: selectedCategory,
+                entry_date: new Date(`${newEntryDate}T${newEntryTime}`).toISOString(),
+                category_data: categoryData || {},
+                priority: selectedPriority,
+                description: ''
+            };
+        }
+
+        const success = await updateCalendarEntry(editingEntry.id, updates);
+
+        if (success) {
+            // Update the entry in the local state
+            setEntries(entries.map(entry =>
+                entry.id === editingEntry.id
+                    ? {
+                        ...entry,
+                        title: updates.title,
+                        category: updates.category,
+                        category_data: updates.category_data,
+                        priority: updates.priority,
+                        description: updates.description,
+                        date: new Date(updates.entry_date)
+                    }
+                    : entry
             ));
-            
+
             setEditingEntry(null);
             setNewEntryTitle('');
+            setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]); // Reset multiple entries
             setOpenDialog(false);
         }
     };
@@ -282,24 +520,36 @@ const PersonalCalendarPage = () => {
     };
 
     const toggleOtherCalendar = (calendarId: string) => {
-        setOtherCalendars(prev => 
-            prev.map(cal => 
-                cal.id === calendarId 
+        setOtherCalendars(prev =>
+            prev.map(cal =>
+                cal.id === calendarId
                     ? { ...cal, visible: !cal.visible }
                     : cal
             )
         );
     };
 
-    const addNewCalendar = () => {
-        if (newCalendarName.trim()) {
-            const newCalendar = {
-                id: `custom-${Date.now()}`,
+    const addNewCalendar = async () => {
+        if (newCalendarName.trim() && user) {
+            const calendarToAdd = {
+                user_id: user.id,
                 name: newCalendarName.trim(),
                 color: newCalendarColor,
-                visible: true
+                is_visible: true
             };
-            setOtherCalendars(prev => [...prev, newCalendar]);
+
+            const addedCalendar = await addCustomCalendar(calendarToAdd);
+
+            if (addedCalendar) {
+                const newCalendar = {
+                    id: addedCalendar.id,
+                    name: addedCalendar.name,
+                    color: addedCalendar.color,
+                    visible: addedCalendar.is_visible
+                };
+                setOtherCalendars(prev => [...prev, newCalendar]);
+            }
+
             setNewCalendarName('');
             setShowAddCalendarDialog(false);
         }
@@ -316,19 +566,19 @@ const PersonalCalendarPage = () => {
     };
     const getMostActiveCategory = () => {
         const counts = getEntriesByCategory();
-        return Object.entries(counts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'None';
+        return Object.entries(counts).sort(([, a], [, b]) => b - a)[0]?.[0] || 'None';
     };
     const getEntriesThisWeek = () => {
         const weekStart = startOfWeek(new Date());
         const weekEnd = endOfWeek(new Date());
-        return entries.filter(entry => 
+        return entries.filter(entry =>
             entry.date >= weekStart && entry.date <= weekEnd
         ).length;
     };
 
     const filteredEntries = entries.filter((entry: CalendarEntry) => {
         const matchesCategory = visibleCategories[entry.category];
-        const matchesSearch = searchQuery === '' || 
+        const matchesSearch = searchQuery === '' ||
             entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             entry.category.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesCategory && matchesSearch;
@@ -338,7 +588,7 @@ const PersonalCalendarPage = () => {
         <Box sx={{
             display: 'flex',
             flexDirection: 'column',
-            height: 'calc(100vh - 64px)',
+            height: '100vh',
             bgcolor: 'background.default',
             m: -4, // Counteract ProtectedLayout padding
             overflow: 'hidden'
@@ -368,8 +618,8 @@ const PersonalCalendarPage = () => {
                         <IconButton size="small" onClick={nextPeriod} sx={{ borderRadius: 4, width: 40, height: 40, bgcolor: 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}><ChevronRight fontSize="small" /></IconButton>
                     </Box>
                     <Typography variant="h6" sx={{ fontWeight: 700, ml: 1, fontSize: '1.25rem', color: 'text.primary' }}>
-                        {view === 'month' 
-                            ? format(currentDate, 'MMMM yyyy') 
+                        {view === 'month'
+                            ? format(currentDate, 'MMMM yyyy')
                             : view === 'week'
                                 ? `${format(startOfWeek(currentDate), 'MMM d')} - ${format(endOfWeek(currentDate), 'MMM d, yyyy')}`
                                 : format(selectedDate, 'MMMM d, yyyy')}
@@ -403,13 +653,28 @@ const PersonalCalendarPage = () => {
                                 setShowSearchBar(false);
                                 setSearchQuery('');
                             }}
-                            sx={{ borderRadius: 4 }}>
+                                sx={{ borderRadius: 4 }}>
                                 <SearchIcon fontSize="small" />
                             </IconButton>
                         </Box>
                     ) : (
                         <Tooltip title="Search"><IconButton size="small" onClick={() => setShowSearchBar(true)} sx={{ borderRadius: 4 }}><SearchIcon fontSize="small" /></IconButton></Tooltip>
                     )}
+                    <Tooltip title="Task Analytics">
+                        <IconButton
+                            size="small"
+                            href="/personal/analytics"
+                            component="a"
+                            sx={{
+                                borderRadius: 4,
+                                color: 'primary.main',
+                                bgcolor: 'rgba(37, 99, 235, 0.08)',
+                                mx: 0.5
+                            }}
+                        >
+                            <InsightsIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
                     <Tooltip title="Support"><IconButton size="small" sx={{ borderRadius: 4 }}><HelpIcon fontSize="small" /></IconButton></Tooltip>
                     <Tooltip title="Settings"><IconButton size="small" onClick={() => setOpenSettings(true)} sx={{ borderRadius: 4 }}><SettingsIcon fontSize="small" /></IconButton></Tooltip>
                     <Select
@@ -481,7 +746,7 @@ const PersonalCalendarPage = () => {
                                 <IconButton size="small" onClick={() => setCurrentDate(addMonths(currentDate, 1))} sx={{ p: 0.5, borderRadius: 4 }}><ChevronRight fontSize="inherit" /></IconButton>
                             </Box>
                         </Box>
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, textAlign: 'center' }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 1, textAlign: 'center' }}>
                             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
                                 <Typography key={`mini-day-${i}`} variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>{d}</Typography>
                             ))}
@@ -497,9 +762,10 @@ const PersonalCalendarPage = () => {
                                         borderRadius: '50%',
                                         cursor: 'pointer',
                                         position: 'relative',
-                                        color: isSameMonth(day, currentDate) ? 'text.primary' : 'text.disabled',
-                                        bgcolor: isSameDay(day, new Date()) ? 'primary.main' : 'transparent',
-                                        '&:hover': { bgcolor: isSameDay(day, new Date()) ? 'primary.dark' : 'action.hover' },
+                                        color: isSameDay(day, new Date()) ? 'primary.main' : (isSameMonth(day, currentDate) ? 'text.primary' : 'text.disabled'),
+                                        bgcolor: isSameDay(day, new Date()) ? 'primary.light' : 'transparent',
+                                        fontWeight: isSameDay(day, new Date()) ? 800 : 500,
+                                        '&:hover': { bgcolor: 'action.hover' },
                                         ...(isSameDay(day, selectedDate) && view === 'day' && { border: '1px solid', borderColor: 'primary.main' })
                                     }}
                                     onClick={() => {
@@ -517,7 +783,8 @@ const PersonalCalendarPage = () => {
                     {/* Analytics Button */}
                     <Button
                         variant="outlined"
-                        onClick={() => setAnalyticsOpen(true)}
+                        href="/personal/analytics"
+                        component="a"
                         sx={{
                             mt: 0,
                             mb: 2,
@@ -546,10 +813,10 @@ const PersonalCalendarPage = () => {
                         <Typography variant="subtitle2" sx={{ fontWeight: 800, px: 0, fontSize: '1rem', color: 'text.primary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Categories
                         </Typography>
-                        <IconButton 
-                            size="small" 
+                        <IconButton
+                            size="small"
                             onClick={() => setCategoriesExpanded(!categoriesExpanded)}
-                            sx={{ 
+                            sx={{
                                 transform: categoriesExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                                 transition: 'transform 0.3s ease',
                                 borderRadius: 4,
@@ -602,10 +869,10 @@ const PersonalCalendarPage = () => {
                             <Typography variant="subtitle2" sx={{ fontWeight: 800, px: 0, fontSize: '1rem', color: 'text.primary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 Other Calendars
                             </Typography>
-                            <IconButton 
-                                size="small" 
+                            <IconButton
+                                size="small"
                                 onClick={() => setOtherCalendarsExpanded(!otherCalendarsExpanded)}
-                                sx={{ 
+                                sx={{
                                     transform: otherCalendarsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                                     transition: 'transform 0.3s ease',
                                     borderRadius: 4,
@@ -679,12 +946,34 @@ const PersonalCalendarPage = () => {
                 </Box>
 
                 {/* Main Calendar Grid */}
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Box sx={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    m: 2,
+                    mb: 0,
+                    borderRadius: 6,
+                    bgcolor: 'rgba(255, 255, 255, 0.3)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.5)',
+                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                }}>
                     {view === 'month' ? (
                         <>
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+                            <Box sx={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                                borderBottom: '1px solid',
+                                borderColor: 'rgba(255, 255, 255, 0.3)',
+                                bgcolor: 'rgba(255, 255, 255, 0.4)',
+                                borderTopLeftRadius: 24,
+                                borderTopRightRadius: 24,
+                                p: 1,
+                                gap: 1
+                            }}>
                                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-                                    <Box key={`header-${index}`} sx={{ py: 2, textAlign: 'center', borderRight: '1px solid', borderColor: 'divider', '&:last-child': { borderRight: 'none' } }}>
+                                    <Box key={`header-${index}`} sx={{ py: 1, textAlign: 'center' }}>
                                         <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                             {day}
                                         </Typography>
@@ -693,11 +982,13 @@ const PersonalCalendarPage = () => {
                             </Box>
                             <Box sx={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(7, 1fr)',
+                                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
                                 gridAutoRows: 'minmax(150px, 1fr)',
                                 flex: 1,
                                 overflowY: 'auto',
-                                bgcolor: 'background.default'
+                                bgcolor: 'transparent',
+                                p: 1,
+                                gap: 1
                             }}>
                                 {calendarDays.map((day, idx) => {
                                     const dayEntries = filteredEntries.filter((entry: CalendarEntry) => isSameDay(entry.date, day));
@@ -709,17 +1000,19 @@ const PersonalCalendarPage = () => {
                                         <Box
                                             key={idx}
                                             sx={{
-                                                bgcolor: isCurrentMonth ? 'background.paper' : 'background.default',
+                                                bgcolor: isCurrentMonth ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)',
                                                 p: 1.5,
                                                 minHeight: 150,
-                                                borderRight: '1px solid',
-                                                borderBottom: '1px solid',
-                                                borderColor: 'divider',
+                                                borderRadius: 4,
+                                                border: '1px solid',
+                                                borderColor: 'rgba(255, 255, 255, 0.4)',
                                                 transition: 'all 0.2s ease',
                                                 cursor: 'pointer',
                                                 position: 'relative',
-                                                ...(isSelected && { bgcolor: 'primary.light', border: '2px solid', borderColor: 'primary.main' }),
-                                                '&:hover': { bgcolor: isCurrentMonth ? 'action.hover' : 'background.default' }
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                                backdropFilter: 'blur(4px)',
+                                                ...(isSelected && { bgcolor: 'rgba(37, 99, 235, 0.12)', border: '2px solid', borderColor: 'primary.main' }),
+                                                '&:hover': { bgcolor: isCurrentMonth ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.15)', transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }
                                             }}
                                             onClick={() => {
                                                 setSelectedDate(day);
@@ -753,8 +1046,8 @@ const PersonalCalendarPage = () => {
                                                         <Box
                                                             key={entry.id}
                                                             sx={{
-                                                                bgcolor: cat?.color || 'primary.main',
-                                                                color: '#FFFFFF',
+                                                                bgcolor: entry.status === 'completed' ? 'rgba(0, 0, 0, 0.1)' : (cat?.color || 'primary.main'),
+                                                                color: entry.status === 'completed' ? 'text.secondary' : '#FFFFFF',
                                                                 px: 1,
                                                                 py: 0.5,
                                                                 borderRadius: 2,
@@ -766,7 +1059,10 @@ const PersonalCalendarPage = () => {
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'space-between',
-                                                                boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                                                                boxShadow: entry.status === 'completed' ? 'none' : '0 2px 4px rgba(0,0,0,0.08)',
+                                                                cursor: 'pointer',
+                                                                opacity: entry.status === 'completed' ? 0.7 : 1,
+                                                                textDecoration: entry.status === 'completed' ? 'line-through' : 'none',
                                                                 '&:hover': {
                                                                     filter: 'brightness(0.95)',
                                                                     transform: 'translateY(-1px)',
@@ -775,12 +1071,16 @@ const PersonalCalendarPage = () => {
                                                                 },
                                                                 transition: 'all 0.15s ease',
                                                                 borderLeft: '2px solid',
-                                                                borderColor: 'transparent'
+                                                                borderColor: 'transparent',
+                                                                minWidth: 0
                                                             }}
+                                                            onClick={(e) => toggleEntryStatus(e, entry)}
                                                         >
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden' }}>
-                                                                {cat?.icon}
-                                                                <Typography variant="inherit" noWrap>{entry.title} ({format(entry.date, 'HH:mm')})</Typography>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden', minWidth: 0 }}>
+                                                                {entry.status === 'completed' ? <CheckCircleIcon sx={{ fontSize: '0.8rem' }} /> : cat?.icon}
+                                                                <Typography variant="inherit" noWrap sx={{ opacity: entry.status === 'completed' ? 0.7 : 1 }}>
+                                                                    {entry.title} ({format(entry.date, 'HH:mm')})
+                                                                </Typography>
                                                             </Box>
                                                             <IconButton
                                                                 className="edit-btn"
@@ -808,7 +1108,7 @@ const PersonalCalendarPage = () => {
                             </Box>
                         </>
                     ) : view === 'week' ? (
-                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: 'transparent' }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, px: 4, pt: 3 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                     <Box>
@@ -839,9 +1139,17 @@ const PersonalCalendarPage = () => {
                                     </Button>
                                 </Box>
                             </Box>
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+                            <Box sx={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                                borderBottom: '1px solid',
+                                borderColor: 'rgba(255, 255, 255, 0.3)',
+                                bgcolor: 'rgba(255, 255, 255, 0.4)',
+                                p: 1,
+                                gap: 1
+                            }}>
                                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-                                    <Box key={`week-header-${index}`} sx={{ py: 2, textAlign: 'center', borderRight: '1px solid', borderColor: 'divider', '&:last-child': { borderRight: 'none' } }}>
+                                    <Box key={`week-header-${index}`} sx={{ py: 1, textAlign: 'center' }}>
                                         <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                             {day}
                                         </Typography>
@@ -850,11 +1158,13 @@ const PersonalCalendarPage = () => {
                             </Box>
                             <Box sx={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(7, 1fr)',
+                                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
                                 gridAutoRows: 'minmax(130px, 1fr)',
                                 flex: 1,
                                 overflowY: 'auto',
-                                bgcolor: 'background.default'
+                                bgcolor: 'transparent',
+                                p: 1,
+                                gap: 1
                             }}>
                                 {eachDayOfInterval({ start: startOfWeek(currentDate), end: endOfWeek(currentDate) }).map((day, idx) => {
                                     const dayEntries = filteredEntries.filter((entry: CalendarEntry) => isSameDay(entry.date, day));
@@ -865,17 +1175,19 @@ const PersonalCalendarPage = () => {
                                         <Box
                                             key={idx}
                                             sx={{
-                                                bgcolor: 'background.paper',
-                                                p: 1,
+                                                bgcolor: 'rgba(255, 255, 255, 0.25)',
+                                                p: 1.5,
                                                 minHeight: 130,
-                                                borderRight: '1px solid',
-                                                borderBottom: '1px solid',
-                                                borderColor: 'divider',
-                                                transition: 'background-color 0.2s',
+                                                borderRadius: 4,
+                                                border: '1px solid',
+                                                borderColor: 'rgba(255, 255, 255, 0.4)',
+                                                transition: 'all 0.2s ease',
                                                 cursor: 'pointer',
                                                 position: 'relative',
-                                                ...(isSelected && { bgcolor: 'primary.light !important' }),
-                                                '&:hover': { bgcolor: 'action.hover' }
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                                backdropFilter: 'blur(4px)',
+                                                ...(isSelected && { bgcolor: 'rgba(37, 99, 235, 0.12) !important' }),
+                                                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.35)', transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }
                                             }}
                                             onClick={() => {
                                                 setSelectedDate(day);
@@ -909,8 +1221,8 @@ const PersonalCalendarPage = () => {
                                                         <Box
                                                             key={entry.id}
                                                             sx={{
-                                                                bgcolor: cat?.color || 'primary.main',
-                                                                color: '#FFFFFF',
+                                                                bgcolor: entry.status === 'completed' ? 'rgba(0, 0, 0, 0.1)' : (cat?.color || 'primary.main'),
+                                                                color: entry.status === 'completed' ? 'text.secondary' : '#FFFFFF',
                                                                 px: 1,
                                                                 py: 0.5,
                                                                 borderRadius: 2,
@@ -922,19 +1234,26 @@ const PersonalCalendarPage = () => {
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'space-between',
-                                                                boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                                                                boxShadow: entry.status === 'completed' ? 'none' : '0 2px 4px rgba(0,0,0,0.08)',
+                                                                cursor: 'pointer',
+                                                                opacity: entry.status === 'completed' ? 0.7 : 1,
+                                                                textDecoration: entry.status === 'completed' ? 'line-through' : 'none',
                                                                 '&:hover': {
                                                                     filter: 'brightness(0.9)',
                                                                     transform: 'translateY(-1px)',
                                                                     '& .delete-btn': { opacity: 1 },
                                                                     '& .edit-btn': { opacity: 1 }
                                                                 },
-                                                                transition: 'all 0.1s'
+                                                                transition: 'all 0.1s',
+                                                                minWidth: 0
                                                             }}
+                                                            onClick={(e) => toggleEntryStatus(e, entry)}
                                                         >
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden' }}>
-                                                                {cat?.icon}
-                                                                <Typography variant="inherit" noWrap>{entry.title} ({format(entry.date, 'HH:mm')})</Typography>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden', minWidth: 0 }}>
+                                                                {entry.status === 'completed' ? <CheckCircleIcon sx={{ fontSize: '0.8rem' }} /> : cat?.icon}
+                                                                <Typography variant="inherit" noWrap sx={{ opacity: entry.status === 'completed' ? 0.7 : 1 }}>
+                                                                    {entry.title} ({format(entry.date, 'HH:mm')})
+                                                                </Typography>
                                                             </Box>
                                                             <IconButton
                                                                 className="edit-btn"
@@ -966,7 +1285,7 @@ const PersonalCalendarPage = () => {
                                 })}
                             </Box>
                             {/* Floating Create Button for Week View */}
-                            <IconButton 
+                            <IconButton
                                 onClick={() => {
                                     setNewEntryDate(format(currentDate, 'yyyy-MM-dd')); // Default to current week's start date
                                     setOpenDialog(true);
@@ -992,7 +1311,7 @@ const PersonalCalendarPage = () => {
                             </IconButton>
                         </Box>
                     ) : (
-                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: 'background.paper', overflowY: 'auto' }}>
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: 'transparent', overflowY: 'auto' }}>
                             <Box sx={{ p: 4 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -1090,14 +1409,88 @@ const PersonalCalendarPage = () => {
                                                             {cat?.icon && React.cloneElement(cat.icon as any, { sx: { fontSize: '1.4rem' } })}
                                                         </Box>
                                                         <Box sx={{ flex: 1 }}>
-                                                            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '1rem' }}>
+                                                            <Typography
+                                                                variant="subtitle1"
+                                                                sx={{
+                                                                    fontWeight: 700,
+                                                                    color: entry.status === 'completed' ? 'text.disabled' : 'text.primary',
+                                                                    fontSize: '1rem',
+                                                                    textDecoration: entry.status === 'completed' ? 'line-through' : 'none'
+                                                                }}
+                                                            >
                                                                 {entry.title}
                                                             </Typography>
-                                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                                                                {cat?.label} • {format(entry.date, 'HH:mm')}
-                                                            </Typography>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '0.85rem', color: 'text.secondary' }}>
+                                                                <span>{cat?.label} • {format(entry.date, 'HH:mm')}</span>
+                                                                {entry.priority && (
+                                                                    <Chip
+                                                                        label={entry.priority}
+                                                                        size="small"
+                                                                        sx={{
+                                                                            height: 20,
+                                                                            fontSize: '0.65rem',
+                                                                            fontWeight: 700,
+                                                                            textTransform: 'uppercase',
+                                                                            bgcolor: entry.priority === 'High' ? 'rgba(244, 67, 54, 0.1)' :
+                                                                                entry.priority === 'Medium' ? 'rgba(255, 152, 0, 0.1)' :
+                                                                                    'rgba(76, 175, 80, 0.1)',
+                                                                            color: entry.priority === 'High' ? '#f44336' :
+                                                                                entry.priority === 'Medium' ? '#ff9800' :
+                                                                                    '#4caf50',
+                                                                            border: '1px solid',
+                                                                            borderColor: 'currentColor'
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                                <Chip
+                                                                    label={entry.status === 'completed' ? 'Completed' : 'Pending'}
+                                                                    size="small"
+                                                                    sx={{
+                                                                        height: 20,
+                                                                        fontSize: '0.65rem',
+                                                                        fontWeight: 700,
+                                                                        textTransform: 'uppercase',
+                                                                        bgcolor: entry.status === 'completed' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                                                                        color: entry.status === 'completed' ? '#4caf50' : 'text.secondary',
+                                                                        border: '1px solid',
+                                                                        borderColor: 'currentColor'
+                                                                    }}
+                                                                />
+                                                            </Box>
+                                                            {entry.category_data && Object.entries(entry.category_data as Record<string, any>).some(([_, v]) => v) && (
+                                                                <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                    {(Object.entries(entry.category_data) as [string, any][]).map(([key, value]) => (
+                                                                        value && (
+                                                                            <Chip
+                                                                                key={key}
+                                                                                label={`${key.replace(/_/g, ' ')}: ${value}`}
+                                                                                size="small"
+                                                                                variant="outlined"
+                                                                                sx={{
+                                                                                    fontSize: '0.65rem',
+                                                                                    height: 20,
+                                                                                    borderColor: `${cat?.color}40`,
+                                                                                    color: 'text.secondary',
+                                                                                    bgcolor: `${cat?.color}05`,
+                                                                                    textTransform: 'capitalize'
+                                                                                }}
+                                                                            />
+                                                                        )
+                                                                    ))}
+                                                                </Box>
+                                                            )}
                                                         </Box>
                                                         <Box sx={{ display: 'flex', gap: 1 }}>
+                                                            <IconButton
+                                                                onClick={(e) => toggleEntryStatus(e, entry)}
+                                                                sx={{
+                                                                    color: entry.status === 'completed' ? 'success.main' : 'text.disabled',
+                                                                    borderRadius: 2,
+                                                                    '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.1)' }
+                                                                }}
+                                                            >
+                                                                {entry.status === 'completed' ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
+                                                            </IconButton>
                                                             <IconButton
                                                                 className="edit-btn"
                                                                 onClick={(e) => {
@@ -1141,7 +1534,7 @@ const PersonalCalendarPage = () => {
                                 </Box>
                             </Box>
                             {/* Floating Create Button for Day View */}
-                            <IconButton 
+                            <IconButton
                                 onClick={() => {
                                     setNewEntryDate(format(selectedDate, 'yyyy-MM-dd'));
                                     setOpenDialog(true);
@@ -1171,8 +1564,14 @@ const PersonalCalendarPage = () => {
             </Box>
 
             {/* Add Entry Dialog */}
-            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ pb: 2, fontWeight: 700, fontSize: '1.25rem' }}>Create New Entry</DialogTitle>
+            <Dialog open={openDialog} onClose={() => {
+                setOpenDialog(false);
+                setEditingEntry(null);
+                setNewEntryTitle('');
+                setCategoryData({});
+                setSelectedPriority('Medium');
+            }} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ pb: 2, fontWeight: 700, fontSize: '1.25rem' }}>{editingEntry ? 'Edit Entry' : 'Create New Entry'}</DialogTitle>
                 <DialogContent>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
                         <TextField
@@ -1223,6 +1622,168 @@ const PersonalCalendarPage = () => {
                                 ))}
                             </Select>
                         </FormControl>
+
+                        <FormControl fullWidth variant="outlined" sx={{ mt: 2 }}>
+                            <InputLabel>Priority Level</InputLabel>
+                            <Select
+                                value={selectedPriority}
+                                onChange={(e) => setSelectedPriority(e.target.value)}
+                                label="Priority Level"
+                            >
+                                <MenuItem value="Low">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ width: 12, height: 12, bgcolor: '#4caf50', borderRadius: '50%' }} />
+                                        Low
+                                    </Box>
+                                </MenuItem>
+                                <MenuItem value="Medium">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ width: 12, height: 12, bgcolor: '#ff9800', borderRadius: '50%' }} />
+                                        Medium
+                                    </Box>
+                                </MenuItem>
+                                <MenuItem value="High">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ width: 12, height: 12, bgcolor: '#f44336', borderRadius: '50%' }} />
+                                        High
+                                    </Box>
+                                </MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        {/* Category Specific Fields */}
+                        {selectedCategory === 'health' && (
+                            <TextField
+                                label="Regular Checkup Schedule"
+                                fullWidth
+                                variant="outlined"
+                                value={categoryData.checkup_schedule || ''}
+                                onChange={(e) => handleCategoryDataChange('checkup_schedule', e.target.value)}
+                                placeholder="e.g. Every 6 months"
+                            />
+                        )}
+
+                        {selectedCategory === 'wealth' && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <TextField
+                                    label="Income"
+                                    type="number"
+                                    fullWidth
+                                    variant="outlined"
+                                    value={categoryData.income || ''}
+                                    onChange={(e) => handleCategoryDataChange('income', e.target.value)}
+                                />
+                                <TextField
+                                    label="Outcome"
+                                    type="number"
+                                    fullWidth
+                                    variant="outlined"
+                                    value={categoryData.outcome || ''}
+                                    onChange={(e) => handleCategoryDataChange('outcome', e.target.value)}
+                                />
+                                <TextField
+                                    label="Investment"
+                                    type="number"
+                                    fullWidth
+                                    variant="outlined"
+                                    value={categoryData.investment || ''}
+                                    onChange={(e) => handleCategoryDataChange('investment', e.target.value)}
+                                />
+                            </Box>
+                        )}
+
+                        {selectedCategory === 'event' && (
+                            <TextField
+                                label="Family Events"
+                                fullWidth
+                                variant="outlined"
+                                multiline
+                                rows={2}
+                                value={categoryData.family_events || ''}
+                                onChange={(e) => handleCategoryDataChange('family_events', e.target.value)}
+                                placeholder="Details about the family event..."
+                            />
+                        )}
+
+                        {(selectedCategory === 'task' || selectedCategory === 'adls') && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                                    Multiple {selectedCategory === 'task' ? 'Tasks' : 'ADLs'}
+                                </Typography>
+                                {multipleEntries.map((entry, index) => (
+                                    <Box key={index} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                        <TextField
+                                            label={selectedCategory === 'task' ? "Task" : "ADL"}
+                                            fullWidth
+                                            variant="outlined"
+                                            value={entry.title}
+                                            onChange={(e) => {
+                                                const newEntries = [...multipleEntries];
+                                                newEntries[index].title = e.target.value;
+                                                setMultipleEntries(newEntries);
+                                            }}
+                                            placeholder={selectedCategory === 'task' ? "Enter task" : "Enter ADL"}
+                                        />
+                                        <IconButton
+                                            onClick={() => {
+                                                const newEntries = multipleEntries.filter((_, i) => i !== index);
+                                                setMultipleEntries(newEntries);
+                                            }}
+                                            sx={{ color: 'error.main' }}
+                                        >
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </Box>
+                                ))}
+                                <Button
+                                    onClick={() => setMultipleEntries([...multipleEntries, { title: '', date: newEntryDate }])}
+                                    startIcon={<AddIcon />}
+                                    variant="outlined"
+                                    sx={{ alignSelf: 'flex-start' }}
+                                >
+                                    Add More {selectedCategory === 'task' ? 'Tasks' : 'ADLs'}
+                                </Button>
+                            </Box>
+                        )}
+
+                        {selectedCategory === 'goal' && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <FormControl fullWidth variant="outlined">
+                                    <InputLabel>Goal Duration</InputLabel>
+                                    <Select
+                                        value={goalDuration}
+                                        onChange={(e) => setGoalDuration(e.target.value)}
+                                        label="Goal Duration"
+                                    >
+                                        <MenuItem value="day">Day</MenuItem>
+                                        <MenuItem value="week">Week</MenuItem>
+                                        <MenuItem value="month">Month</MenuItem>
+                                        <MenuItem value="year">Year</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={goalRecurring}
+                                            onChange={(e) => setGoalRecurring(e.target.checked)}
+                                        />
+                                    }
+                                    label="Recurring Goal"
+                                />
+                                <TextField
+                                    label="Goal Details"
+                                    fullWidth
+                                    variant="outlined"
+                                    multiline
+                                    rows={2}
+                                    value={categoryData.goal_details || ''}
+                                    onChange={(e) => handleCategoryDataChange('goal_details', e.target.value)}
+                                    placeholder="Describe your goal..."
+                                />
+                            </Box>
+                        )}
+
+
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ px: 3, py: 2 }}>
@@ -1230,6 +1791,10 @@ const PersonalCalendarPage = () => {
                         setOpenDialog(false);
                         setEditingEntry(null);
                         setNewEntryTitle('');
+                        setCategoryData({});
+                        setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]);
+                        setGoalDuration('day');
+                        setGoalRecurring(false);
                     }} sx={{ textTransform: 'none', fontWeight: 600, px: 3, py: 1 }}>Cancel</Button>
                     {editingEntry ? (
                         <Button
@@ -1244,7 +1809,7 @@ const PersonalCalendarPage = () => {
                         <Button
                             onClick={handleAddEntry}
                             variant="contained"
-                            disabled={!newEntryTitle}
+                            disabled={!(newEntryTitle || (selectedCategory === 'task' && multipleEntries.some(e => e.title.trim() !== '')) || (selectedCategory === 'adls' && multipleEntries.some(e => e.title.trim() !== '')))}
                             sx={{ textTransform: 'none', borderRadius: 4, fontWeight: 600, px: 3, py: 1 }}
                         >
                             Save
@@ -1252,124 +1817,7 @@ const PersonalCalendarPage = () => {
                     )}
                 </DialogActions>
             </Dialog>
-            
-{/* Analytics Dialog */}
-            <Dialog open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle sx={{ pb: 2, fontWeight: 700, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <AnalyticsIcon color="primary" />
-                    Calendar Analytics
-                </DialogTitle>
-                <DialogContent dividers>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
-                        {/* Summary Cards */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
-                            <Card variant="outlined" sx={{ borderRadius: 4 }}>
-                                <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                                    <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>
-                                        {getTotalEntries()}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                                        Total Entries
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                            <Card variant="outlined" sx={{ borderRadius: 4 }}>
-                                <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                                    <Typography variant="h4" sx={{ fontWeight: 800, color: 'secondary.main' }}>
-                                        {getEntriesThisWeek()}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                                        This Week
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                            <Card variant="outlined" sx={{ borderRadius: 4 }}>
-                                <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                                    <Typography variant="h4" sx={{ fontWeight: 800, color: 'success.main' }}>
-                                        {getMostActiveCategory()}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                                        Most Active
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        </Box>
 
-                        {/* Category Distribution */}
-                        <Box>
-                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
-                                Category Distribution
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {Object.entries(getEntriesByCategory()).map(([category, count]) => {
-                                    const catInfo = CATEGORIES.find(c => c.id === category);
-                                    return (
-                                        <Chip
-                                            key={category}
-                                            label={`${catInfo?.label || category}: ${count}`}
-                                            sx={{
-                                                bgcolor: `${catInfo?.color}15`,
-                                                color: catInfo?.color,
-                                                border: `1px solid ${catInfo?.color}30`,
-                                                fontWeight: 600
-                                            }}
-                                            icon={catInfo?.icon}
-                                        />
-                                    );
-                                })}
-                            </Box>
-                        </Box>
-
-                        {/* Recent Activity */}
-                        <Box>
-                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
-                                Recent Activity
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {entries
-                                    .sort((a, b) => b.date.getTime() - a.date.getTime())
-                                    .slice(0, 5)
-                                    .map(entry => {
-                                        const cat = CATEGORIES.find(c => c.id === entry.category);
-                                        return (
-                                            <Box key={entry.id} sx={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 2,
-                                                p: 2,
-                                                borderRadius: 3,
-                                                bgcolor: 'background.paper',
-                                                border: '1px solid',
-                                                borderColor: 'divider'
-                                            }}>
-                                                <Box sx={{
-                                                    width: 12,
-                                                    height: 12,
-                                                    borderRadius: '50%',
-                                                    bgcolor: cat?.color
-                                                }} />
-                                                <Box sx={{ flex: 1 }}>
-                                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                                                        {entry.title}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        {cat?.label} • {format(entry.date, 'MMM d, yyyy')} • {format(entry.date, 'HH:mm')}
-                                                    </Typography>
-                                                </Box>
-                                                <CheckCircleIcon sx={{ color: 'success.main', fontSize: '1rem' }} />
-                                            </Box>
-                                        );
-                                    })}
-                            </Box>
-                        </Box>
-                    </Box>
-                </DialogContent>
-                <DialogActions sx={{ px: 3, py: 2 }}>
-                    <Button onClick={() => setAnalyticsOpen(false)} sx={{ textTransform: 'none', fontWeight: 600, px: 3, py: 1 }}>
-                        Close
-                    </Button>
-                </DialogActions>
-            </Dialog>
 
             {/* Add Calendar Dialog */}
             <Dialog open={showAddCalendarDialog} onClose={() => setShowAddCalendarDialog(false)} maxWidth="sm" fullWidth>
@@ -1413,8 +1861,8 @@ const PersonalCalendarPage = () => {
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ px: 3, py: 2 }}>
-                    <Button 
-                        onClick={() => setShowAddCalendarDialog(false)} 
+                    <Button
+                        onClick={() => setShowAddCalendarDialog(false)}
                         sx={{ textTransform: 'none', fontWeight: 600, px: 3, py: 1 }}
                     >
                         Cancel
@@ -1452,7 +1900,7 @@ const PersonalCalendarPage = () => {
                                 </Select>
                             </FormControl>
                         </Box>
-                        
+
                         {/* Notification Settings */}
                         <Box>
                             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>Notification Settings</Typography>
@@ -1480,7 +1928,7 @@ const PersonalCalendarPage = () => {
                                 </Box>
                             </Box>
                         </Box>
-                        
+
                         {/* Add-ons */}
                         <Box>
                             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>Get Add-ons</Typography>
@@ -1505,7 +1953,7 @@ const PersonalCalendarPage = () => {
                                 </Button>
                             </Box>
                         </Box>
-                        
+
                         {/* Feedback */}
                         <Box>
                             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>Feedback</Typography>
@@ -1527,7 +1975,7 @@ const PersonalCalendarPage = () => {
                     <Button onClick={() => setOpenSettings(false)} sx={{ textTransform: 'none', fontWeight: 600, px: 3, py: 1 }}>Close</Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+        </Box >
     );
 };
 
