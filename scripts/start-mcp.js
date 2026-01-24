@@ -6,7 +6,7 @@
 import dotenv from 'dotenv';
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: '.env.local' });
 
 console.log('Supabase MCP Server Configuration:');
 console.log('===================================');

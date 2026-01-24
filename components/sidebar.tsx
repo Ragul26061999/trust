@@ -18,6 +18,8 @@ import {
   useTheme,
   alpha,
   Tooltip,
+  Avatar,
+  Badge,
 } from '@mui/material';
 import {
   GridView as DashboardIcon,
@@ -31,6 +33,7 @@ import {
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  Lock as LockIcon,
 } from '@mui/icons-material';
 
 export const drawerWidth = 280;
@@ -63,13 +66,13 @@ const Sidebar = () => {
   };
 
   const navItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', color: '#6750A4' },
-    { text: 'Note Taking', icon: <NoteIcon />, path: '/note-taking', color: '#E91E63' },
-    { text: 'User Clock', icon: <ClockIcon />, path: '/user-clock', color: '#2196F3' },
-    { text: 'Analytical', icon: <AnalyticsIcon />, path: '/analytical', color: '#4CAF50' },
-    { text: 'Calendar', icon: <CalendarIcon />, path: '/calendar', color: '#FF9800' },
-    { text: 'Professional', icon: <ProfessionalIcon />, path: '/professional', color: '#9C27B0' },
-    { text: 'Personal', icon: <PersonalIcon />, path: '/personal', color: '#00BCD4' },
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', color: '#667eea', locked: false },
+    { text: 'Analytical', icon: <AnalyticsIcon />, path: '/analytical', color: '#2196F3', locked: false },
+    { text: 'Professional', icon: <ProfessionalIcon />, path: '/professional', color: '#FF9800', locked: false },
+    { text: 'Personal', icon: <PersonalIcon />, path: '/personal', color: '#9C27B0', locked: false },
+    { text: 'Note Taking', icon: <NoteIcon />, path: '/note-taking', color: '#6750A4', locked: true },
+    { text: 'Calendar', icon: <CalendarIcon />, path: '/calendar', color: '#4CAF50', locked: true },
+    { text: 'User Clock', icon: <ClockIcon />, path: '/user-clock', color: '#E91E63', locked: true },
   ];
 
   const currentWidth = isCollapsed ? collapsedWidth : drawerWidth;
@@ -86,50 +89,79 @@ const Sidebar = () => {
     }}>
       {/* Brand Header */}
       <Box sx={{
-        p: 2.5,
+        p: 3,
         display: 'flex',
         alignItems: 'center',
         justifyContent: isCollapsed ? 'center' : 'space-between',
-        mb: 2
+        mb: 3,
+        borderBottom: '1px solid rgba(0,0,0,0.08)'
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
           <Box sx={{
-            minWidth: 40,
-            height: 40,
+            minWidth: 44,
+            height: 44,
             borderRadius: 3,
-            bgcolor: 'primary.main',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(103, 80, 164, 0.25)',
+            boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)',
             flexShrink: 0
           }}>
             <Typography variant="h6" sx={{ color: 'white', fontWeight: 900 }}>T</Typography>
           </Box>
           {!isCollapsed && (
-            <Typography variant="h6" sx={{
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              whiteSpace: 'nowrap'
-            }}>
-              Time OS
-            </Typography>
+            <Box>
+              <Typography variant="h6" sx={{
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.2
+              }}>
+                Time OS
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                Productivity Suite
+              </Typography>
+            </Box>
           )}
         </Box>
 
         {!isCollapsed && (
-          <IconButton onClick={handleCollapseToggle} size="small" sx={{ color: 'grey.400' }}>
+          <IconButton 
+            onClick={handleCollapseToggle} 
+            size="small" 
+            sx={{ 
+              color: 'text.secondary',
+              bgcolor: 'rgba(0,0,0,0.05)',
+              '&:hover': {
+                bgcolor: 'rgba(0,0,0,0.1)',
+                color: 'text.primary'
+              }
+            }}
+          >
             <ChevronLeftIcon />
           </IconButton>
         )}
       </Box>
 
       {isCollapsed && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-          <IconButton onClick={handleCollapseToggle} size="small" sx={{ color: 'primary.main', bgcolor: 'primary.light' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+          <IconButton 
+            onClick={handleCollapseToggle} 
+            size="small" 
+            sx={{ 
+              color: '#667eea', 
+              bgcolor: 'rgba(102, 126, 234, 0.1)',
+              '&:hover': {
+                bgcolor: 'rgba(102, 126, 234, 0.2)',
+              }
+            }}
+          >
             <ChevronRightIcon />
           </IconButton>
         </Box>
@@ -141,35 +173,76 @@ const Sidebar = () => {
           const isActive = pathname === item.path;
           const itemContent = (
             <ListItemButton
-              onClick={() => handleNavigation(item.path)}
+              onClick={() => !item.locked && handleNavigation(item.path)}
               sx={{
-                borderRadius: 4,
-                py: 1.5,
-                px: isCollapsed ? 0 : 2,
+                borderRadius: 3,
+                py: 2,
+                px: isCollapsed ? 0 : 2.5,
                 justifyContent: isCollapsed ? 'center' : 'flex-start',
-                transition: 'all 0.2s',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 bgcolor: isActive ? `${item.color}15` : 'transparent',
-                '&:hover': {
-                  bgcolor: isActive ? `${item.color}25` : 'action.hover',
+                position: 'relative',
+                opacity: item.locked ? 0.6 : 1,
+                cursor: item.locked ? 'not-allowed' : 'pointer',
+                '&:hover': !item.locked ? {
+                  bgcolor: isActive ? `${item.color}25` : 'rgba(0,0,0,0.04)',
+                  transform: 'translateX(4px)'
+                } : {
+                  bgcolor: 'transparent',
+                  transform: 'none'
                 },
               }}
             >
               <ListItemIcon sx={{
-                minWidth: isCollapsed ? 0 : 44,
+                minWidth: isCollapsed ? 0 : 48,
                 justifyContent: 'center',
-                color: isActive ? item.color : 'grey.500',
-                transition: 'color 0.2s'
+                position: 'relative'
               }}>
-                {item.icon}
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 3,
+                  bgcolor: isActive ? `${item.color}20` : item.locked ? 'rgba(0,0,0,0.05)' : `${item.color}10`,
+                  color: isActive ? item.color : item.locked ? 'text.disabled' : item.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.3s ease',
+                  boxShadow: isActive ? `0 4px 12px ${item.color}30` : 'none'
+                }}>
+                  {item.icon}
+                  {item.locked && (
+                    <Box sx={{
+                      position: 'absolute',
+                      top: -2,
+                      right: -2,
+                      width: 16,
+                      height: 16,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(0,0,0,0.8)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <LockIcon sx={{ fontSize: 10, color: 'white' }} />
+                    </Box>
+                  )}
+                </Box>
               </ListItemIcon>
               {!isCollapsed && (
                 <ListItemText
                   primary={item.text}
                   primaryTypographyProps={{
-                    fontWeight: isActive ? 700 : 500,
+                    fontWeight: isActive ? 700 : 600,
                     fontSize: '0.875rem',
-                    color: isActive ? item.color : 'text.primary',
+                    color: isActive ? item.color : item.locked ? 'text.disabled' : 'text.primary',
                     noWrap: true
+                  }}
+                  secondary={item.locked ? 'Coming Soon' : ''}
+                  secondaryTypographyProps={{
+                    fontSize: '0.75rem',
+                    color: 'text.secondary',
+                    fontWeight: 500
                   }}
                 />
               )}
@@ -189,8 +262,7 @@ const Sidebar = () => {
       </List>
 
       {/* Footer Area */}
-      <Box sx={{ p: 2, mt: 'auto' }}>
-        <Divider sx={{ mb: 2, opacity: 0.6 }} />
+      <Box sx={{ p: 2.5, mt: 'auto', borderTop: '1px solid rgba(0,0,0,0.08)' }}>
         <Tooltip title={isCollapsed ? "Logout" : ""} placement="right">
           <Button
             variant="text"
@@ -199,19 +271,21 @@ const Sidebar = () => {
             onClick={handleSignOut}
             fullWidth
             sx={{
-              py: 1.5,
-              borderRadius: 4,
+              py: 2,
+              borderRadius: 3,
               justifyContent: isCollapsed ? 'center' : 'flex-start',
-              px: isCollapsed ? 0 : 2,
+              px: isCollapsed ? 0 : 2.5,
               color: 'text.secondary',
               fontWeight: 600,
               minWidth: 0,
+              transition: 'all 0.3s ease',
               '& .MuiButton-startIcon': {
                 margin: isCollapsed ? 0 : '',
               },
               '&:hover': {
-                bgcolor: 'error.lighter',
-                color: 'error.main',
+                bgcolor: 'rgba(239, 68, 68, 0.1)',
+                color: '#ef4444',
+                transform: 'translateX(4px)'
               }
             }}
           >

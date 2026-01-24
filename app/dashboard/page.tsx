@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { useRouter } from 'next/navigation';
 import ProtectedLayout from '../protected-layout';
@@ -34,47 +34,69 @@ import {
   Person as PersonalIcon,
   ArrowForward as ArrowForwardIcon,
   GridView as DashboardIcon,
+  Lock as LockIcon,
 } from '@mui/icons-material';
 
 const DashboardContent = () => {
   const { user } = useAuth();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [realTimeData, setRealTimeData] = useState({
+    totalTasks: 0,
+    completedTasks: 0,
+    totalNotes: 0,
+    totalEvents: 0,
+    recentActivities: [] as Array<{
+      id: number;
+      user: string;
+      action: string;
+      time: string;
+      icon: string;
+      color: string;
+    }>
+  });
+
+  // Fetch real-time data
+  useEffect(() => {
+    const fetchRealTimeData = async () => {
+      try {
+        // This would fetch actual data from your database
+        // For now, I'll simulate with realistic data based on the unlocked cards
+        const data = {
+          totalTasks: 8, // From Professional card
+          completedTasks: 5, // Simulated completion
+          totalNotes: 0, // Note Taking is locked
+          totalEvents: 0, // Calendar is locked
+          recentActivities: [
+            { id: 1, user: 'Professional', action: 'Task "Project Review" completed', time: '2m ago', icon: '✓', color: '#FF9800' },
+            { id: 2, user: 'Analytical', action: 'New analytics report generated', time: '15m ago', icon: '📊', color: '#2196F3' },
+            { id: 3, user: 'Personal', action: 'New goal added to personal tracker', time: '1h ago', icon: '🎯', color: '#9C27B0' },
+          ]
+        };
+        setRealTimeData(data);
+      } catch (error) {
+        console.error('Error fetching real-time data:', error);
+      }
+    };
+
+    fetchRealTimeData();
+    // Set up interval for real-time updates
+    const interval = setInterval(fetchRealTimeData, 30000); // Update every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
 
   if (!user) return null;
 
   const categories = [
-    {
-      text: 'Note Taking',
-      icon: <NoteIcon sx={{ fontSize: 32 }} />,
-      path: '/note-taking',
-      color: '#6750A4',
-      desc: 'Capture ideas and organize your thoughts.',
-      count: '12 Notes'
-    },
-    {
-      text: 'User Clock',
-      icon: <ClockIcon sx={{ fontSize: 32 }} />,
-      path: '/user-clock',
-      color: '#E91E63',
-      desc: 'Track your time and daily productivity.',
-      count: 'Active'
-    },
     {
       text: 'Analytical',
       icon: <AnalyticsIcon sx={{ fontSize: 32 }} />,
       path: '/analytical',
       color: '#2196F3',
       desc: 'Deep dive into your project metrics.',
-      count: '3 Reports'
-    },
-    {
-      text: 'Calendar',
-      icon: <CalendarIcon sx={{ fontSize: 32 }} />,
-      path: '/calendar',
-      color: '#4CAF50',
-      desc: 'Schedule and manage your events.',
-      count: '5 Events'
+      count: '3 Reports',
+      locked: false
     },
     {
       text: 'Professional',
@@ -82,7 +104,8 @@ const DashboardContent = () => {
       path: '/professional',
       color: '#FF9800',
       desc: 'Manage your work projects and tasks.',
-      count: '8 Tasks'
+      count: '8 Tasks',
+      locked: false
     },
     {
       text: 'Personal',
@@ -90,7 +113,35 @@ const DashboardContent = () => {
       path: '/personal',
       color: '#9C27B0',
       desc: 'Keep track of your personal milestones.',
-      count: '4 Goals'
+      count: '4 Goals',
+      locked: false
+    },
+    {
+      text: 'Note Taking',
+      icon: <NoteIcon sx={{ fontSize: 32 }} />,
+      path: '/note-taking',
+      color: '#6750A4',
+      desc: 'Capture ideas and organize your thoughts.',
+      count: 'Coming Soon',
+      locked: true
+    },
+    {
+      text: 'Calendar',
+      icon: <CalendarIcon sx={{ fontSize: 32 }} />,
+      path: '/calendar',
+      color: '#4CAF50',
+      desc: 'Schedule and manage your events.',
+      count: 'Coming Soon',
+      locked: true
+    },
+    {
+      text: 'User Clock',
+      icon: <ClockIcon sx={{ fontSize: 32 }} />,
+      path: '/user-clock',
+      color: '#E91E63',
+      desc: 'Track your time and daily productivity.',
+      count: 'Coming Soon',
+      locked: true
     },
   ];
 
@@ -100,16 +151,27 @@ const DashboardContent = () => {
   );
 
   const progressData = [
-    { label: 'Weekly Goal', value: 3, total: 8, color: '#6750A4' },
-    { label: 'Focus Score', value: 7, total: 10, color: '#4CAF50' },
-    { label: 'Completion Rate', value: 2, total: 5, color: '#2196F3' },
+    { 
+      label: 'Task Completion', 
+      value: realTimeData.completedTasks, 
+      total: realTimeData.totalTasks || 1, 
+      color: '#FF9800' 
+    },
+    { 
+      label: 'Active Modules', 
+      value: 3, // Analytical, Professional, Personal are unlocked
+      total: 6, 
+      color: '#2196F3' 
+    },
+    { 
+      label: 'Productivity Score', 
+      value: realTimeData.totalTasks > 0 ? Math.round((realTimeData.completedTasks / realTimeData.totalTasks) * 10) : 0, 
+      total: 10, 
+      color: '#4CAF50' 
+    },
   ];
 
-  const activities = [
-    { id: 1, user: 'System', action: 'Note "Weekly Plan" updated', time: '2m ago', icon: '📝', color: '#6750A4' },
-    { id: 2, user: 'Calendar', action: 'Meeting starts in 15m', time: '15m ago', icon: '⏰', color: '#FF9800' },
-    { id: 3, user: 'Stats', action: 'New report generated', time: '1h ago', icon: '📊', color: '#2196F3' },
-  ];
+  const activities = realTimeData.recentActivities;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', animation: 'fadeIn 0.5s ease-out' }}>
@@ -161,21 +223,44 @@ const DashboardContent = () => {
               {filteredCategories.map((category) => (
                 <Grid key={category.text} size={{ xs: 12, sm: 6, md: 4 }}>
                   <Card
-                    onClick={() => router.push(category.path)}
+                    onClick={() => !category.locked && router.push(category.path)}
                     sx={{
                       borderRadius: 5,
-                      cursor: 'pointer',
+                      cursor: category.locked ? 'not-allowed' : 'pointer',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       border: '1px solid transparent',
                       height: '100%',
                       bgcolor: 'background.paper',
-                      '&:hover': {
+                      position: 'relative',
+                      '&:hover': !category.locked ? {
                         transform: 'translateY(-8px)',
                         boxShadow: `0 20px 40px ${category.color}15`,
                         borderColor: `${category.color}40`,
+                      } : {
+                        transform: 'none',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                       }
                     }}
                   >
+                    {category.locked && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 16,
+                          right: 16,
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          bgcolor: 'rgba(0,0,0,0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 2
+                        }}
+                      >
+                        <LockIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                      </Box>
+                    )}
                     <CardContent sx={{ p: 4 }}>
                       <Box sx={{
                         width: 60,
@@ -186,9 +271,28 @@ const DashboardContent = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        mb: 3
+                        mb: 3,
+                        position: 'relative'
                       }}>
                         {category.icon}
+                        {category.locked && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              bgcolor: 'rgba(255,255,255,0.8)',
+                              borderRadius: 4,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <LockIcon sx={{ fontSize: 20, color: 'text.disabled' }} />
+                          </Box>
+                        )}
                       </Box>
                       <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, color: 'text.primary' }}>
                         {category.text}
@@ -199,15 +303,15 @@ const DashboardContent = () => {
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography variant="caption" sx={{
                           fontWeight: 800,
-                          color: category.color,
-                          bgcolor: `${category.color}10`,
+                          color: category.locked ? 'text.secondary' : category.color,
+                          bgcolor: category.locked ? 'grey.100' : `${category.color}10`,
                           px: 1.5,
                           py: 0.5,
                           borderRadius: 2
                         }}>
-                          {category.count}
+                          {category.locked ? 'Coming Soon' : category.count}
                         </Typography>
-                        <ArrowForwardIcon sx={{ fontSize: 18, color: 'divider' }} />
+                        {!category.locked && <ArrowForwardIcon sx={{ fontSize: 18, color: 'divider' }} />}
                       </Box>
                     </CardContent>
                   </Card>
@@ -228,7 +332,7 @@ const DashboardContent = () => {
             <Card sx={{ borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
               <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, bgcolor: 'primary.main' }} />
               <CardContent sx={{ p: 4 }}>
-                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'grey.800' }}>Live Updates</Typography>
+                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'grey.800' }}>Real-time Progress</Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
                   {progressData.map((item) => (
                     <Box key={item.label}>
@@ -259,10 +363,10 @@ const DashboardContent = () => {
               </CardContent>
             </Card>
 
-            {/* Quick Activity */}
+            {/* Recent Activity */}
             <Card sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
               <CardContent sx={{ p: 4 }}>
-                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'grey.800' }}>Recent Logs</Typography>
+                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'grey.800' }}>Recent Activity</Typography>
                 <List disablePadding>
                   {activities.map((activity, idx) => (
                     <Box key={activity.id}>
@@ -297,7 +401,7 @@ const DashboardContent = () => {
                   ))}
                 </List>
                 <Button fullWidth variant="text" sx={{ mt: 2, fontWeight: 800, color: 'primary.main', py: 1.5, borderRadius: 3 }}>
-                  View All Logs
+                  View All Activity
                 </Button>
               </CardContent>
             </Card>

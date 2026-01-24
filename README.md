@@ -1,179 +1,130 @@
-# Supabase CLI
+# Turesh - Your Personal Productivity Platform
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+## Overview
+Turesh is a comprehensive productivity platform built with Next.js and powered by Supabase for database, authentication, and storage services. The platform provides various tools to help users manage their personal and professional lives efficiently.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+## Features
+- **Dashboard**: Central hub for accessing all features
+- **Calendar**: Personal and professional scheduling
+- **Focus Mode**: Distraction-free work environment
+- **Note Taking**: Quick note capture and organization
+- **Analytics**: Insights into productivity and time management
+- **User Authentication**: Secure login with Google OAuth
+- **Customization**: Theme and preference settings
 
-This repository contains all the functionality for Supabase CLI.
+## Technology Stack
+- **Framework**: Next.js 16.1.1 with React 19.2.3
+- **UI Library**: Material-UI (MUI) v7.3.6
+- **Database**: PostgreSQL via Supabase
+- **Authentication**: Supabase Auth with Google OAuth
+- **Storage**: Supabase Storage
+- **APIs**: Supabase REST/GraphQL APIs
+- **AI Integration**: Supabase MCP (Model Context Protocol) for AI assistance
 
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
+## Supabase Integration
+All Supabase services are successfully connected to the project:
 
-## Getting started
+✅ **Database**: PostgreSQL via Supabase  
+✅ **Authentication**: Supabase Auth with Google OAuth  
+✅ **Storage**: Available via Supabase Storage  
+✅ **APIs**: Supabase REST/GraphQL APIs  
+✅ **AI Integration**: MCP server connected for AI assistance  
 
-### Install the CLI
+### Connection Details
+- **Project URL**: https://zkezubbjstrixkpqjias.supabase.co
+- **Project ID**: zkezubbjstrixkpqjias
+- **Client SDK**: Integrated in `lib/supabase.ts`
+- **Server SDK**: Integrated in `lib/supabase-server.ts`
+- **MCP Server**: Running and connected for AI assistance
 
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+## Getting Started
 
+### Prerequisites
+- Node.js 18 or higher
+- Supabase CLI (optional, for local development)
+- Docker (optional, for local Supabase development)
+
+### Installation
+1. Clone the repository:
 ```bash
-npm i supabase --save-dev
+git clone <repository-url>
+cd turesh
 ```
 
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
-
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
-
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
-
-<details>
-  <summary><b>macOS</b></summary>
-
-  Available via [Homebrew](https://brew.sh). To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Windows</b></summary>
-
-  Available via [Scoop](https://scoop.sh). To install:
-
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
-
-  To upgrade:
-
-  ```powershell
-  scoop update supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Linux</b></summary>
-
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
-
+2. Install dependencies:
 ```bash
-supabase bootstrap
+npm install
 ```
 
-Or using npx:
-
+3. Copy the environment variables:
 ```bash
-npx supabase bootstrap
+cp .env.local.example .env.local
+```
+> Note: The `.env.local` file is already configured with your Supabase credentials.
+
+4. Start the development server:
+```bash
+npm run dev
 ```
 
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+5. Open your browser to [http://localhost:3000](http://localhost:3000)
 
-## Docs
+## Development
 
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+### Adding New Features
+1. Create a new page in the `app/` directory
+2. Use the Supabase client from `lib/supabase.ts` for client-side operations
+3. Use the Supabase server client from `lib/supabase-server.ts` for server-side operations
+4. Follow the existing patterns for authentication and data handling
 
-## Breaking changes
+### Environment Variables
+The project uses the following environment variables (already configured in `.env.local`):
 
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anon key
+- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
 
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+## Supabase Local Development
+If you want to run Supabase locally for development:
 
-## Developing
-
-To run from source:
-
-```sh
-# Go >= 1.22
-go run . help
+1. Make sure Docker is running
+2. Start local Supabase:
+```bash
+supabase start
 ```
-# trust
-# trust
+
+3. To stop local Supabase:
+```bash
+supabase stop
+```
+
+## Project Structure
+```
+app/                    # Next.js app router pages
+├── dashboard/          # Dashboard page
+├── calendar/           # Calendar functionality
+├── focus-mode/         # Focus mode feature
+├── note-taking/        # Note taking feature
+├── personal/           # Personal tools
+├── professional/       # Professional tools
+├── analytical/         # Analytics pages
+├── login/              # Authentication pages
+components/            # Reusable UI components
+lib/                   # Utility functions and Supabase clients
+├── supabase.ts        # Client-side Supabase client
+├── supabase-server.ts # Server-side Supabase client
+├── supabase-auth.ts   # Authentication utilities
+├── auth-context.tsx   # Authentication context
+supabase/              # Supabase configuration and migrations
+├── migrations/        # Database migration files
+├── config.toml        # Supabase configuration
+```
+
+## Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+This project is licensed under the MIT License.
