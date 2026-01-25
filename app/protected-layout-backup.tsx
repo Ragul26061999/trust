@@ -2,9 +2,10 @@
 
 import { useAuth } from '../lib/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Sidebar from '../components/sidebar';
 import { Box } from '@mui/material';
+import { createTheme } from '@mui/material/styles';
 import { ThemeProvider as AppThemeProvider } from '../lib/theme-context';
 import { ThemeProvider as MuiThemeProvider } from '../components/mui-theme-provider';
 import { getUserPreferencesFromDB } from '../lib/user-preferences-db';
