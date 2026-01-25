@@ -39,30 +39,44 @@ import {
   Slide,
   Menu,
   ListItemButton,
-  CircularProgress
+  CircularProgress,
+  LinearProgress,
+  Grid,
+  Fade
 } from '@mui/material';
-import { Grid } from '@mui/material';
 import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-import { Palette as PaletteIcon } from '@mui/icons-material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CloseIcon from '@mui/icons-material/Close';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import TaskIcon from '@mui/icons-material/Task';
-import WorkIcon from '@mui/icons-material/Work';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import TimelineIcon from '@mui/icons-material/Timeline';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { 
+  ArrowLeft as ArrowBackIcon,
+  Plus as AddIcon,
+  Edit as EditIcon,
+  Trash2 as DeleteIcon,
+  X as CloseIcon,
+  Copy as ContentCopyIcon,
+  MoreVertical as MoreVertIcon,
+  FileText as TaskIcon,
+  Briefcase as WorkIcon,
+  BarChart as BarChartIcon,
+  TrendingUp as TrendingUpIcon,
+  Activity as TimelineIcon,
+  Brain as InsightsIcon,
+  CheckCircle as CheckCircleIcon,
+  Target as TargetIcon,
+  Zap as ZapIcon,
+  Calendar as CalendarIcon,
+  RefreshCw as RefreshIcon,
+  ChevronDown
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { addCalendarEntry, getCalendarEntries } from '../../lib/personal-calendar-db';
 import { addProfessionalTask } from '../../lib/professional-db';
 import { getNotes, addNote, updateNote, deleteNote, markNoteAsConverted, Note } from '../../lib/notes-db';
+
+// Create icon wrapper components for Lucide icons to work with MUI
+const LucideIcon = ({ icon: Icon, size = 20, sx, ...props }: any) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', ...sx }} {...props}>
+    <Icon size={size} />
+  </Box>
+);
 
 // Dynamic theme based on user preferences
 const DynamicTheme = () => {
@@ -124,7 +138,7 @@ const NoteTakingPageContent = () => {
   });
   const [isConverting, setIsConverting] = useState(false);
   const [noteColor, setNoteColor] = useState('#ffffff'); // State for note color
-  const [showAnalytics, setShowAnalytics] = useState(false); // State for analytics dialog
+  const [timeRange, setTimeRange] = useState('30days'); // Time range state for dropdown
 
   // Define color palette for notes
   const colorPalette = [
@@ -524,55 +538,444 @@ const NoteTakingPageContent = () => {
         pb: 8
       }}
     >
-      {/* Top App Bar inside main content */}
-      <AppBar position="static" elevation={0} sx={{ bgcolor: 'primary.main', borderRadius: 2, mb: 3 }}>
+      {/* Top App Bar with modern design */}
+      <AppBar 
+        position="static" 
+        elevation={0} 
+        sx={{ 
+          bgcolor: 'background.paper',
+          color: 'text.primary',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 0,
+          mb: 0
+        }}
+      >
         <Toolbar>
           <IconButton
             edge="start"
             color="inherit"
             onClick={handleGoBack}
             aria-label="back"
+            sx={{ 
+              color: 'text.primary',
+              '&:hover': {
+                bgcolor: 'action.hover',
+                borderRadius: 2
+              }
+            }}
           >
-            <ArrowBackIcon />
+            <LucideIcon icon={ArrowBackIcon} size={20} />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700, color: 'text.primary' }}>
             Note Taking
           </Typography>
-          <Button
-            color="inherit"
-            onClick={handleLogout}
-            sx={{ textTransform: 'none' }}
+          
+          {/* Time Range Selector in Header */}
+          <FormControl 
+            size="small" 
+            sx={{ 
+              minWidth: 180,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 3,
+                bgcolor: 'background.paper',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                border: '1px solid',
+                borderColor: 'divider',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                  borderColor: '#6750A4'
+                },
+                '&:focus-within': {
+                  boxShadow: '0 8px 30px rgba(103, 80, 164, 0.15)',
+                  borderColor: '#6750A4'
+                }
+              }
+            }}
           >
-            Logout
-          </Button>
+            <Select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              displayEmpty
+              sx={{
+                '& .MuiSelect-select': {
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  fontWeight: 600,
+                  color: 'text.primary'
+                }
+              }}
+            >
+              <MenuItem value="7days">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <LucideIcon icon={CalendarIcon} size={16} sx={{ color: '#6750A4' }} />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Last 7 Days</Typography>
+                </Box>
+              </MenuItem>
+              <MenuItem value="30days">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <LucideIcon icon={TrendingUpIcon} size={16} sx={{ color: '#10b981' }} />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Last 30 Days</Typography>
+                </Box>
+              </MenuItem>
+              <MenuItem value="90days">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <LucideIcon icon={TimelineIcon} size={16} sx={{ color: '#f59e0b' }} />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Last 90 Days</Typography>
+                </Box>
+              </MenuItem>
+              <MenuItem value="1year">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <LucideIcon icon={TargetIcon} size={16} sx={{ color: '#ef4444' }} />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Last Year</Typography>
+                </Box>
+              </MenuItem>
+            </Select>
+          </FormControl>
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg">
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box>
-            <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'primary.main' }}>
-              Note Taking Dashboard
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Manage your notes and converted tasks
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Button
-              variant="outlined"
-              onClick={() => setShowAnalytics(true)}
-              startIcon={<BarChartIcon />}
-              sx={{ 
-                borderRadius: 3, 
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                py: 1
-              }}
-            >
-              Analytics
-            </Button>
+      <Fade in timeout={350}>
+        <Container maxWidth="xl" sx={{ py: 4 }}>
+          {/* KPI Cards */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card 
+                sx={{ 
+                  height: 140,
+                  background: 'linear-gradient(135deg, rgba(103, 80, 164, 0.05) 0%, rgba(98, 91, 113, 0.05) 100%)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    transform: 'translateY(-8px) scale(1.02)',
+                    boxShadow: '0 12px 40px rgba(103, 80, 164, 0.2)',
+                    borderColor: '#6750A4',
+                    '& .card-icon': {
+                      transform: 'scale(1.1) rotate(5deg)',
+                      background: 'linear-gradient(135deg, #6750A4 0%, #625B71 100%)',
+                      color: 'white'
+                    }
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: 4,
+                    background: 'linear-gradient(180deg, #6750A4 0%, #625B71 100%)',
+                    opacity: 0.8,
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box 
+                      className="card-icon"
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, rgba(103, 80, 164, 0.1) 0%, rgba(98, 91, 113, 0.1) 100%)',
+                        color: '#6750A4',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(103, 80, 164, 0.2)'
+                      }}
+                    >
+                      <LucideIcon icon={TaskIcon} size={20} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
+                      Total Notes
+                    </Typography>
+                  </Box>
+                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #6750A4 0%, #625B71 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
+                    {notes.length}
+                  </Typography>
+                  <Box sx={{ position: 'relative' }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={100} 
+                      sx={{ 
+                        height: 6, 
+                        borderRadius: 3,
+                        bgcolor: 'rgba(103, 80, 164, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          background: 'linear-gradient(90deg, #6750A4 0%, #625B71 100%)',
+                          borderRadius: 3,
+                          boxShadow: '0 2px 8px rgba(103, 80, 164, 0.4)',
+                          transition: 'all 0.3s ease'
+                        }
+                      }}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card 
+                sx={{ 
+                  height: 140,
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    transform: 'translateY(-8px) scale(1.02)',
+                    boxShadow: '0 12px 40px rgba(16, 185, 129, 0.2)',
+                    borderColor: '#10b981',
+                    '& .card-icon': {
+                      transform: 'scale(1.1) rotate(5deg)',
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: 'white'
+                    }
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: 4,
+                    background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                    opacity: 0.8,
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box 
+                      className="card-icon"
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
+                        color: '#10b981',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+                      }}
+                    >
+                      <LucideIcon icon={CheckCircleIcon} size={20} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
+                      Converted Tasks
+                    </Typography>
+                  </Box>
+                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
+                    {notes.filter(note => note.converted_to_task).length}
+                  </Typography>
+                  <Box sx={{ position: 'relative' }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0}
+                      sx={{ 
+                        height: 6, 
+                        borderRadius: 3,
+                        bgcolor: 'rgba(16, 185, 129, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                          borderRadius: 3,
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+                          transition: 'all 0.3s ease'
+                        }
+                      }}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card 
+                sx={{ 
+                  height: 140,
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(217, 119, 6, 0.05) 100%)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    transform: 'translateY(-8px) scale(1.02)',
+                    boxShadow: '0 12px 40px rgba(245, 158, 11, 0.2)',
+                    borderColor: '#f59e0b',
+                    '& .card-icon': {
+                      transform: 'scale(1.1) rotate(5deg)',
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      color: 'white'
+                    }
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: 4,
+                    background: 'linear-gradient(180deg, #f59e0b 0%, #d97706 100%)',
+                    opacity: 0.8,
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box 
+                      className="card-icon"
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)',
+                        color: '#f59e0b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
+                      }}
+                    >
+                      <LucideIcon icon={TrendingUpIcon} size={20} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
+                      Conversion Rate
+                    </Typography>
+                  </Box>
+                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
+                    {notes.length > 0 ? Math.round((notes.filter(note => note.converted_to_task).length / notes.length) * 100) : 0}%
+                  </Typography>
+                  <Box sx={{ position: 'relative' }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0}
+                      sx={{ 
+                        height: 6, 
+                        borderRadius: 3,
+                        bgcolor: 'rgba(245, 158, 11, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          background: 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)',
+                          borderRadius: 3,
+                          boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
+                          transition: 'all 0.3s ease'
+                        }
+                      }}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card 
+                sx={{ 
+                  height: 140,
+                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    transform: 'translateY(-8px) scale(1.02)',
+                    boxShadow: '0 12px 40px rgba(59, 130, 246, 0.2)',
+                    borderColor: '#3b82f6',
+                    '& .card-icon': {
+                      transform: 'scale(1.1) rotate(5deg)',
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      color: 'white'
+                    }
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: 4,
+                    background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
+                    opacity: 0.8,
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box 
+                      className="card-icon"
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)',
+                        color: '#3b82f6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
+                      }}
+                    >
+                      <LucideIcon icon={TimelineIcon} size={20} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
+                      Active Notes
+                    </Typography>
+                  </Box>
+                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
+                    {notes.filter(note => !note.converted_to_task).length}
+                  </Typography>
+                  <Box sx={{ position: 'relative' }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={notes.length > 0 ? (notes.filter(note => !note.converted_to_task).length / notes.length) * 100 : 0}
+                      sx={{ 
+                        height: 6, 
+                        borderRadius: 3,
+                        bgcolor: 'rgba(59, 130, 246, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
+                          borderRadius: 3,
+                          boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
+                          transition: 'all 0.3s ease'
+                        }
+                      }}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Add Note Button */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 4 }}>
             <Fab 
               color="primary" 
               aria-label="add note"
@@ -584,10 +987,9 @@ const NoteTakingPageContent = () => {
                 }
               }}
             >
-              <AddIcon />
+              <LucideIcon icon={AddIcon} size={24} sx={{ color: 'white' }} />
             </Fab>
           </Box>
-        </Box>
 
         {snackbar.open && (
           <Alert 
@@ -644,7 +1046,7 @@ const NoteTakingPageContent = () => {
                     >
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <TaskIcon sx={{ mr: 1, color: 'success.main' }} />
+                          <LucideIcon icon={TaskIcon} size={20} sx={{ mr: 1, color: 'success.main' }} />
                           <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
                             {task.title}
                           </Typography>
@@ -746,6 +1148,7 @@ const NoteTakingPageContent = () => {
           </>
         )}
       </Container>
+      </Fade>
 
       {/* Add/Edit Note Dialog */}
       <Dialog 
@@ -795,7 +1198,7 @@ const NoteTakingPageContent = () => {
           {/* Color Picker Section */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-              <PaletteIcon sx={{ mr: 1, fontSize: 18 }} />
+              <LucideIcon icon={ZapIcon} size={18} sx={{ mr: 1 }} />
               Note Color
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -966,152 +1369,6 @@ const NoteTakingPageContent = () => {
             {isConverting ? 'Converting...' : `Convert to ${conversionType === 'personal' ? 'Personal' : 'Professional'} Task`}
           </Button>
         </DialogActions>
-      </Dialog>
-
-      {/* Analytics Dialog */}
-      <Dialog 
-        open={showAnalytics} 
-        onClose={() => setShowAnalytics(false)} 
-        fullWidth 
-        maxWidth="lg"
-        sx={{ '& .MuiDialog-paper': { borderRadius: 3, maxHeight: '90vh' } }}
-      >
-        <DialogTitle sx={{ 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          py: 3
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: 'white' }}>
-                Notes & Tasks Analytics
-              </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                Comprehensive insights into your notes and task performance
-              </Typography>
-            </Box>
-            <AssessmentIcon sx={{ fontSize: 40, opacity: 0.8 }} />
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ px: 4, py: 3 }}>
-          {(() => {
-            const analytics = getAnalyticsData();
-            return (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {/* Overview Cards */}
-                <Grid container spacing={3}>
-                  <Grid size={3}>
-                    <Box sx={{ 
-                      p: 3, 
-                      borderRadius: 3, 
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
-                      textAlign: 'center'
-                    }}>
-                      <AssignmentIcon sx={{ fontSize: 24, color: 'white' }} />
-                      <Typography variant="h3" sx={{ fontWeight: 800, color: '#667eea', mb: 1 }}>
-                        {analytics.totalNotes}
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        Total Notes
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid size={3}>
-                    <Box sx={{ 
-                      p: 3, 
-                      borderRadius: 3, 
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white',
-                      textAlign: 'center'
-                    }}>
-                      <CheckCircleIcon sx={{ fontSize: 24, color: 'white' }} />
-                      <Typography variant="h3" sx={{ fontWeight: 800, color: '#10b981', mb: 1 }}>
-                        {analytics.convertedNotes}
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        Converted
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid size={3}>
-                    <Box sx={{ 
-                      p: 3, 
-                      borderRadius: 3, 
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      color: 'white',
-                      textAlign: 'center'
-                    }}>
-                      <TrendingUpIcon sx={{ fontSize: 24, color: 'white' }} />
-                      <Typography variant="h3" sx={{ fontWeight: 800, color: '#f59e0b', mb: 1 }}>
-                        {analytics.conversionRate}%
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        Conversion Rate
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid size={3}>
-                    <Box sx={{ 
-                      p: 3, 
-                      borderRadius: 3, 
-                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                      color: 'white',
-                      textAlign: 'center'
-                    }}>
-                      <TimelineIcon sx={{ fontSize: 24, color: 'white' }} />
-                      <Typography variant="h3" sx={{ fontWeight: 800, color: '#3b82f6', mb: 1 }}>
-                        {analytics.thisWeekNotes}
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        This Week
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-
-                {/* Task Analytics */}
-                <Paper sx={{ p: 3, borderRadius: 3 }}>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
-                    Task Performance
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid size={4}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha('#10b981', 0.1), borderRadius: 2 }}>
-                        <Typography variant="h5" color="#10b981" sx={{ fontWeight: 800 }}>
-                          {analytics.totalTasks}
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                          Total Tasks
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid size={4}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha('#10b981', 0.1), borderRadius: 2 }}>
-                        <Typography variant="h5" color="#10b981" sx={{ fontWeight: 800 }}>
-                          {analytics.completedTasks}
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                          Completed
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid size={4}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha('#f59e0b', 0.1), borderRadius: 2 }}>
-                        <Typography variant="h5" color="#f59e0b" sx={{ fontWeight: 800 }}>
-                          {analytics.taskCompletionRate}%
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                          Completion Rate
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </Paper>
-              </Box>
-            );
-          })()}
-        </DialogContent>
       </Dialog>
     </Box>
   );

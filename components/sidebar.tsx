@@ -22,19 +22,33 @@ import {
   Badge,
 } from '@mui/material';
 import {
-  GridView as DashboardIcon,
-  NoteAlt as NoteIcon,
-  AccessTime as ClockIcon,
-  Analytics as AnalyticsIcon,
-  CalendarToday as CalendarIcon,
-  Business as ProfessionalIcon,
-  Person as PersonalIcon,
-  Logout as LogoutIcon,
+  LayoutDashboard as DashboardIcon,
+  FileText as NoteIcon,
+  Clock as ClockIcon,
+  BarChart3 as AnalyticsIcon,
+  Calendar as CalendarIcon,
+  Briefcase as ProfessionalIcon,
+  User as PersonalIcon,
+  LogOut as LogoutIcon,
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   Lock as LockIcon,
-} from '@mui/icons-material';
+} from 'lucide-react';
+
+// Create icon wrapper components for Lucide icons to work with MUI
+const LucideIcon = ({ icon: Icon, size = 20, sx, ...props }: any) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', ...sx }} {...props}>
+    <Icon size={size} />
+  </Box>
+);
+
+// Lock icon wrapper
+const LockIconWrapper = ({ size = 20, sx }: any) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', ...sx }}>
+    <LockIcon size={size} />
+  </Box>
+);
 
 export const drawerWidth = 280;
 export const collapsedWidth = 88;
@@ -66,13 +80,13 @@ const Sidebar = () => {
   };
 
   const navItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', color: '#667eea', locked: false },
-    { text: 'Analytical', icon: <AnalyticsIcon />, path: '/analytical', color: '#2196F3', locked: false },
-    { text: 'Professional', icon: <ProfessionalIcon />, path: '/professional', color: '#FF9800', locked: false },
-    { text: 'Personal', icon: <PersonalIcon />, path: '/personal', color: '#9C27B0', locked: false },
-    { text: 'Note Taking', icon: <NoteIcon />, path: '/note-taking', color: '#6750A4', locked: false },
-    { text: 'Calendar', icon: <CalendarIcon />, path: '/calendar', color: '#4CAF50', locked: true },
-    { text: 'User Clock', icon: <ClockIcon />, path: '/user-clock', color: '#E91E63', locked: true },
+    { text: 'Dashboard', icon: <LucideIcon icon={DashboardIcon} />, path: '/dashboard', color: '#667eea', locked: false },
+    { text: 'Analytical', icon: <LucideIcon icon={AnalyticsIcon} />, path: '/analytical', color: '#2196F3', locked: false },
+    { text: 'Professional', icon: <LucideIcon icon={ProfessionalIcon} />, path: '/professional', color: '#FF9800', locked: false },
+    { text: 'Personal', icon: <LucideIcon icon={PersonalIcon} />, path: '/personal', color: '#9C27B0', locked: false },
+    { text: 'Note Taking', icon: <LucideIcon icon={NoteIcon} />, path: '/note-taking', color: '#6750A4', locked: false },
+    { text: 'Calendar', icon: <LucideIcon icon={CalendarIcon} />, path: '/calendar', color: '#4CAF50', locked: true },
+    { text: 'User Clock', icon: <LucideIcon icon={ClockIcon} />, path: '/user-clock', color: '#E91E63', locked: true },
   ];
 
   const currentWidth = isCollapsed ? collapsedWidth : drawerWidth;
@@ -145,7 +159,7 @@ const Sidebar = () => {
               }
             }}
           >
-            <ChevronLeftIcon />
+            <LucideIcon icon={ChevronLeftIcon} size={20} />
           </IconButton>
         )}
       </Box>
@@ -163,7 +177,7 @@ const Sidebar = () => {
               }
             }}
           >
-            <ChevronRightIcon />
+            <LucideIcon icon={ChevronRightIcon} size={20} />
           </IconButton>
         </Box>
       )}
@@ -225,7 +239,7 @@ const Sidebar = () => {
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
-                      <LockIcon sx={{ fontSize: 10, color: 'white' }} />
+                      <LockIconWrapper size={10} sx={{ fontSize: 10, color: 'white' }} />
                     </Box>
                   )}
                 </Box>
@@ -268,7 +282,7 @@ const Sidebar = () => {
           <Button
             variant="text"
             color="inherit"
-            startIcon={<LogoutIcon />}
+            startIcon={<LucideIcon icon={LogoutIcon} />}
             onClick={handleSignOut}
             fullWidth
             sx={{
@@ -309,7 +323,7 @@ const Sidebar = () => {
             '&:hover': { bgcolor: 'action.hover' }
           }}
         >
-          <MenuIcon />
+          <LucideIcon icon={MenuIcon} size={24} />
         </IconButton>
       </Box>
 

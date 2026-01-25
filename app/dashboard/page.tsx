@@ -29,25 +29,57 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Fade,
+  Grow,
+  Paper,
+  Container,
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  Notifications as NotificationsIcon,
-  NoteAlt as NoteIcon,
-  AccessTime as ClockIcon,
-  Analytics as AnalyticsIcon,
-  CalendarToday as CalendarIcon,
-  Business as ProfessionalIcon,
-  Person as PersonalIcon,
-  ArrowForward as ArrowForwardIcon,
-  GridView as DashboardIcon,
-  Lock as LockIcon,
-  Brightness4 as DarkModeIcon,
-  Brightness7 as LightModeIcon,
-  BrightnessAuto as AutoModeIcon,
-  WbSunny as SunIcon,
-  NightsStay as MoonIcon,
-} from '@mui/icons-material';
+  Bell as NotificationsIcon,
+  FileText as NoteIcon,
+  Clock as ClockIcon,
+  BarChart3 as AnalyticsIcon,
+  Calendar as CalendarIcon,
+  Briefcase as ProfessionalIcon,
+  User as PersonalIcon,
+  ArrowRight as ArrowForwardIcon,
+  LayoutDashboard as DashboardIcon,
+  Lock as LockIconMui,
+  Moon as DarkModeIcon,
+  Sun as LightModeIcon,
+  Monitor as AutoModeIcon,
+  Sun as SunIcon,
+  Moon as MoonIcon,
+  TrendingUp,
+  Activity,
+  Target,
+  Zap,
+  Sparkles,
+  ChevronRight,
+  BarChart3,
+  Briefcase,
+  User,
+  FileText,
+  Calendar,
+  Clock,
+  Bell,
+  Monitor,
+} from 'lucide-react';
+
+// Create icon wrapper components for Lucide icons to work with MUI
+const LucideIcon = ({ icon: Icon, size, sx, ...props }: any) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', ...sx }} {...props}>
+    <Icon size={size} />
+  </Box>
+);
+
+// Lock icon wrapper
+const LockIcon = ({ size }: any) => (
+  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+    <LockIconMui size={size} />
+  </Box>
+);
 
 const DashboardContent = () => {
   const { user } = useAuth();
@@ -156,57 +188,63 @@ const DashboardContent = () => {
   const categories = [
     {
       text: 'Analytical',
-      icon: <AnalyticsIcon sx={{ fontSize: 32 }} />,
+      icon: <BarChart3 size={32} />,
       path: '/analytical',
       color: '#2196F3',
-      desc: 'Deep dive into your project metrics.',
+      desc: 'Advanced analytics and data insights for your projects.',
       count: '3 Reports',
-      locked: false
+      locked: false,
+      gradient: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)'
     },
     {
       text: 'Professional',
-      icon: <ProfessionalIcon sx={{ fontSize: 32 }} />,
+      icon: <Briefcase size={32} />,
       path: '/professional',
       color: '#FF9800',
-      desc: 'Manage your work projects and tasks.',
+      desc: 'Manage work projects, tasks, and professional goals.',
       count: '8 Tasks',
-      locked: false
+      locked: false,
+      gradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
     },
     {
       text: 'Personal',
-      icon: <PersonalIcon sx={{ fontSize: 32 }} />,
+      icon: <User size={32} />,
       path: '/personal',
       color: '#9C27B0',
-      desc: 'Keep track of your personal milestones.',
+      desc: 'Track personal goals, habits, and life milestones.',
       count: '4 Goals',
-      locked: false
+      locked: false,
+      gradient: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)'
     },
     {
       text: 'Note Taking',
-      icon: <NoteIcon sx={{ fontSize: 32 }} />,
+      icon: <FileText size={32} />,
       path: '/note-taking',
       color: '#6750A4',
-      desc: 'Capture ideas and organize your thoughts.',
+      desc: 'Capture ideas, organize thoughts, and boost creativity.',
       count: '0 Notes',
-      locked: false
+      locked: false,
+      gradient: 'linear-gradient(135deg, #6750A4 0%, #512DA8 100%)'
     },
     {
       text: 'Calendar',
-      icon: <CalendarIcon sx={{ fontSize: 32 }} />,
+      icon: <Calendar size={32} />,
       path: '/calendar',
       color: '#4CAF50',
-      desc: 'Schedule and manage your events.',
+      desc: 'Schedule events and manage your time efficiently.',
       count: 'Coming Soon',
-      locked: true
+      locked: true,
+      gradient: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
     },
     {
       text: 'User Clock',
-      icon: <ClockIcon sx={{ fontSize: 32 }} />,
+      icon: <Clock size={32} />,
       path: '/user-clock',
       color: '#E91E63',
-      desc: 'Track your time and daily productivity.',
+      desc: 'Track time, productivity patterns, and work-life balance.',
       count: 'Coming Soon',
-      locked: true
+      locked: true,
+      gradient: 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)'
     },
   ];
 
@@ -239,346 +277,562 @@ const DashboardContent = () => {
   const activities = realTimeData.recentActivities;
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', animation: 'fadeIn 0.5s ease-out' }}>
-      {/* Header */}
-      <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', mb: 0.5 }}>
-            {greeting}, {user.email?.split('@')[0]}
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
-            Here is what's happening in your workspace today.
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <TextField
-            size="small"
-            placeholder="Search OS..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 20, color: 'primary.main' }} />
-                </InputAdornment>
-              ),
-              sx: {
-                borderRadius: 4,
-                bgcolor: 'background.paper',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-                '& fieldset': { border: 'none' },
-                '&:hover': { bgcolor: 'action.hover' }
-              }
-            }}
-            sx={{ width: 280 }}
-          />
-          <Tooltip title={getThemeTooltip()}>
-            <IconButton 
-              onClick={handleThemeMenuOpen}
-              sx={{ 
-                bgcolor: 'background.paper', 
-                boxShadow: '0 2px 10px rgba(0,0,0,0.02)', 
-                border: '1px solid', 
-                borderColor: 'divider' 
-              }}
-            >
-              {getThemeIcon()}
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Notifications">
-            <IconButton sx={{ bgcolor: 'background.paper', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', border: '1px solid', borderColor: 'divider' }}>
-              <NotificationsIcon color="action" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Box>
-
-      <Grid container spacing={4}>
-        {/* Dynamic Navigation Cards */}
-        <Grid size={{ xs: 12, lg: 9 }}>
-          {filteredCategories.length > 0 ? (
-            <Grid container spacing={3}>
-              {filteredCategories.map((category) => (
-                <Grid key={category.text} size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Card
-                    onClick={() => !category.locked && router.push(category.path)}
-                    sx={{
-                      borderRadius: 5,
-                      cursor: category.locked ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      border: '1px solid transparent',
-                      height: '100%',
-                      bgcolor: 'background.paper',
-                      position: 'relative',
-                      '&:hover': !category.locked ? {
-                        transform: 'translateY(-8px)',
-                        boxShadow: `0 20px 40px ${category.color}15`,
-                        borderColor: `${category.color}40`,
-                      } : {
-                        transform: 'none',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                      }
-                    }}
-                  >
-                    {category.locked && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: 16,
-                          right: 16,
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          bgcolor: 'action.disabled',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          zIndex: 2
-                        }}
-                      >
-                        <LockIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+    <Fade in timeout={600}>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Modern Header */}
+          <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography 
+                variant="h3" 
+                sx={{ 
+                  fontWeight: 800, 
+                  color: 'text.primary', 
+                  letterSpacing: '-0.02em', 
+                  mb: 1,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  fontSize: { xs: '2rem', md: '2.5rem' }
+                }}
+              >
+                {greeting}, {user.email?.split('@')[0]}
+              </Typography>
+              <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.8 }}>
+                Welcome back! Here's your workspace overview for today.
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                size="medium"
+                placeholder="Search workspace..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <SearchIcon size={20} />
                       </Box>
-                    )}
-                    <CardContent sx={{ p: 4 }}>
-                      <Box sx={{
-                        width: 60,
-                        height: 60,
-                        borderRadius: 4,
-                        bgcolor: `${category.color}10`,
-                        color: category.color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mb: 3,
-                        position: 'relative'
-                      }}>
-                        {category.icon}
-                        {category.locked && (
-                          <Box
-                            sx={{
+                    </InputAdornment>
+                  ),
+                  sx: {
+                    borderRadius: 3,
+                    bgcolor: 'background.paper',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    '& fieldset': { border: 'none' },
+                    '&:hover': { 
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                      borderColor: 'primary.main'
+                    },
+                    '&:focus-within': {
+                      boxShadow: '0 8px 30px rgba(102, 126, 234, 0.15)',
+                      borderColor: 'primary.main'
+                    }
+                  }
+                }}
+                sx={{ width: { xs: 200, md: 320 } }}
+              />
+              <Tooltip title={getThemeTooltip()}>
+                <IconButton 
+                  onClick={handleThemeMenuOpen}
+                  sx={{ 
+                    bgcolor: 'background.paper', 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
+                    border: '1px solid', 
+                    borderColor: 'divider',
+                    borderRadius: '50%',
+                    width: 48,
+                    height: 48,
+                    '&:hover': {
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      transform: 'scale(1.05)'
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                >
+                  {getThemeIcon()}
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Notifications">
+                <IconButton 
+                  sx={{ 
+                    bgcolor: 'background.paper', 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
+                    border: '1px solid', 
+                    borderColor: 'divider',
+                    borderRadius: '50%',
+                    width: 48,
+                    height: 48,
+                    position: 'relative',
+                    '&:hover': {
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      transform: 'scale(1.05)'
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Bell size={20} />
+                  </Box>
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      bgcolor: 'error.main',
+                      border: '2px solid',
+                      borderColor: 'background.paper'
+                    }}
+                  />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+
+          <Grid container spacing={4}>
+            {/* Dynamic Navigation Cards */}
+            <Grid size={{ xs: 12, lg: 9 }}>
+              {filteredCategories.length > 0 ? (
+                <Grid container spacing={3}>
+                  {filteredCategories.map((category, index) => (
+                    <Grid key={category.text} size={{ xs: 12, sm: 6, md: 4 }}>
+                      <Grow in timeout={index * 100}>
+                        <Card
+                          onClick={() => !category.locked && router.push(category.path)}
+                          sx={{
+                            borderRadius: 4,
+                            cursor: category.locked ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            height: '100%',
+                            bgcolor: 'background.paper',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            '&:hover': !category.locked ? {
+                              transform: 'translateY(-12px) scale(1.02)',
+                              boxShadow: `0 25px 50px ${category.color}25`,
+                              borderColor: category.color,
+                              '& .card-icon': {
+                                transform: 'scale(1.1) rotate(5deg)',
+                                background: category.gradient,
+                                color: 'white'
+                              },
+                              '& .card-arrow': {
+                                transform: 'translateX(4px)',
+                                color: category.color
+                              },
+                              '&::before': {
+                                content: '""',
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: 4,
+                                background: category.gradient,
+                                transform: 'scaleX(1)',
+                                transition: 'transform 0.3s ease'
+                              }
+                            } : {
+                              transform: 'none',
+                              boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                            },
+                            '&::before': {
+                              content: '""',
                               position: 'absolute',
                               top: 0,
                               left: 0,
                               right: 0,
-                              bottom: 0,
-                              bgcolor: 'rgba(255,255,255,0.8)',
-                              borderRadius: 4,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                          >
-                            <LockIcon sx={{ fontSize: 20, color: 'text.disabled' }} />
-                          </Box>
-                        )}
+                              height: 4,
+                              background: category.gradient,
+                              transform: 'scaleX(0)',
+                              transition: 'transform 0.3s ease'
+                            }
+                          }}
+                        >
+                          {category.locked && (
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                top: 16,
+                                right: 16,
+                                width: 36,
+                                height: 36,
+                                borderRadius: '50%',
+                                bgcolor: 'action.disabled',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 2,
+                                backdropFilter: 'blur(10px)'
+                              }}
+                            >
+                              <LockIcon size={18} />
+                            </Box>
+                          )}
+                          <CardContent sx={{ p: 4 }}>
+                            <Box 
+                              className="card-icon"
+                              sx={{
+                                width: 64,
+                                height: 64,
+                                borderRadius: 4,
+                                bgcolor: `${category.color}10`,
+                                color: category.color,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                mb: 3,
+                                position: 'relative',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: `0 8px 20px ${category.color}20`
+                              }}
+                            >
+                              {category.icon}
+                              {category.locked && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    bgcolor: 'rgba(255,255,255,0.9)',
+                                    borderRadius: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backdropFilter: 'blur(5px)'
+                                  }}
+                                >
+                                  <LockIcon size={24} />
+                                </Box>
+                              )}
+                            </Box>
+                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5, color: 'text.primary', fontSize: '1.1rem' }}>
+                              {category.text}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, lineHeight: 1.6, minHeight: 44, opacity: 0.9 }}>
+                              {category.desc}
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="caption" sx={{
+                                fontWeight: 700,
+                                color: category.locked ? 'text.secondary' : category.color,
+                                bgcolor: category.locked ? 'action.disabled' : `${category.color}10`,
+                                px: 2,
+                                py: 1,
+                                borderRadius: 2,
+                                fontSize: '0.75rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em'
+                              }}>
+                                {category.locked ? 'Coming Soon' : category.count}
+                              </Typography>
+                              {!category.locked && (
+                                <Box 
+                                  className="card-arrow"
+                                  sx={{ 
+                                    color: 'divider',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                  }}
+                                >
+                                  <ChevronRight size={20} />
+                                </Box>
+                              )}
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grow>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 10 }}>
+                  <Typography variant="h6" color="text.secondary">No matching categories found.</Typography>
+                </Box>
+              )}
+            </Grid>
+
+        {/* Info Sidebar */}
+            <Grid size={{ xs: 12, lg: 3 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {/* Real-time Metrics */}
+                <Grow in timeout={800}>
+                  <Card sx={{ 
+                    borderRadius: 4, 
+                    position: 'relative', 
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
+                      transform: 'translateY(-4px)'
+                    }
+                  }}>
+                    <Box sx={{ 
+                      position: 'absolute', 
+                      top: 0, 
+                      left: 0, 
+                      right: 0, 
+                      height: 4, 
+                      background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)' 
+                    }} />
+                    <CardContent sx={{ p: 4 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                          <TrendingUp size={24} />
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>Performance Metrics</Typography>
                       </Box>
-                      <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, color: 'text.primary' }}>
-                        {category.text}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, lineHeight: 1.6, minHeight: 40 }}>
-                        {category.desc}
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{
-                          fontWeight: 800,
-                          color: category.locked ? 'text.secondary' : category.color,
-                          bgcolor: category.locked ? 'action.disabled' : `${category.color}10`,
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: 2
-                        }}>
-                          {category.locked ? 'Coming Soon' : category.count}
-                        </Typography>
-                        {!category.locked && <ArrowForwardIcon sx={{ fontSize: 18, color: 'divider' }} />}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {progressData.map((item, index) => (
+                          <Grow in timeout={900 + index * 100} key={item.label}>
+                            <Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'center' }}>
+                                <Typography variant="body2" sx={{ 
+                                  fontWeight: 700, 
+                                  color: 'text.secondary', 
+                                  fontSize: '0.75rem', 
+                                  textTransform: 'uppercase', 
+                                  letterSpacing: '0.05em',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1
+                                }}>
+                                  {item.label === 'Task Completion' && <Target size={14} />}
+                                  {item.label === 'Active Modules' && <Activity size={14} />}
+                                  {item.label === 'Productivity Score' && <Zap size={14} />}
+                                  {item.label}
+                                </Typography>
+                                <Typography variant="body2" sx={{ 
+                                  fontWeight: 800, 
+                                  color: item.color,
+                                  fontSize: '0.875rem'
+                                }}>
+                                  {Math.round((item.value / item.total) * 100)}%
+                                </Typography>
+                              </Box>
+                              <LinearProgress
+                                variant="determinate"
+                                value={(item.value / item.total) * 100}
+                                sx={{
+                                  height: 10,
+                                  borderRadius: 5,
+                                  bgcolor: 'action.hover',
+                                  '& .MuiLinearProgress-bar': {
+                                    borderRadius: 5,
+                                    backgroundImage: `linear-gradient(90deg, ${item.color} 0%, ${item.color}CC 100%)`,
+                                    boxShadow: `0 2px 8px ${item.color}40`,
+                                    transition: 'all 0.3s ease'
+                                  }
+                                }}
+                              />
+                            </Box>
+                          </Grow>
+                        ))}
                       </Box>
                     </CardContent>
                   </Card>
-                </Grid>
-              ))}
-            </Grid>
-          ) : (
-            <Box sx={{ textAlign: 'center', py: 10 }}>
-              <Typography variant="h6" color="text.secondary">No matching categories found.</Typography>
-            </Box>
-          )}
-        </Grid>
+                </Grow>
 
-        {/* Info Sidebar */}
-        <Grid size={{ xs: 12, lg: 3 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {/* Real-time Metrics */}
-            <Card sx={{ borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
-              <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, bgcolor: 'primary.main' }} />
-              <CardContent sx={{ p: 4 }}>
-                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'text.primary' }}>Real-time Progress</Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
-                  {progressData.map((item) => (
-                    <Box key={item.label}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          {item.label}
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary' }}>
-                          {Math.round((item.value / item.total) * 100)}%
-                        </Typography>
+                {/* Recent Activity */}
+                <Grow in timeout={1000}>
+                  <Card sx={{ 
+                    borderRadius: 4, 
+                    border: '1px solid', 
+                    borderColor: 'divider', 
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
+                      transform: 'translateY(-4px)'
+                    }
+                  }}>
+                    <CardContent sx={{ p: 4 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                          <Activity size={24} />
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>Recent Activity</Typography>
                       </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={(item.value / item.total) * 100}
-                        sx={{
-                          height: 8,
-                          borderRadius: 4,
-                          bgcolor: 'action.hover',
-                          '& .MuiLinearProgress-bar': {
-                            borderRadius: 4,
-                            backgroundImage: `linear-gradient(90deg, ${item.color} 0%, ${item.color}CC 100%)`
-                          }
+                      <List disablePadding>
+                        {activities.map((activity, idx) => (
+                          <Grow in timeout={1100 + idx * 100} key={activity.id}>
+                            <Box>
+                              <ListItem alignItems="flex-start" sx={{ px: 0, py: 2.5, transition: 'all 0.2s ease', '&:hover': { bgcolor: 'action.hover', borderRadius: 2 } }}>
+                                <ListItemAvatar sx={{ minWidth: 52 }}>
+                                  <Avatar sx={{
+                                    bgcolor: `${activity.color}10`,
+                                    color: activity.color,
+                                    borderRadius: 3,
+                                    width: 40,
+                                    height: 40,
+                                    fontSize: '1.2rem',
+                                    fontWeight: 600,
+                                    boxShadow: `0 4px 12px ${activity.color}20`
+                                  }}>
+                                    {activity.icon}
+                                  </Avatar>
+                                </ListItemAvatar>
+                                <ListItemText
+                                  primary={
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.875rem' }}>
+                                      <span style={{ color: activity.color, fontWeight: 700 }}>{activity.user}</span>
+                                      <span style={{ fontWeight: 500, color: 'text.secondary', marginLeft: 4 }}>{activity.action}</span>
+                                    </Typography>
+                                  }
+                                  secondary={
+                                    <Typography variant="caption" sx={{ 
+                                      display: 'block', 
+                                      mt: 0.5, 
+                                      fontWeight: 600, 
+                                      color: 'text.disabled', 
+                                      textTransform: 'uppercase', 
+                                      letterSpacing: 0.5,
+                                      fontSize: '0.7rem'
+                                    }}>
+                                      {activity.time}
+                                    </Typography>
+                                  }
+                                />
+                              </ListItem>
+                              {idx < activities.length - 1 && <Divider component="li" sx={{ my: 0.5, opacity: 0.2 }} />}
+                            </Box>
+                          </Grow>
+                        ))}
+                      </List>
+                      <Button 
+                        fullWidth 
+                        variant="text" 
+                        sx={{ 
+                          mt: 2, 
+                          fontWeight: 700, 
+                          color: 'primary.main', 
+                          py: 1.5, 
+                          borderRadius: 3,
+                          textTransform: 'none',
+                          '&:hover': {
+                            bgcolor: 'primary.main',
+                            color: 'white',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)'
+                          },
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
-                      />
-                    </Box>
-                  ))}
+                      >
+                        View All Activity
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grow>
+              </Box>
+            </Grid>
+          </Grid>
+
+          {/* Theme Selection Menu */}
+          <Menu
+            anchorEl={themeMenuAnchor}
+            open={Boolean(themeMenuAnchor)}
+            onClose={handleThemeMenuClose}
+            PaperProps={{
+              elevation: 8,
+              sx: {
+                borderRadius: 3,
+                mt: 1,
+                minWidth: 220,
+                boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+                border: '1px solid',
+                borderColor: 'divider'
+              }
+            }}
+          >
+            <MenuItem 
+              onClick={() => handleThemeChange('light')}
+              selected={theme.themeMode === 'light'}
+              sx={{ transition: 'all 0.2s ease' }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    color: theme.themeMode === 'light' ? 'primary.main' : 'text.secondary'
+                  }}>
+                    <SunIcon size={20} />
+                  </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'light' ? 600 : 400 }}>
+                    Light Mode
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Bright and clean interface
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity */}
-            <Card sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
-              <CardContent sx={{ p: 4 }}>
-                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'text.primary' }}>Recent Activity</Typography>
-                <List disablePadding>
-                  {activities.map((activity, idx) => (
-                    <Box key={activity.id}>
-                      <ListItem alignItems="flex-start" sx={{ px: 0, py: 2.5 }}>
-                        <ListItemAvatar sx={{ minWidth: 52 }}>
-                          <Avatar sx={{
-                            bgcolor: `${activity.color}10`,
-                            color: activity.color,
-                            borderRadius: 3,
-                            width: 40,
-                            height: 40,
-                            fontSize: '1.2rem'
-                          }}>
-                            {activity.icon}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                              {activity.user} <span style={{ fontWeight: 500, color: 'text.secondary' }}>{activity.action}</span>
-                            </Typography>
-                          }
-                          secondary={
-                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontWeight: 700, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: 1 }}>
-                              {activity.time}
-                            </Typography>
-                          }
-                        />
-                      </ListItem>
-                      {idx < activities.length - 1 && <Divider component="li" sx={{ my: 0.5, opacity: 0.3 }} />}
-                    </Box>
-                  ))}
-                </List>
-                <Button fullWidth variant="text" sx={{ mt: 2, fontWeight: 800, color: 'primary.main', py: 1.5, borderRadius: 3 }}>
-                  View All Activity
-                </Button>
-              </CardContent>
-            </Card>
-          </Box>
-        </Grid>
-      </Grid>
-
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          height: 6px;
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(0, 0, 0, 0.2);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(0, 0, 0, 0.3);
-        }
-        .dark-mode .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 10px;
-        }
-        .dark-mode .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
-      
-      {/* Theme Selection Menu */}
-      <Menu
-        anchorEl={themeMenuAnchor}
-        open={Boolean(themeMenuAnchor)}
-        onClose={handleThemeMenuClose}
-        PaperProps={{
-          elevation: 3,
-          sx: {
-            borderRadius: 3,
-            mt: 1,
-            minWidth: 200,
-          }
-        }}
-      >
-        <MenuItem 
-          onClick={() => handleThemeChange('light')}
-          selected={theme.themeMode === 'light'}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-            <SunIcon sx={{ color: theme.themeMode === 'light' ? 'primary.main' : 'text.secondary' }} />
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'light' ? 600 : 400 }}>
-                Light Mode
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Bright and clean interface
-              </Typography>
-            </Box>
-          </Box>
-        </MenuItem>
-        <MenuItem 
-          onClick={() => handleThemeChange('dark')}
-          selected={theme.themeMode === 'dark'}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-            <MoonIcon sx={{ color: theme.themeMode === 'dark' ? 'primary.main' : 'text.secondary' }} />
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'dark' ? 600 : 400 }}>
-                Dark Mode
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Easy on the eyes at night
-              </Typography>
-            </Box>
-          </Box>
-        </MenuItem>
-        <MenuItem 
-          onClick={() => handleThemeChange('auto')}
-          selected={theme.themeMode === 'auto'}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-            <AutoModeIcon sx={{ color: theme.themeMode === 'auto' ? 'primary.main' : 'text.secondary' }} />
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'auto' ? 600 : 400 }}>
-                Auto Mode
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Adapts to your environment
-              </Typography>
-            </Box>
-          </Box>
-        </MenuItem>
-      </Menu>
-    </Box>
+              </Box>
+            </MenuItem>
+            <MenuItem 
+              onClick={() => handleThemeChange('dark')}
+              selected={theme.themeMode === 'dark'}
+              sx={{ transition: 'all 0.2s ease' }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    color: theme.themeMode === 'dark' ? 'primary.main' : 'text.secondary'
+                  }}>
+                    <MoonIcon size={20} />
+                  </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'dark' ? 600 : 400 }}>
+                    Dark Mode
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Easy on the eyes at night
+                  </Typography>
+                </Box>
+              </Box>
+            </MenuItem>
+            <MenuItem 
+              onClick={() => handleThemeChange('auto')}
+              selected={theme.themeMode === 'auto'}
+              sx={{ transition: 'all 0.2s ease' }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    color: theme.themeMode === 'auto' ? 'primary.main' : 'text.secondary'
+                  }}>
+                    <Monitor size={20} />
+                  </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'auto' ? 600 : 400 }}>
+                    Auto Mode
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Adapts to your environment
+                  </Typography>
+                </Box>
+              </Box>
+            </MenuItem>
+          </Menu>
+        </Box>
+      </Container>
+    </Fade>
   );
 };
 
