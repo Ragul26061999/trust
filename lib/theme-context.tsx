@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { DEFAULT_THEME, getUserPreferences, saveUserPreferences, applyTheme } from './user-preferences';
+import { DEFAULT_THEME, getUserPreferences, saveUserPreferences, applyTheme, detectAmbientBrightness, ThemeMode } from './user-preferences';
 import { getUserPreferencesFromDB, saveUserPreferencesToDB } from './user-preferences-db';
 import { useAuth } from './auth-context';
 
@@ -12,6 +12,8 @@ interface ThemeContextType {
   resetTheme: () => void;
   saveThemeToDB: () => Promise<boolean>;
   loadThemeFromDB: () => Promise<void>;
+  setThemeMode: (mode: ThemeMode) => void;
+  currentThemeMode: ThemeMode;
 }
 
 // Create the context
@@ -29,6 +31,7 @@ export const useTheme = () => {
 // Theme provider component
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState(DEFAULT_THEME);
+  const [currentThemeMode, setCurrentThemeMode] = useState<ThemeMode>('light');
   const { user } = useAuth();
 
   // Load theme preferences on initial render
@@ -37,6 +40,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       const loadTheme = async () => {
         const savedTheme = getUserPreferences();
         setTheme(savedTheme);
+        setCurrentThemeMode(savedTheme.themeMode || 'light');
         applyTheme(savedTheme);
         
         await loadThemeFromDB();
@@ -47,9 +51,30 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       // Just load from local storage if not authenticated
       const savedTheme = getUserPreferences();
       setTheme(savedTheme);
+      setCurrentThemeMode(savedTheme.themeMode || 'light');
       applyTheme(savedTheme);
     }
   }, [user?.id]);
+
+  // Handle auto theme mode changes
+  useEffect(() => {
+    if (theme.themeMode === 'auto') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      const handleSystemThemeChange = () => {
+        applyTheme(theme);
+      };
+      
+      mediaQuery.addEventListener('change', handleSystemThemeChange);
+      
+      // Initial apply
+      applyTheme(theme);
+      
+      return () => {
+        mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      };
+    }
+  }, [theme.themeMode, theme]);
 
   // Function to update theme
   const updateTheme = (newTheme: any) => {
@@ -59,9 +84,19 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     applyTheme(updatedTheme);
   };
 
+  // Function to set theme mode specifically
+  const setThemeMode = (mode: ThemeMode) => {
+    const updatedTheme = { ...theme, themeMode: mode };
+    setTheme(updatedTheme);
+    setCurrentThemeMode(mode);
+    saveUserPreferences(updatedTheme);
+    applyTheme(updatedTheme);
+  };
+
   // Function to reset theme to default
   const resetTheme = () => {
     setTheme(DEFAULT_THEME);
+    setCurrentThemeMode(DEFAULT_THEME.themeMode);
     saveUserPreferences(DEFAULT_THEME);
     applyTheme(DEFAULT_THEME);
   };
@@ -88,13 +123,14 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       // Merge DB theme with local theme (prioritizing DB values)
       const mergedTheme = { ...theme, ...dbTheme };
       setTheme(mergedTheme);
+      setCurrentThemeMode(mergedTheme.themeMode);
       saveUserPreferences(mergedTheme); // Also save to local storage
       applyTheme(mergedTheme);
     }
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, updateTheme, resetTheme, saveThemeToDB, loadThemeFromDB }}>
+    <ThemeContext.Provider value={{ theme, updateTheme, resetTheme, saveThemeToDB, loadThemeFromDB, setThemeMode, currentThemeMode }}>
       {children}
     </ThemeContext.Provider>
   );

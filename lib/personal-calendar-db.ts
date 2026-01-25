@@ -34,7 +34,7 @@ export const getCalendarEntries = async (userId: string) => {
 
     try {
         const { data, error } = await supabase
-            .from('personal_calendar_entries')
+            .from('timetable_entries')
             .select('*')
             .eq('user_id', userId)
             .order('entry_date', { ascending: true });
@@ -44,7 +44,19 @@ export const getCalendarEntries = async (userId: string) => {
             return [];
         }
 
-        return data as CalendarEntry[];
+        // Map the data to CalendarEntry format, handling different field names
+        const mappedData = data.map(item => {
+            // Use entry_date if available, otherwise use start_time
+            const entryDate = item.entry_date || item.start_time || item.created_at;
+            
+            return {
+                ...item,
+                entry_date: entryDate,
+                date: new Date(entryDate) // Add a date field for compatibility
+            } as CalendarEntry;
+        });
+
+        return mappedData;
     } catch (error) {
         console.error('Unexpected error fetching calendar entries:', error);
         return [];
@@ -68,15 +80,30 @@ export const addCalendarEntry = async (entry: Omit<CalendarEntry, 'id' | 'create
     try {
         console.log('Attempting to insert calendar entry:', entry);
 
-        // Prepare the entry to ensure proper data types
-        const preparedEntry = {
-            ...entry,
+        // Prepare the entry for timetable_entries table
+        // Convert entry_date to start_time and end_time for compatibility
+        const entryDateTime = entry.entry_date || new Date().toISOString();
+        
+        // For calendar entries, set start_time and end_time to the same date
+        // or parse the entry_date to create appropriate start/end times
+        const dbEntry = {
+            user_id: entry.user_id,
+            title: entry.title,
+            description: entry.description || '',
+            start_time: entryDateTime, // Use entry_date as start_time
+            end_time: entryDateTime,   // Use entry_date as end_time (same day)
+            category: entry.category,
+            priority: entry.priority || 'medium',
+            entry_date: entryDateTime,  // Keep entry_date for backward compatibility
             category_data: entry.category_data || {},
+            status: entry.status || 'pending'
         };
-
+        
+        console.log('Prepared database entry:', dbEntry);
+        
         const { data, error } = await supabase
-            .from('personal_calendar_entries')
-            .insert([preparedEntry])
+            .from('timetable_entries')
+            .insert([dbEntry])
             .select()
             .single();
 
@@ -91,6 +118,7 @@ export const addCalendarEntry = async (entry: Omit<CalendarEntry, 'id' | 'create
             return null;
         }
 
+        console.log('Successfully added calendar entry:', data);
         return data as CalendarEntry;
     } catch (error) {
         console.error('Unexpected error adding calendar entry:', error);
@@ -108,14 +136,27 @@ export const updateCalendarEntry = async (entryId: string, updates: Partial<Omit
     }
 
     try {
-        // Prepare the updates to ensure proper data types
-        const preparedUpdates = {
-            ...updates,
+        // Prepare the updates for timetable_entries table
+        const preparedUpdates: any = {
             category_data: updates.category_data || {},
         };
 
+        // Map the fields appropriately
+        if (updates.title) preparedUpdates.title = updates.title;
+        if (updates.description) preparedUpdates.description = updates.description;
+        if (updates.category) preparedUpdates.category = updates.category;
+        if (updates.priority) preparedUpdates.priority = updates.priority;
+        if (updates.status) preparedUpdates.status = updates.status;
+        
+        // Handle date fields - update both start_time, end_time, and entry_date
+        if (updates.entry_date) {
+            preparedUpdates.start_time = updates.entry_date;
+            preparedUpdates.end_time = updates.entry_date;
+            preparedUpdates.entry_date = updates.entry_date;
+        }
+
         const { error } = await supabase
-            .from('personal_calendar_entries')
+            .from('timetable_entries')
             .update(preparedUpdates)
             .eq('id', entryId);
 
@@ -142,7 +183,7 @@ export const deleteCalendarEntry = async (entryId: string) => {
 
     try {
         const { error } = await supabase
-            .from('personal_calendar_entries')
+            .from('timetable_entries')
             .delete()
             .eq('id', entryId);
 

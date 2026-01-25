@@ -40,6 +40,7 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
+  ArrowBack as ArrowBackIcon,
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as RadioButtonUncheckedIcon,
   Delete as DeleteIcon,
@@ -174,9 +175,11 @@ const ProfessionalPageContent = () => {
         setLoading(false);
       }
     };
-    
-    checkProfileSetup();
   }, [user]);
+
+  const handleGoBack = () => {
+    router.back();
+  };
   
   // Fetch tasks when user is authenticated
   const fetchTasks = async () => {
@@ -256,7 +259,46 @@ const ProfessionalPageContent = () => {
       setLoading(false);
     }
   };
-  
+
+  const checkProfileSetup = async () => {
+    try {
+      // Ensure the professional_tasks table exists
+      const tableExists = await ensureProfessionalTasksTable();
+      
+      if (!tableExists) {
+        console.warn('Professional tasks table does not exist. Showing setup form.');
+        setShowSetupForm(true);
+        return;
+      }
+      
+      const info = await getProfessionalInfo(user?.id || '');
+      if (!info) {
+        setShowSetupForm(true);
+      } else {
+        setProfileInfo({
+          department: info.department || '',
+          role: info.role || '',
+          responsibilities: info.responsibilities || '',
+          experience: info.experience || '',
+        });
+        fetchTasks();
+      }
+    } catch (error) {
+      console.error('Error in profile setup check:', error);
+      // If there's an error, show setup form to ensure data gets initialized
+      setShowSetupForm(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load profile info on component mount
+  useEffect(() => {
+    if (user) {
+      checkProfileSetup();
+    }
+  }, [user]);
+
   // Handle task creation
   const handleCreateTask = async () => {
     if (!user || !newTask.title) return;
@@ -598,16 +640,27 @@ ${index + 1}. ${task.title}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 } }}>
+              <IconButton
+                edge="start"
+                onClick={handleGoBack}
+                sx={{
+                  borderRadius: 3,
+                  bgcolor: 'action.hover',
+                  '&:hover': { bgcolor: 'action.selected' }
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
               <Box 
                 sx={{ 
                   width: { xs: 48, md: 64 }, 
                   height: { xs: 48, md: 64 }, 
                   borderRadius: 3,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)'
+                  boxShadow: '0 4px 20px rgba(255, 152, 0, 0.35)'
                 }}
               >
                 <WorkIcon sx={{ fontSize: { xs: 24, md: 32 }, color: 'white' }} />
@@ -619,7 +672,7 @@ ${index + 1}. ${task.title}
                     fontWeight: 800, 
                     mb: 0.5,
                     fontSize: { xs: '1.5rem', md: '2.125rem' },
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
@@ -681,12 +734,12 @@ ${index + 1}. ${task.title}
                 variant="contained"
                 onClick={logout}
                 sx={{ 
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
                   color: 'white', 
                   '&:hover': { 
-                    background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
+                    background: 'linear-gradient(135deg, #FB8C00 0%, #EF6C00 100%)',
                     transform: 'translateY(-1px)',
-                    boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)'
+                    boxShadow: '0 6px 20px rgba(255, 152, 0, 0.45)'
                   }, 
                   textTransform: 'none',
                   borderRadius: 3,

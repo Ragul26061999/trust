@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth-context';
+import { useTheme } from '../../lib/theme-context';
+import { getTimeBasedGreeting, ThemeMode } from '../../lib/user-preferences';
 import { useRouter } from 'next/navigation';
 import ProtectedLayout from '../protected-layout';
 import {
@@ -22,6 +24,11 @@ import {
   InputAdornment,
   Grid,
   Tooltip,
+  Menu,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -35,12 +42,20 @@ import {
   ArrowForward as ArrowForwardIcon,
   GridView as DashboardIcon,
   Lock as LockIcon,
+  Brightness4 as DarkModeIcon,
+  Brightness7 as LightModeIcon,
+  BrightnessAuto as AutoModeIcon,
+  WbSunny as SunIcon,
+  NightsStay as MoonIcon,
 } from '@mui/icons-material';
 
 const DashboardContent = () => {
   const { user } = useAuth();
+  const { theme, setThemeMode } = useTheme();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [greeting, setGreeting] = useState(getTimeBasedGreeting());
+  const [themeMenuAnchor, setThemeMenuAnchor] = useState<null | HTMLElement>(null);
   const [realTimeData, setRealTimeData] = useState({
     totalTasks: 0,
     completedTasks: 0,
@@ -55,6 +70,21 @@ const DashboardContent = () => {
       color: string;
     }>
   });
+
+  // Update greeting based on time
+  useEffect(() => {
+    const updateGreeting = () => {
+      setGreeting(getTimeBasedGreeting());
+    };
+
+    // Update greeting immediately
+    updateGreeting();
+
+    // Set up interval to check time changes (every minute)
+    const interval = setInterval(updateGreeting, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch real-time data
   useEffect(() => {
@@ -85,6 +115,41 @@ const DashboardContent = () => {
     
     return () => clearInterval(interval);
   }, []);
+
+  const handleThemeMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setThemeMenuAnchor(event.currentTarget);
+  };
+
+  const handleThemeMenuClose = () => {
+    setThemeMenuAnchor(null);
+  };
+
+  const handleThemeChange = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    handleThemeMenuClose();
+  };
+
+  const getThemeIcon = () => {
+    switch (theme.themeMode) {
+      case 'dark':
+        return <DarkModeIcon />;
+      case 'auto':
+        return <AutoModeIcon />;
+      default:
+        return <LightModeIcon />;
+    }
+  };
+
+  const getThemeTooltip = () => {
+    switch (theme.themeMode) {
+      case 'dark':
+        return 'Dark Mode';
+      case 'auto':
+        return 'Auto Mode';
+      default:
+        return 'Light Mode';
+    }
+  };
 
   if (!user) return null;
 
@@ -122,8 +187,8 @@ const DashboardContent = () => {
       path: '/note-taking',
       color: '#6750A4',
       desc: 'Capture ideas and organize your thoughts.',
-      count: 'Coming Soon',
-      locked: true
+      count: '0 Notes',
+      locked: false
     },
     {
       text: 'Calendar',
@@ -179,7 +244,7 @@ const DashboardContent = () => {
       <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', mb: 0.5 }}>
-            Welcome back, {user.email?.split('@')[0]}
+            {greeting}, {user.email?.split('@')[0]}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
             Here is what's happening in your workspace today.
@@ -202,11 +267,24 @@ const DashboardContent = () => {
                 bgcolor: 'background.paper',
                 boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
                 '& fieldset': { border: 'none' },
-                '&:hover': { bgcolor: 'grey.50' }
+                '&:hover': { bgcolor: 'action.hover' }
               }
             }}
             sx={{ width: 280 }}
           />
+          <Tooltip title={getThemeTooltip()}>
+            <IconButton 
+              onClick={handleThemeMenuOpen}
+              sx={{ 
+                bgcolor: 'background.paper', 
+                boxShadow: '0 2px 10px rgba(0,0,0,0.02)', 
+                border: '1px solid', 
+                borderColor: 'divider' 
+              }}
+            >
+              {getThemeIcon()}
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Notifications">
             <IconButton sx={{ bgcolor: 'background.paper', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', border: '1px solid', borderColor: 'divider' }}>
               <NotificationsIcon color="action" />
@@ -251,7 +329,7 @@ const DashboardContent = () => {
                           width: 32,
                           height: 32,
                           borderRadius: '50%',
-                          bgcolor: 'rgba(0,0,0,0.1)',
+                          bgcolor: 'action.disabled',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -304,7 +382,7 @@ const DashboardContent = () => {
                         <Typography variant="caption" sx={{
                           fontWeight: 800,
                           color: category.locked ? 'text.secondary' : category.color,
-                          bgcolor: category.locked ? 'grey.100' : `${category.color}10`,
+                          bgcolor: category.locked ? 'action.disabled' : `${category.color}10`,
                           px: 1.5,
                           py: 0.5,
                           borderRadius: 2
@@ -332,15 +410,15 @@ const DashboardContent = () => {
             <Card sx={{ borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
               <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, bgcolor: 'primary.main' }} />
               <CardContent sx={{ p: 4 }}>
-                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'grey.800' }}>Real-time Progress</Typography>
+                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'text.primary' }}>Real-time Progress</Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
                   {progressData.map((item) => (
                     <Box key={item.label}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'grey.600', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           {item.label}
                         </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'grey.900' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary' }}>
                           {Math.round((item.value / item.total) * 100)}%
                         </Typography>
                       </Box>
@@ -350,7 +428,7 @@ const DashboardContent = () => {
                         sx={{
                           height: 8,
                           borderRadius: 4,
-                          bgcolor: 'grey.50',
+                          bgcolor: 'action.hover',
                           '& .MuiLinearProgress-bar': {
                             borderRadius: 4,
                             backgroundImage: `linear-gradient(90deg, ${item.color} 0%, ${item.color}CC 100%)`
@@ -366,7 +444,7 @@ const DashboardContent = () => {
             {/* Recent Activity */}
             <Card sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
               <CardContent sx={{ p: 4 }}>
-                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'grey.800' }}>Recent Activity</Typography>
+                <Typography variant="h6" sx={{ mb: 4, fontWeight: 800, color: 'text.primary' }}>Recent Activity</Typography>
                 <List disablePadding>
                   {activities.map((activity, idx) => (
                     <Box key={activity.id}>
@@ -385,12 +463,12 @@ const DashboardContent = () => {
                         </ListItemAvatar>
                         <ListItemText
                           primary={
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'grey.900' }}>
-                              {activity.user} <span style={{ fontWeight: 500, color: '#797781' }}>{activity.action}</span>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                              {activity.user} <span style={{ fontWeight: 500, color: 'text.secondary' }}>{activity.action}</span>
                             </Typography>
                           }
                           secondary={
-                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontWeight: 700, color: 'grey.400', textTransform: 'uppercase', letterSpacing: 1 }}>
+                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontWeight: 700, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: 1 }}>
                               {activity.time}
                             </Typography>
                           }
@@ -422,13 +500,84 @@ const DashboardContent = () => {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #E0DFE4;
+          background: rgba(0, 0, 0, 0.2);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #C8C6CD;
+          background: rgba(0, 0, 0, 0.3);
+        }
+        .dark-mode .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 10px;
+        }
+        .dark-mode .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
         }
       `}</style>
+      
+      {/* Theme Selection Menu */}
+      <Menu
+        anchorEl={themeMenuAnchor}
+        open={Boolean(themeMenuAnchor)}
+        onClose={handleThemeMenuClose}
+        PaperProps={{
+          elevation: 3,
+          sx: {
+            borderRadius: 3,
+            mt: 1,
+            minWidth: 200,
+          }
+        }}
+      >
+        <MenuItem 
+          onClick={() => handleThemeChange('light')}
+          selected={theme.themeMode === 'light'}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+            <SunIcon sx={{ color: theme.themeMode === 'light' ? 'primary.main' : 'text.secondary' }} />
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'light' ? 600 : 400 }}>
+                Light Mode
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Bright and clean interface
+              </Typography>
+            </Box>
+          </Box>
+        </MenuItem>
+        <MenuItem 
+          onClick={() => handleThemeChange('dark')}
+          selected={theme.themeMode === 'dark'}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+            <MoonIcon sx={{ color: theme.themeMode === 'dark' ? 'primary.main' : 'text.secondary' }} />
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'dark' ? 600 : 400 }}>
+                Dark Mode
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Easy on the eyes at night
+              </Typography>
+            </Box>
+          </Box>
+        </MenuItem>
+        <MenuItem 
+          onClick={() => handleThemeChange('auto')}
+          selected={theme.themeMode === 'auto'}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+            <AutoModeIcon sx={{ color: theme.themeMode === 'auto' ? 'primary.main' : 'text.secondary' }} />
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'auto' ? 600 : 400 }}>
+                Auto Mode
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Adapts to your environment
+              </Typography>
+            </Box>
+          </Box>
+        </MenuItem>
+      </Menu>
     </Box>
   );
 };

@@ -44,11 +44,19 @@ import {
     CircularProgress,
     Chip,
     Card,
-    CardContent
+    CardContent,
+    Alert,
+    Snackbar,
+    Tabs,
+    Tab,
+    Switch,
+    Slider,
+    Grid
 } from '@mui/material';
 import {
     ChevronLeft,
     ChevronRight,
+    ArrowBack as ArrowBackIcon,
     Add as AddIcon,
     Search as SearchIcon,
     HelpOutline as HelpIcon,
@@ -58,6 +66,7 @@ import {
     AccountBalanceWallet as WealthIcon,
     Event as EventIcon,
     Assignment as TaskIcon,
+    Assignment as AssignmentIcon,
     Flag as GoalIcon,
     SelfImprovement as AdlIcon,
     FamilyRestroom as FamilyIcon,
@@ -69,11 +78,46 @@ import {
     CheckCircle as CheckCircleIcon,
     RadioButtonUnchecked as RadioButtonUncheckedIcon,
     Edit as EditIcon,
-    Insights as InsightsIcon
+    Insights as InsightsIcon,
+    Email as EmailIcon,
+    Notifications as NotificationIcon,
+    Sync as SyncIcon,
+    Feedback as FeedbackIcon,
+    CloudSync as CloudSyncIcon,
+    AccessTime as TimeIcon,
+    TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
 import ProtectedLayout from '../protected-layout';
 import { useAuth } from '../../lib/auth-context';
+import { useRouter } from 'next/navigation';
 import { getCalendarEntries, addCalendarEntry, updateCalendarEntry, deleteCalendarEntry, getCustomCalendars, addCustomCalendar } from '../../lib/personal-calendar-db';
+import { 
+    getTimezonePreference, 
+    setTimezonePreference, 
+    getNotificationSettings, 
+    updateNotificationSettings,
+    getTimezoneOptions,
+    detectUserTimezone
+} from '../../lib/settings-service';
+import { 
+    submitFeedback, 
+    FEEDBACK_CATEGORIES, 
+    PRIORITY_LEVELS,
+    validateFeedback
+} from '../../lib/feedback-service';
+import { 
+    getUserCalendarIntegrations,
+    createCalendarIntegration,
+    deleteCalendarIntegration,
+    toggleCalendarSync,
+    syncCalendarIntegration,
+    updateSyncFrequency,
+    CALENDAR_PROVIDERS,
+    SYNC_FREQUENCIES,
+    type CalendarProvider,
+    type SyncFrequency
+} from '../../lib/calendar-integration-service';
+import { convertFromUTC } from '../../lib/timezone-utils';
 
 // Category Definitions
 const CATEGORIES = [
@@ -97,6 +141,8 @@ interface CalendarEntry {
     priority?: string;
     status?: string;
     description?: string;
+    source?: string;
+    integrationId?: string;
 }
 
 interface CustomCalendar {
@@ -108,6 +154,7 @@ interface CustomCalendar {
 
 const PersonalCalendarPage = () => {
     const { user } = useAuth();
+    const router = useRouter();
     const [view, setView] = useState<'month' | 'week' | 'day'>('month');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -136,6 +183,39 @@ const PersonalCalendarPage = () => {
     const [showAddCalendarDialog, setShowAddCalendarDialog] = useState(false);
     const [newCalendarName, setNewCalendarName] = useState('');
     const [newCalendarColor, setNewCalendarColor] = useState('#6366f1');
+    
+    // Settings State
+    const [settingsTab, setSettingsTab] = useState(0);
+    const [timezone, setTimezone] = useState('UTC');
+    const [notificationSettings, setNotificationSettings] = useState({
+        email: true,
+        push: true,
+        daily_reminders: false,
+        frequency: 'daily'
+    });
+    const [calendarIntegrations, setCalendarIntegrations] = useState<any[]>([]);
+    const [feedbackForm, setFeedbackForm] = useState({
+        category: 'general',
+        subject: '',
+        message: '',
+        priority: 'medium'
+    });
+    
+    // Loading and Error States
+    const [settingsLoading, setSettingsLoading] = useState(false);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' | 'info' });
+    
+    // Calendar Integration States
+    const [showAddCalendarIntegration, setShowAddCalendarIntegration] = useState(false);
+    const [selectedProvider, setSelectedProvider] = useState<CalendarProvider>('google');
+    const [integrationDisplayName, setIntegrationDisplayName] = useState('');
+    const [integrationEmail, setIntegrationEmail] = useState('');
+    const [syncingIntegrationId, setSyncingIntegrationId] = useState<string | null>(null);
+    
+    // Analytics State
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [analyticsFilter, setAnalyticsFilter] = useState('all'); // all, today, week, month
+    const [analyticsCategory, setAnalyticsCategory] = useState('all');
 
     const handleCategoryDataChange = (field: string, value: any) => {
         setCategoryData((prev: any) => ({ ...prev, [field]: value }));
@@ -145,8 +225,119 @@ const PersonalCalendarPage = () => {
         if (user) {
             fetchEntries();
             fetchCustomCalendars();
+            loadUserSettings();
+            loadCalendarIntegrations();
         }
     }, [user]);
+
+    // Load user settings
+    const loadUserSettings = async () => {
+        if (!user) return;
+        
+        setSettingsLoading(true);
+        
+        try {
+            // Load timezone preference
+            const tz = await getTimezonePreference(user.id);
+            if (tz) {
+                setTimezone(tz);
+            }
+            
+            // Load notification settings
+            const notifSettings = await getNotificationSettings(user.id);
+            if (notifSettings) {
+                setNotificationSettings(notifSettings);
+            }
+        } catch (error) {
+            console.error('Error loading user settings:', error);
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    // Load calendar integrations
+    const loadCalendarIntegrations = async () => {
+        if (!user) return;
+        
+        try {
+            const integrations = await getUserCalendarIntegrations(user.id);
+            if (integrations) {
+                setCalendarIntegrations(integrations);
+                
+                // Fetch external calendar events for connected calendars
+                await fetchExternalCalendarEvents(integrations);
+            }
+        } catch (error) {
+            console.error('Error loading calendar integrations:', error);
+        }
+    };
+
+    // Fetch external calendar events from connected integrations
+    const fetchExternalCalendarEvents = async (integrations: any[]) => {
+        if (!user) return;
+        
+        try {
+            // Filter for connected and enabled integrations
+            const activeIntegrations = integrations.filter(
+                (integration: any) => integration.sync_enabled && integration.sync_status === 'connected'
+            );
+            
+            // For each active integration, fetch events (simulated here)
+            for (const integration of activeIntegrations) {
+                // In a real implementation, this would call the external calendar API
+                // For now, we'll simulate with mock data
+                const externalEvents = await simulateFetchExternalEvents(integration);
+                
+                // Convert external events to our calendar entry format
+                const externalEntries = externalEvents.map((event: any) => {
+                    return {
+                        id: `external_${integration.id}_${event.id}`,
+                        title: event.summary || event.title,
+                        date: convertFromUTC(new Date(event.start.dateTime || event.start.date), timezone),
+                        category: 'event', // Default to event category for external events
+                        priority: 'Medium',
+                        status: 'pending',
+                        description: event.description || '',
+                        source: 'external', // Mark as external source
+                        integrationId: integration.id
+                    };
+                });
+                
+                // Add external events to the entries state
+                setEntries(prevEntries => {
+                    // Remove old external events from this integration
+                    const filteredEntries = prevEntries.filter(entry => 
+                        entry.source !== 'external' || entry.integrationId !== integration.id
+                    );
+                    
+                    // Add new external events
+                    return [...filteredEntries, ...externalEntries];
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching external calendar events:', error);
+        }
+    };
+
+    // Simulate fetching external calendar events (in real implementation, this would call actual APIs)
+    const simulateFetchExternalEvents = async (integration: any): Promise<any[]> => {
+        // This is a simulation - in real implementation, this would call Google Calendar API, etc.
+        // depending on the integration provider
+        
+        // Return mock events for demonstration
+        if (integration.sync_enabled) {
+            return [
+                {
+                    id: 'mock_event_1',
+                    summary: `Mock ${integration.provider} Event`,
+                    description: `This is a simulated event from ${integration.provider}`,
+                    start: { dateTime: new Date(Date.now() + 86400000).toISOString() }, // Tomorrow
+                    end: { dateTime: new Date(Date.now() + 86400000 + 3600000).toISOString() } // Tomorrow + 1 hour
+                }
+            ];
+        }
+        return [];
+    };
 
     const fetchEntries = async () => {
         if (!user) return;
@@ -229,18 +420,20 @@ const PersonalCalendarPage = () => {
     };
 
     const goToToday = () => {
-        const today = new Date();
-        setSelectedDate(today);
-        setCurrentDate(today);
+        setSelectedDate(new Date());
+        setCurrentDate(new Date());
+    };
+
+    const handleGoBack = () => {
+        router.back();
     };
 
     const handleAddEntry = async () => {
-        if ((!newEntryTitle && (selectedCategory !== 'task' && selectedCategory !== 'adls')) || !user) return;
+        if (!user) return;
 
-        let entriesToAdd = [];
+        let entriesToAdd: any[] = [];
 
         if (selectedCategory === 'task' || selectedCategory === 'adls') {
-            // Handle multiple entries for tasks and ADLs
             entriesToAdd = multipleEntries
                 .filter(entry => entry.title.trim() !== '')
                 .map(entry => {
@@ -257,20 +450,15 @@ const PersonalCalendarPage = () => {
                     };
                 });
         } else if (selectedCategory === 'goal') {
-            // Handle goals based on duration
             const entryDateTime = new Date(`${newEntryDate}T${newEntryTime}`);
-
-            // Create entries based on goal duration
             const goalEntries = createGoalEntry(entryDateTime);
             entriesToAdd = Array.isArray(goalEntries) ? goalEntries : [goalEntries];
 
-            // If recurring, create additional entries
             if (goalRecurring) {
                 const additionalEntries = generateRecurringGoals(entryDateTime);
                 entriesToAdd = [...entriesToAdd, ...additionalEntries];
             }
         } else {
-            // Handle single entry for other categories
             const entryDateTime = new Date(`${newEntryDate}T${newEntryTime}`);
             entriesToAdd = [{
                 user_id: user.id,
@@ -284,8 +472,7 @@ const PersonalCalendarPage = () => {
             }];
         }
 
-        // Add all entries
-        const addedEntries = [];
+        const addedEntries: any[] = [];
         for (const entry of entriesToAdd) {
             const addedEntry = await addCalendarEntry(entry);
             if (addedEntry) {
@@ -306,7 +493,7 @@ const PersonalCalendarPage = () => {
 
             setEntries([...entries, ...mappedAddedEntries]);
             setNewEntryTitle('');
-            setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]); // Reset multiple entries
+            setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]);
             setOpenDialog(false);
         }
     };
@@ -432,9 +619,21 @@ const PersonalCalendarPage = () => {
     const toggleEntryStatus = async (e: React.MouseEvent, entry: CalendarEntry) => {
         e.stopPropagation();
         const newStatus = entry.status === 'completed' ? 'pending' : 'completed';
+        
+        console.log('Toggling entry status:', { 
+            entryId: entry.id, 
+            currentStatus: entry.status, 
+            newStatus: newStatus 
+        });
+        
         const success = await updateCalendarEntry(entry.id, { status: newStatus });
+        
         if (success) {
             setEntries(entries.map(e => e.id === entry.id ? { ...e, status: newStatus } : e));
+            console.log('Successfully toggled entry status');
+        } else {
+            console.error('Failed to toggle entry status for entry:', entry.id);
+            // Optionally show user feedback here
         }
     };
 
@@ -555,6 +754,211 @@ const PersonalCalendarPage = () => {
         }
     };
 
+    // Settings Helper Functions
+    const handleTimezoneChange = async (newTimezone: string) => {
+        if (!user) return;
+        
+        setSettingsLoading(true);
+        try {
+            const success = await setTimezonePreference(user.id, newTimezone);
+            if (success) {
+                setTimezone(newTimezone);
+                showSnackbar('Timezone updated successfully', 'success');
+            } else {
+                showSnackbar('Failed to update timezone', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating timezone:', error);
+            showSnackbar('Failed to update timezone', 'error');
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const handleNotificationSettingChange = async (setting: string, value: any) => {
+        if (!user) return;
+        
+        const newSettings = { ...notificationSettings, [setting]: value };
+        setNotificationSettings(newSettings);
+        
+        setSettingsLoading(true);
+        try {
+            const success = await updateNotificationSettings(user.id, newSettings);
+            if (!success) {
+                showSnackbar('Failed to update notification settings', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating notification settings:', error);
+            showSnackbar('Failed to update notification settings', 'error');
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const handleFeedbackSubmit = async () => {
+        if (!user) return;
+        
+        const { isValid, errors } = validateFeedback(feedbackForm.subject, feedbackForm.message);
+        if (!isValid) {
+            showSnackbar(errors[0], 'error');
+            return;
+        }
+        
+        setSettingsLoading(true);
+        try {
+            const result = await submitFeedback(
+                user.id,
+                feedbackForm.category as any,
+                feedbackForm.subject,
+                feedbackForm.message,
+                feedbackForm.priority as any
+            );
+            
+            if (result.success) {
+                showSnackbar('Feedback submitted successfully!', 'success');
+                // Reset form
+                setFeedbackForm({
+                    category: 'general',
+                    subject: '',
+                    message: '',
+                    priority: 'medium'
+                });
+                setOpenSettings(false);
+            } else {
+                showSnackbar(result.error || 'Failed to submit feedback', 'error');
+            }
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            showSnackbar('Failed to submit feedback', 'error');
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    // Calendar Integration Functions
+    const handleAddCalendarIntegration = async () => {
+        if (!user || !integrationDisplayName.trim()) return;
+        
+        setSettingsLoading(true);
+        try {
+            const result = await createCalendarIntegration(
+                user.id,
+                selectedProvider,
+                integrationDisplayName,
+                integrationEmail,
+                CALENDAR_PROVIDERS.find(p => p.id === selectedProvider)?.color || '#3b82f6'
+            );
+            
+            if (result.success && result.integration) {
+                showSnackbar(`${selectedProvider} calendar connected successfully!`, 'success');
+                setCalendarIntegrations(prev => [...prev, result.integration]);
+                // Reset form
+                setIntegrationDisplayName('');
+                setIntegrationEmail('');
+                setShowAddCalendarIntegration(false);
+            } else {
+                showSnackbar(result.error || 'Failed to connect calendar', 'error');
+            }
+        } catch (error) {
+            console.error('Error connecting calendar:', error);
+            showSnackbar('Failed to connect calendar', 'error');
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const handleDeleteCalendarIntegration = async (integrationId: string) => {
+        if (!user) return;
+        
+        setSettingsLoading(true);
+        try {
+            const success = await deleteCalendarIntegration(integrationId, user.id);
+            if (success) {
+                showSnackbar('Calendar integration removed', 'success');
+                setCalendarIntegrations(prev => prev.filter(int => int.id !== integrationId));
+            } else {
+                showSnackbar('Failed to remove calendar integration', 'error');
+            }
+        } catch (error) {
+            console.error('Error removing calendar integration:', error);
+            showSnackbar('Failed to remove calendar integration', 'error');
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const handleToggleCalendarSync = async (integrationId: string) => {
+        if (!user) return;
+        
+        setSettingsLoading(true);
+        try {
+            const success = await toggleCalendarSync(integrationId, user.id);
+            if (success) {
+                // Refresh integrations to get updated status
+                await loadCalendarIntegrations();
+                showSnackbar('Calendar sync toggled', 'success');
+            } else {
+                showSnackbar('Failed to toggle calendar sync', 'error');
+            }
+        } catch (error) {
+            console.error('Error toggling calendar sync:', error);
+            showSnackbar('Failed to toggle calendar sync', 'error');
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const handleSyncCalendar = async (integrationId: string) => {
+        if (!user) return;
+        
+        setSyncingIntegrationId(integrationId);
+        try {
+            const success = await syncCalendarIntegration(integrationId, user.id);
+            if (success) {
+                showSnackbar('Calendar synced successfully!', 'success');
+                // Refresh integrations to get updated status
+                await loadCalendarIntegrations();
+            } else {
+                showSnackbar('Failed to sync calendar', 'error');
+            }
+        } catch (error) {
+            console.error('Error syncing calendar:', error);
+            showSnackbar('Failed to sync calendar', 'error');
+        } finally {
+            setSyncingIntegrationId(null);
+        }
+    };
+
+    const handleUpdateSyncFrequency = async (integrationId: string, frequency: SyncFrequency) => {
+        if (!user) return;
+        
+        setSettingsLoading(true);
+        try {
+            const success = await updateSyncFrequency(integrationId, user.id, frequency);
+            if (success) {
+                // Refresh integrations to get updated status
+                await loadCalendarIntegrations();
+                showSnackbar('Sync frequency updated', 'success');
+            } else {
+                showSnackbar('Failed to update sync frequency', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating sync frequency:', error);
+            showSnackbar('Failed to update sync frequency', 'error');
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    // Utility Functions
+    const showSnackbar = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+        setSnackbar({ open: true, message, severity });
+    };
+
+    const closeSnackbar = () => {
+        setSnackbar(prev => ({ ...prev, open: false }));
+    };
+
     // Analytics calculations
     const getTotalEntries = () => entries.length;
     const getEntriesByCategory = () => {
@@ -584,6 +988,71 @@ const PersonalCalendarPage = () => {
         return matchesCategory && matchesSearch;
     });
 
+    // Analytics data calculation
+    const getAnalyticsData = () => {
+        const now = new Date();
+        const weekStart = startOfWeek(now);
+        const weekEnd = endOfWeek(now);
+        const monthStart = startOfMonth(now);
+        const monthEnd = endOfMonth(now);
+
+        // Filter entries based on analytics filter
+        let filteredForAnalytics = entries;
+        if (analyticsFilter === 'today') {
+            filteredForAnalytics = entries.filter(entry => isSameDay(entry.date, now));
+        } else if (analyticsFilter === 'week') {
+            filteredForAnalytics = entries.filter(entry => 
+                entry.date >= weekStart && entry.date <= weekEnd
+            );
+        } else if (analyticsFilter === 'month') {
+            filteredForAnalytics = entries.filter(entry => 
+                entry.date >= monthStart && entry.date <= monthEnd
+            );
+        }
+
+        // Apply category filter
+        if (analyticsCategory !== 'all') {
+            filteredForAnalytics = filteredForAnalytics.filter(entry => entry.category === analyticsCategory);
+        }
+
+        const totalTasks = filteredForAnalytics.length;
+        const completedTasks = filteredForAnalytics.filter(entry => entry.status === 'completed').length;
+        const pendingTasks = filteredForAnalytics.filter(entry => entry.status === 'pending').length;
+        
+        // Category breakdown
+        const categoryBreakdown: Record<string, number> = {};
+        filteredForAnalytics.forEach(entry => {
+            categoryBreakdown[entry.category] = (categoryBreakdown[entry.category] || 0) + 1;
+        });
+
+        // Priority breakdown
+        const priorityBreakdown: Record<string, number> = {};
+        filteredForAnalytics.forEach(entry => {
+            if (entry.priority) {
+                priorityBreakdown[entry.priority] = (priorityBreakdown[entry.priority] || 0) + 1;
+            }
+        });
+
+        // This week's entries
+        const thisWeekEntries = entries.filter(entry => 
+            entry.date >= weekStart && entry.date <= weekEnd
+        );
+
+        // Completion rate
+        const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+        return {
+            totalTasks,
+            completedTasks,
+            pendingTasks,
+            categoryBreakdown,
+            priorityBreakdown,
+            thisWeekEntries: thisWeekEntries.length,
+            completionRate,
+            filteredEntries: filteredForAnalytics
+        };
+    };
+
     return (
         <Box sx={{
             display: 'flex',
@@ -607,7 +1076,20 @@ const PersonalCalendarPage = () => {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 800, mr: 2, display: 'flex', alignItems: 'center', gap: 1, fontSize: '1.25rem' }}>
+                    <IconButton
+                        size="small"
+                        onClick={handleGoBack}
+                        sx={{
+                            borderRadius: 4,
+                            width: 40,
+                            height: 40,
+                            bgcolor: 'action.hover',
+                            '&:hover': { bgcolor: 'action.selected' }
+                        }}
+                    >
+                        <ArrowBackIcon fontSize="small" />
+                    </IconButton>
+                    <Typography variant="h6" sx={{ color: '#9C27B0', fontWeight: 800, mr: 2, display: 'flex', alignItems: 'center', gap: 1, fontSize: '1.25rem' }}>
                         <CalendarIcon /> Personal Life
                     </Typography>
                     <Button variant="outlined" size="small" onClick={goToToday} sx={{ borderRadius: 4, textTransform: 'none', color: 'text.primary', borderColor: 'divider', fontWeight: 600, px: 2, py: 0.5 }}>
@@ -639,8 +1121,8 @@ const PersonalCalendarPage = () => {
                                     width: 240,
                                     '& .MuiOutlinedInput-root': {
                                         '& fieldset': { borderColor: 'divider' },
-                                        '&:hover fieldset': { borderColor: 'primary.main' },
-                                        '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+                                        '&:hover fieldset': { borderColor: '#9C27B0' },
+                                        '&.Mui-focused fieldset': { borderColor: '#9C27B0' },
                                         borderRadius: 4,
                                         boxShadow: '0 2px 4px rgba(0,0,0,0.08)'
                                     }
@@ -663,12 +1145,11 @@ const PersonalCalendarPage = () => {
                     <Tooltip title="Task Analytics">
                         <IconButton
                             size="small"
-                            href="/personal/analytics"
-                            component="a"
+                            onClick={() => setShowAnalytics(true)}
                             sx={{
                                 borderRadius: 4,
-                                color: 'primary.main',
-                                bgcolor: 'rgba(37, 99, 235, 0.08)',
+                                color: '#9C27B0',
+                                bgcolor: 'rgba(156, 39, 176, 0.08)',
                                 mx: 0.5
                             }}
                         >
@@ -688,7 +1169,7 @@ const PersonalCalendarPage = () => {
                             ml: 1,
                             backgroundColor: 'background.paper',
                             '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
-                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#9C27B0' },
                             boxShadow: '0 2px 4px rgba(0,0,0,0.08)'
                         }}
                     >
@@ -723,13 +1204,13 @@ const PersonalCalendarPage = () => {
                             mb: 3,
                             textTransform: 'none',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                            bgcolor: 'primary.main',
+                            bgcolor: '#9C27B0',
                             color: 'white',
                             fontSize: '0.95rem',
                             fontWeight: 700,
                             width: '100%',
                             '&:hover': {
-                                bgcolor: 'primary.dark',
+                                bgcolor: '#7B1FA2',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                             }
                         }}
@@ -747,9 +1228,33 @@ const PersonalCalendarPage = () => {
                             </Box>
                         </Box>
                         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 1, textAlign: 'center' }}>
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
-                                <Typography key={`mini-day-${i}`} variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>{d}</Typography>
-                            ))}
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
+                                const pastelColors = [
+                                    '#FFE4E1', // Sunday - Misty Rose
+                                    '#E6F3FF', // Monday - Light Blue
+                                    '#F0FFF0', // Tuesday - Honeydew
+                                    '#FFF8DC', // Wednesday - Cornsilk
+                                    '#FFE4F3', // Thursday - Pink
+                                    '#E6E6FA', // Friday - Lavender
+                                    '#F5F5DC'  // Saturday - Beige
+                                ];
+                                return (
+                                    <Box key={`mini-day-${i}`} sx={{ 
+                                        bgcolor: pastelColors[i], 
+                                        borderRadius: 1,
+                                        py: 0.5
+                                    }}>
+                                        <Typography variant="caption" sx={{ 
+                                            fontSize: '0.7rem', 
+                                            color: 'text.secondary', 
+                                            fontWeight: 700, 
+                                            textTransform: 'uppercase' 
+                                        }}>
+                                            {d}
+                                        </Typography>
+                                    </Box>
+                                );
+                            })}
                             {miniDays.map((day, i) => (
                                 <Box
                                     key={i}
@@ -762,11 +1267,11 @@ const PersonalCalendarPage = () => {
                                         borderRadius: '50%',
                                         cursor: 'pointer',
                                         position: 'relative',
-                                        color: isSameDay(day, new Date()) ? 'primary.main' : (isSameMonth(day, currentDate) ? 'text.primary' : 'text.disabled'),
-                                        bgcolor: isSameDay(day, new Date()) ? 'primary.light' : 'transparent',
+                                        color: isSameDay(day, new Date()) ? '#9C27B0' : (isSameMonth(day, currentDate) ? 'text.primary' : 'text.disabled'),
+                                        bgcolor: isSameDay(day, new Date()) ? 'rgba(156, 39, 176, 0.15)' : 'transparent',
                                         fontWeight: isSameDay(day, new Date()) ? 800 : 500,
                                         '&:hover': { bgcolor: 'action.hover' },
-                                        ...(isSameDay(day, selectedDate) && view === 'day' && { border: '1px solid', borderColor: 'primary.main' })
+                                        ...(isSameDay(day, selectedDate) && view === 'day' && { border: '1px solid', borderColor: '#9C27B0' })
                                     }}
                                     onClick={() => {
                                         setSelectedDate(day);
@@ -783,8 +1288,7 @@ const PersonalCalendarPage = () => {
                     {/* Analytics Button */}
                     <Button
                         variant="outlined"
-                        href="/personal/analytics"
-                        component="a"
+                        onClick={() => setShowAnalytics(true)}
                         sx={{
                             mt: 0,
                             mb: 2,
@@ -799,12 +1303,12 @@ const PersonalCalendarPage = () => {
                             justifyContent: 'flex-start',
                             '&:hover': {
                                 bgcolor: 'action.hover',
-                                borderColor: 'primary.main'
+                                borderColor: '#9C27B0'
                             }
                         }}
                     >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <AnalyticsIcon sx={{ color: 'primary.main' }} />
+                            <AnalyticsIcon sx={{ color: '#9C27B0' }} />
                             <span>Analytics</span>
                         </Box>
                     </Button>
@@ -935,7 +1439,7 @@ const PersonalCalendarPage = () => {
                                     justifyContent: 'flex-start',
                                     '&:hover': {
                                         bgcolor: 'action.hover',
-                                        borderColor: 'primary.main'
+                                        borderColor: '#9C27B0'
                                     }
                                 }}
                             >
@@ -972,13 +1476,36 @@ const PersonalCalendarPage = () => {
                                 p: 1,
                                 gap: 1
                             }}>
-                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-                                    <Box key={`header-${index}`} sx={{ py: 1, textAlign: 'center' }}>
-                                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            {day}
-                                        </Typography>
-                                    </Box>
-                                ))}
+                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
+                                    const pastelColors = [
+                                        '#FFE4E1', // Sunday - Misty Rose
+                                        '#E6F3FF', // Monday - Light Blue
+                                        '#F0FFF0', // Tuesday - Honeydew
+                                        '#FFF8DC', // Wednesday - Cornsilk
+                                        '#FFE4F3', // Thursday - Pink
+                                        '#E6E6FA', // Friday - Lavender
+                                        '#F5F5DC'  // Saturday - Beige
+                                    ];
+                                    return (
+                                        <Box key={`header-${index}`} sx={{ 
+                                            py: 1, 
+                                            textAlign: 'center',
+                                            bgcolor: pastelColors[index],
+                                            borderRadius: 2,
+                                            mx: 0.5
+                                        }}>
+                                            <Typography variant="body2" sx={{ 
+                                                fontWeight: 700, 
+                                                color: 'text.secondary', 
+                                                fontSize: '0.8rem', 
+                                                textTransform: 'uppercase', 
+                                                letterSpacing: '0.05em' 
+                                            }}>
+                                                {day}
+                                            </Typography>
+                                        </Box>
+                                    );
+                                })}
                             </Box>
                             <Box sx={{
                                 display: 'grid',
@@ -1011,7 +1538,7 @@ const PersonalCalendarPage = () => {
                                                 position: 'relative',
                                                 boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
                                                 backdropFilter: 'blur(4px)',
-                                                ...(isSelected && { bgcolor: 'rgba(37, 99, 235, 0.12)', border: '2px solid', borderColor: 'primary.main' }),
+                                                ...(isSelected && { bgcolor: 'rgba(156, 39, 176, 0.12)', border: '2px solid', borderColor: '#9C27B0' }),
                                                 '&:hover': { bgcolor: isCurrentMonth ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.15)', transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }
                                             }}
                                             onClick={() => {
@@ -1031,9 +1558,9 @@ const PersonalCalendarPage = () => {
                                                         borderRadius: '50%',
                                                         fontSize: '0.9rem',
                                                         fontWeight: isToday ? 800 : 500,
-                                                        bgcolor: isToday ? 'primary.main' : 'transparent',
+                                                        bgcolor: isToday ? '#9C27B0' : 'transparent',
                                                         color: isToday ? 'white' : (isCurrentMonth ? 'text.primary' : 'text.disabled'),
-                                                        '&:hover': { bgcolor: isToday ? 'primary.dark' : 'action.hover' },
+                                                        '&:hover': { bgcolor: isToday ? '#7B1FA2' : 'action.hover' },
                                                     }}
                                                 >
                                                     {format(day, 'd')}
@@ -1046,7 +1573,7 @@ const PersonalCalendarPage = () => {
                                                         <Box
                                                             key={entry.id}
                                                             sx={{
-                                                                bgcolor: entry.status === 'completed' ? 'rgba(0, 0, 0, 0.1)' : (cat?.color || 'primary.main'),
+                                                                bgcolor: entry.status === 'completed' ? 'rgba(0, 0, 0, 0.1)' : (cat?.color || '#9C27B0'),
                                                                 color: entry.status === 'completed' ? 'text.secondary' : '#FFFFFF',
                                                                 px: 1,
                                                                 py: 0.5,
@@ -1148,13 +1675,36 @@ const PersonalCalendarPage = () => {
                                 p: 1,
                                 gap: 1
                             }}>
-                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-                                    <Box key={`week-header-${index}`} sx={{ py: 1, textAlign: 'center' }}>
-                                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            {day}
-                                        </Typography>
-                                    </Box>
-                                ))}
+                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
+                                    const pastelColors = [
+                                        '#FFE4E1', // Sunday - Misty Rose
+                                        '#E6F3FF', // Monday - Light Blue
+                                        '#F0FFF0', // Tuesday - Honeydew
+                                        '#FFF8DC', // Wednesday - Cornsilk
+                                        '#FFE4F3', // Thursday - Pink
+                                        '#E6E6FA', // Friday - Lavender
+                                        '#F5F5DC'  // Saturday - Beige
+                                    ];
+                                    return (
+                                        <Box key={`week-header-${index}`} sx={{ 
+                                            py: 1, 
+                                            textAlign: 'center',
+                                            bgcolor: pastelColors[index],
+                                            borderRadius: 2,
+                                            mx: 0.5
+                                        }}>
+                                            <Typography variant="body2" sx={{ 
+                                                fontWeight: 700, 
+                                                color: 'text.secondary', 
+                                                fontSize: '0.8rem', 
+                                                textTransform: 'uppercase', 
+                                                letterSpacing: '0.05em' 
+                                            }}>
+                                                {day}
+                                            </Typography>
+                                        </Box>
+                                    );
+                                })}
                             </Box>
                             <Box sx={{
                                 display: 'grid',
@@ -1221,7 +1771,7 @@ const PersonalCalendarPage = () => {
                                                         <Box
                                                             key={entry.id}
                                                             sx={{
-                                                                bgcolor: entry.status === 'completed' ? 'rgba(0, 0, 0, 0.1)' : (cat?.color || 'primary.main'),
+                                                                bgcolor: entry.status === 'completed' ? 'rgba(0, 0, 0, 0.1)' : (cat?.color || '#9C27B0'),
                                                                 color: entry.status === 'completed' ? 'text.secondary' : '#FFFFFF',
                                                                 px: 1,
                                                                 py: 0.5,
@@ -1819,163 +2369,722 @@ const PersonalCalendarPage = () => {
             </Dialog>
 
 
-            {/* Add Calendar Dialog */}
-            <Dialog open={showAddCalendarDialog} onClose={() => setShowAddCalendarDialog(false)} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ pb: 2, fontWeight: 700, fontSize: '1.25rem' }}>
-                    Add New Calendar
+            {/* Add Calendar Integration Dialog */}
+            <Dialog open={showAddCalendarIntegration} onClose={() => setShowAddCalendarIntegration(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ pb: 2, fontWeight: 700 }}>
+                    Connect Calendar
                 </DialogTitle>
                 <DialogContent>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+                        <FormControl fullWidth>
+                            <InputLabel>Calendar Provider</InputLabel>
+                            <Select
+                                value={selectedProvider}
+                                onChange={(e) => setSelectedProvider(e.target.value as CalendarProvider)}
+                                label="Calendar Provider"
+                                disabled={settingsLoading}
+                            >
+                                {CALENDAR_PROVIDERS.map(provider => (
+                                    <MenuItem key={provider.id} value={provider.id}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Box sx={{ 
+                                                width: 24, 
+                                                height: 24, 
+                                                borderRadius: '50%', 
+                                                bgcolor: provider.color,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: 'white',
+                                                fontWeight: 'bold',
+                                                fontSize: '0.75rem'
+                                            }}>
+                                                {provider.icon}
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="body1">{provider.name}</Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {provider.description}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        
                         <TextField
-                            label="Calendar Name"
+                            label="Display Name"
                             fullWidth
                             variant="outlined"
-                            value={newCalendarName}
-                            onChange={(e) => setNewCalendarName(e.target.value)}
-                            autoFocus
+                            value={integrationDisplayName}
+                            onChange={(e) => setIntegrationDisplayName(e.target.value)}
+                            disabled={settingsLoading}
+                            helperText="Give this calendar connection a name"
                         />
-                        <Box>
-                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'text.primary' }}>
-                                Color
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'].map(color => (
-                                    <Box
-                                        key={color}
-                                        onClick={() => setNewCalendarColor(color)}
-                                        sx={{
-                                            width: 32,
-                                            height: 32,
-                                            borderRadius: '50%',
-                                            bgcolor: color,
-                                            cursor: 'pointer',
-                                            border: newCalendarColor === color ? '3px solid' : '2px solid',
-                                            borderColor: newCalendarColor === color ? 'primary.main' : 'divider',
-                                            transition: 'all 0.2s',
-                                            '&:hover': { transform: 'scale(1.1)' }
-                                        }}
-                                    />
-                                ))}
-                            </Box>
-                        </Box>
+                        
+                        <TextField
+                            label="Email Address (Optional)"
+                            fullWidth
+                            variant="outlined"
+                            type="email"
+                            value={integrationEmail}
+                            onChange={(e) => setIntegrationEmail(e.target.value)}
+                            disabled={settingsLoading}
+                            helperText="Your calendar email address"
+                        />
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ px: 3, py: 2 }}>
-                    <Button
-                        onClick={() => setShowAddCalendarDialog(false)}
-                        sx={{ textTransform: 'none', fontWeight: 600, px: 3, py: 1 }}
+                    <Button 
+                        onClick={() => setShowAddCalendarIntegration(false)}
+                        disabled={settingsLoading}
                     >
                         Cancel
                     </Button>
                     <Button
-                        onClick={addNewCalendar}
+                        onClick={handleAddCalendarIntegration}
                         variant="contained"
-                        disabled={!newCalendarName.trim()}
-                        sx={{ textTransform: 'none', borderRadius: 4, fontWeight: 600, px: 3, py: 1 }}
+                        disabled={settingsLoading || !integrationDisplayName.trim()}
+                        startIcon={settingsLoading ? <CircularProgress size={20} /> : <AddIcon />}
                     >
-                        Add Calendar
+                        {settingsLoading ? 'Connecting...' : 'Connect Calendar'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
+            {/* Snackbar for notifications */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={closeSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert 
+                    onClose={closeSnackbar} 
+                    severity={snackbar.severity} 
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
+
             {/* Settings Dialog */}
             <Dialog open={openSettings} onClose={() => setOpenSettings(false)} maxWidth="md" fullWidth>
-                <DialogTitle sx={{ pb: 2, fontWeight: 700, fontSize: '1.25rem' }}>Settings</DialogTitle>
-                <DialogContent dividers>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, pt: 1 }}>
-                        {/* Time Zone Setting */}
-                        <Box>
-                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>Time Zone</Typography>
-                            <FormControl fullWidth variant="outlined" size="small">
-                                <InputLabel>Choose Time Zone</InputLabel>
-                                <Select
-                                    label="Choose Time Zone"
-                                    defaultValue="America/New_York"
-                                >
-                                    <MenuItem value="America/New_York">(GMT-05:00) Eastern Time</MenuItem>
-                                    <MenuItem value="America/Chicago">(GMT-06:00) Central Time</MenuItem>
-                                    <MenuItem value="America/Denver">(GMT-07:00) Mountain Time</MenuItem>
-                                    <MenuItem value="America/Los_Angeles">(GMT-08:00) Pacific Time</MenuItem>
-                                    <MenuItem value="UTC">(GMT+00:00) Coordinated Universal Time</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Box>
-
-                        {/* Notification Settings */}
-                        <Box>
-                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>Notification Settings</Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, px: 2, borderRadius: 4, '&:hover': { bgcolor: 'action.hover' } }}>
-                                    <Box>
-                                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Email Notifications</Typography>
-                                        <Typography variant="caption" color="text.secondary">Receive email notifications for events</Typography>
-                                    </Box>
-                                    <Checkbox defaultChecked />
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, px: 2, borderRadius: 4, '&:hover': { bgcolor: 'action.hover' } }}>
-                                    <Box>
-                                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Push Notifications</Typography>
-                                        <Typography variant="caption" color="text.secondary">Receive push notifications on your device</Typography>
-                                    </Box>
-                                    <Checkbox defaultChecked />
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, px: 2, borderRadius: 4, '&:hover': { bgcolor: 'action.hover' } }}>
-                                    <Box>
-                                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Daily Reminders</Typography>
-                                        <Typography variant="caption" color="text.secondary">Get daily reminders for upcoming events</Typography>
-                                    </Box>
-                                    <Checkbox />
+                <DialogTitle sx={{ pb: 2, fontWeight: 700, fontSize: '1.25rem' }}>
+                    Settings
+                </DialogTitle>
+                <DialogContent dividers sx={{ p: 0 }}>
+                    <Tabs
+                        value={settingsTab}
+                        onChange={(e, newValue) => setSettingsTab(newValue)}
+                        variant="fullWidth"
+                        sx={{ borderBottom: '1px solid', borderColor: 'divider' }}
+                    >
+                        <Tab icon={<TimeIcon />} label="Time Zone" />
+                        <Tab icon={<NotificationIcon />} label="Notifications" />
+                        <Tab icon={<CloudSyncIcon />} label="Calendar Sync" />
+                        <Tab icon={<FeedbackIcon />} label="Feedback" />
+                    </Tabs>
+                    
+                    <Box sx={{ p: 3 }}>
+                        {/* Time Zone Tab */}
+                        {settingsTab === 0 && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                                    Time Zone Settings
+                                </Typography>
+                                
+                                <Box>
+                                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                                        Current Time Zone: <strong>{timezone}</strong>
+                                    </Typography>
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        onClick={() => {
+                                            const detected = detectUserTimezone();
+                                            handleTimezoneChange(detected);
+                                        }}
+                                        sx={{ mb: 2 }}
+                                    >
+                                        Detect My Time Zone
+                                    </Button>
+                                    
+                                    <FormControl fullWidth variant="outlined" size="small">
+                                        <InputLabel>Choose Time Zone</InputLabel>
+                                        <Select
+                                            label="Choose Time Zone"
+                                            value={timezone}
+                                            onChange={(e) => handleTimezoneChange(e.target.value)}
+                                            disabled={settingsLoading}
+                                        >
+                                            {getTimezoneOptions().map((tz) => (
+                                                <MenuItem key={tz.value} value={tz.value}>
+                                                    {tz.label}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </Box>
                             </Box>
-                        </Box>
+                        )}
 
-                        {/* Add-ons */}
-                        <Box>
-                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>Get Add-ons</Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                <Button variant="outlined" startIcon={<AddIcon />} sx={{ justifyContent: 'space-between', px: 3, py: 2, borderRadius: 4, '&:hover': { bgcolor: 'action.hover' } }}>
-                                    <Box textAlign="left">
-                                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Google Calendar Sync</Typography>
-                                        <Typography variant="caption" color="text.secondary">Sync with your Google Calendar</Typography>
+                        {/* Notification Settings Tab */}
+                        {settingsTab === 1 && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                                    Notification Preferences
+                                </Typography>
+                                
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                                        <Box>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <EmailIcon color="primary" />
+                                                <Typography variant="body1" sx={{ fontWeight: 600 }}>Email Notifications</Typography>
+                                            </Box>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Receive email notifications for events and reminders
+                                            </Typography>
+                                        </Box>
+                                        <Switch
+                                            checked={notificationSettings.email}
+                                            onChange={(e) => handleNotificationSettingChange('email', e.target.checked)}
+                                            disabled={settingsLoading}
+                                        />
                                     </Box>
-                                </Button>
-                                <Button variant="outlined" startIcon={<AddIcon />} sx={{ justifyContent: 'space-between', px: 3, py: 2, borderRadius: 4, '&:hover': { bgcolor: 'action.hover' } }}>
-                                    <Box textAlign="left">
-                                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Apple Calendar Integration</Typography>
-                                        <Typography variant="caption" color="text.secondary">Connect with Apple Calendar</Typography>
+                                    
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                                        <Box>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <NotificationIcon color="primary" />
+                                                <Typography variant="body1" sx={{ fontWeight: 600 }}>Push Notifications</Typography>
+                                            </Box>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Receive push notifications on your device
+                                            </Typography>
+                                        </Box>
+                                        <Switch
+                                            checked={notificationSettings.push}
+                                            onChange={(e) => handleNotificationSettingChange('push', e.target.checked)}
+                                            disabled={settingsLoading}
+                                        />
                                     </Box>
-                                </Button>
-                                <Button variant="outlined" startIcon={<AddIcon />} sx={{ justifyContent: 'space-between', px: 3, py: 2, borderRadius: 4, '&:hover': { bgcolor: 'action.hover' } }}>
-                                    <Box textAlign="left">
-                                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Microsoft Outlook Sync</Typography>
-                                        <Typography variant="caption" color="text.secondary">Sync with Microsoft Outlook</Typography>
+                                    
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                                        <Box>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <TimeIcon color="primary" />
+                                                <Typography variant="body1" sx={{ fontWeight: 600 }}>Daily Reminders</Typography>
+                                            </Box>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Get daily summaries and reminders
+                                            </Typography>
+                                        </Box>
+                                        <Switch
+                                            checked={notificationSettings.daily_reminders}
+                                            onChange={(e) => handleNotificationSettingChange('daily_reminders', e.target.checked)}
+                                            disabled={settingsLoading}
+                                        />
                                     </Box>
-                                </Button>
+                                </Box>
+                                
+                                {notificationSettings.daily_reminders && (
+                                    <Box sx={{ mt: 2 }}>
+                                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                            Reminder Frequency
+                                        </Typography>
+                                        <FormControl fullWidth size="small">
+                                            <Select
+                                                value={notificationSettings.frequency}
+                                                onChange={(e) => handleNotificationSettingChange('frequency', e.target.value)}
+                                                disabled={settingsLoading}
+                                            >
+                                                <MenuItem value="daily">Daily</MenuItem>
+                                                <MenuItem value="weekly">Weekly</MenuItem>
+                                                <MenuItem value="monthly">Monthly</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    </Box>
+                                )}
                             </Box>
-                        </Box>
+                        )}
 
-                        {/* Feedback */}
-                        <Box>
-                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>Feedback</Typography>
-                            <TextField
-                                multiline
-                                rows={4}
-                                placeholder="Tell us how we can improve your experience..."
-                                variant="outlined"
-                                fullWidth
-                                sx={{ mt: 1, borderRadius: 2 }}
-                            />
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                                <Button variant="contained" sx={{ mt: 2, px: 4, py: 1.5, borderRadius: 4, fontWeight: 600 }}>Send Feedback</Button>
+                        {/* Calendar Sync Tab */}
+                        {settingsTab === 2 && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                                        Calendar Integrations
+                                    </Typography>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<AddIcon />}
+                                        onClick={() => setShowAddCalendarIntegration(true)}
+                                        size="small"
+                                    >
+                                        Add Calendar
+                                    </Button>
+                                </Box>
+                                
+                                {calendarIntegrations.length === 0 ? (
+                                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                                        <CloudSyncIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                                        <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                                            No Calendar Connections
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                            Connect your external calendars to sync events automatically
+                                        </Typography>
+                                        <Button
+                                            variant="outlined"
+                                            onClick={() => setShowAddCalendarIntegration(true)}
+                                        >
+                                            Connect Calendar
+                                        </Button>
+                                    </Box>
+                                ) : (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        {calendarIntegrations.map((integration) => {
+                                            const providerInfo = CALENDAR_PROVIDERS.find(p => p.id === integration.provider);
+                                            return (
+                                                <Card key={integration.id} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                                                    <CardContent>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                                <Box sx={{ 
+                                                                    width: 40, 
+                                                                    height: 40, 
+                                                                    borderRadius: '50%', 
+                                                                    bgcolor: providerInfo?.color || '#3b82f6',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    color: 'white',
+                                                                    fontWeight: 'bold'
+                                                                }}>
+                                                                    {providerInfo?.icon || integration.provider.charAt(0).toUpperCase()}
+                                                                </Box>
+                                                                <Box>
+                                                                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                                                        {integration.display_name}
+                                                                    </Typography>
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        {integration.email || 'No email provided'}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </Box>
+                                                            
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Chip
+                                                                    label={integration.sync_status}
+                                                                    size="small"
+                                                                    color={
+                                                                        integration.sync_status === 'connected' ? 'success' :
+                                                                        integration.sync_status === 'error' ? 'error' : 'default'
+                                                                    }
+                                                                    sx={{ textTransform: 'capitalize' }}
+                                                                />
+                                                                {syncingIntegrationId === integration.id ? (
+                                                                    <CircularProgress size={20} />
+                                                                ) : (
+                                                                    <IconButton
+                                                                        onClick={() => handleSyncCalendar(integration.id)}
+                                                                        size="small"
+                                                                        disabled={!integration.sync_enabled}
+                                                                    >
+                                                                        <SyncIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                )}
+                                                                <IconButton
+                                                                    onClick={() => handleDeleteCalendarIntegration(integration.id)}
+                                                                    size="small"
+                                                                    color="error"
+                                                                >
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Box>
+                                                        </Box>
+                                                        
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <FormControlLabel
+                                                                control={
+                                                                    <Switch
+                                                                        checked={integration.sync_enabled}
+                                                                        onChange={() => handleToggleCalendarSync(integration.id)}
+                                                                        disabled={settingsLoading}
+                                                                    />
+                                                                }
+                                                                label="Enable Sync"
+                                                            />
+                                                            
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    Sync Frequency:
+                                                                </Typography>
+                                                                <Select
+                                                                    size="small"
+                                                                    value={integration.sync_frequency}
+                                                                    onChange={(e) => handleUpdateSyncFrequency(integration.id, e.target.value as SyncFrequency)}
+                                                                    disabled={settingsLoading || !integration.sync_enabled}
+                                                                    sx={{ minWidth: 120 }}
+                                                                >
+                                                                    {SYNC_FREQUENCIES.map(freq => (
+                                                                        <MenuItem key={freq.value} value={freq.value}>
+                                                                            {freq.label}
+                                                                        </MenuItem>
+                                                                    ))}
+                                                                </Select>
+                                                            </Box>
+                                                        </Box>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                    </Box>
+                                )}
                             </Box>
-                        </Box>
+                        )}
+
+                        {/* Feedback Tab */}
+                        {settingsTab === 3 && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                                    Send Feedback
+                                </Typography>
+                                
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Feedback Category</InputLabel>
+                                        <Select
+                                            value={feedbackForm.category}
+                                            onChange={(e) => setFeedbackForm(prev => ({ ...prev, category: e.target.value }))}
+                                            disabled={settingsLoading}
+                                        >
+                                            {FEEDBACK_CATEGORIES.map(category => (
+                                                <MenuItem key={category.value} value={category.value}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <span>{category.icon}</span>
+                                                        <span>{category.label}</span>
+                                                    </Box>
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                    
+                                    <TextField
+                                        label="Subject"
+                                        fullWidth
+                                        variant="outlined"
+                                        value={feedbackForm.subject}
+                                        onChange={(e) => setFeedbackForm(prev => ({ ...prev, subject: e.target.value }))}
+                                        disabled={settingsLoading}
+                                        helperText="Brief description of your feedback"
+                                    />
+                                    
+                                    <TextField
+                                        label="Detailed Message"
+                                        multiline
+                                        rows={4}
+                                        fullWidth
+                                        variant="outlined"
+                                        value={feedbackForm.message}
+                                        onChange={(e) => setFeedbackForm(prev => ({ ...prev, message: e.target.value }))}
+                                        disabled={settingsLoading}
+                                        helperText="Please provide detailed information about your feedback"
+                                    />
+                                    
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Priority</InputLabel>
+                                        <Select
+                                            value={feedbackForm.priority}
+                                            onChange={(e) => setFeedbackForm(prev => ({ ...prev, priority: e.target.value }))}
+                                            disabled={settingsLoading}
+                                        >
+                                            {PRIORITY_LEVELS.map(level => (
+                                                <MenuItem key={level.value} value={level.value}>
+                                                    <Chip
+                                                        label={level.label}
+                                                        size="small"
+                                                        color={level.color as any}
+                                                        variant="outlined"
+                                                    />
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                    
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                                        <Button
+                                            variant="contained"
+                                            onClick={handleFeedbackSubmit}
+                                            disabled={settingsLoading || !feedbackForm.subject.trim() || !feedbackForm.message.trim()}
+                                            startIcon={settingsLoading ? <CircularProgress size={20} /> : null}
+                                        >
+                                            {settingsLoading ? 'Submitting...' : 'Send Feedback'}
+                                        </Button>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        )}
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ px: 3, py: 2 }}>
-                    <Button onClick={() => setOpenSettings(false)} sx={{ textTransform: 'none', fontWeight: 600, px: 3, py: 1 }}>Close</Button>
+                    <Button onClick={() => setOpenSettings(false)} sx={{ textTransform: 'none', fontWeight: 600 }}>
+                        Close
+                    </Button>
                 </DialogActions>
             </Dialog>
-        </Box >
+
+            {/* Analytics Dialog */}
+            <Dialog 
+                open={showAnalytics} 
+                onClose={() => setShowAnalytics(false)} 
+                fullWidth 
+                maxWidth="lg"
+                sx={{ '& .MuiDialog-paper': { borderRadius: 3, maxHeight: '90vh' } }}
+            >
+                <DialogTitle 
+                    sx={{ 
+                        fontWeight: 800, 
+                        px: 4, 
+                        pt: 4, 
+                        pb: 2,
+                        background: 'linear-gradient(135deg, rgba(156, 39, 176, 0.05) 0%, rgba(156, 39, 176, 0.02) 100%)',
+                        borderBottom: '1px solid rgba(156, 39, 176, 0.1)'
+                    }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <Box 
+                                sx={{ 
+                                    width: 48, 
+                                    height: 48, 
+                                    borderRadius: 3, 
+                                    bgcolor: '#9C27B0', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    boxShadow: '0 4px 12px rgba(156, 39, 176, 0.3)'
+                                }}
+                            >
+                                <AnalyticsIcon sx={{ fontSize: 24, color: 'white' }} />
+                            </Box>
+                            <Box>
+                                <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                                    Personal Task Analytics
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    Comprehensive insights into your personal tasks and activities
+                                </Typography>
+                            </Box>
+                        </Box>
+                        <IconButton onClick={() => setShowAnalytics(false)} sx={{ color: 'text.secondary' }}>
+                            ×
+                        </IconButton>
+                    </Box>
+                </DialogTitle>
+                <DialogContent sx={{ px: 4, py: 3 }}>
+                    {(() => {
+                        const analytics = getAnalyticsData();
+                        return (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                {/* Filters */}
+                                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                                        <InputLabel>Time Period</InputLabel>
+                                        <Select
+                                            value={analyticsFilter}
+                                            onChange={(e) => setAnalyticsFilter(e.target.value)}
+                                            label="Time Period"
+                                        >
+                                            <MenuItem value="all">All Time</MenuItem>
+                                            <MenuItem value="today">Today</MenuItem>
+                                            <MenuItem value="week">This Week</MenuItem>
+                                            <MenuItem value="month">This Month</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                                        <InputLabel>Category</InputLabel>
+                                        <Select
+                                            value={analyticsCategory}
+                                            onChange={(e) => setAnalyticsCategory(e.target.value)}
+                                            label="Category"
+                                        >
+                                            <MenuItem value="all">All Categories</MenuItem>
+                                            {CATEGORIES.map(cat => (
+                                                <MenuItem key={cat.id} value={cat.id}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <span>{cat.icon}</span>
+                                                        <span>{cat.label}</span>
+                                                    </Box>
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Box>
+
+                                {/* Overview Cards */}
+                                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 3 }}>
+                                    <Box>
+                                        <Card sx={{ 
+                                            p: 3, 
+                                            textAlign: 'center',
+                                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                            color: 'white',
+                                            boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
+                                        }}>
+                                            <Box sx={{ mb: 2 }}>
+                                                <AssignmentIcon sx={{ fontSize: 24, color: 'white' }} />
+                                            </Box>
+                                            <Typography variant="h3" sx={{ fontWeight: 800, color: 'white', mb: 1 }}>
+                                                {analytics.totalTasks}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, opacity: 0.9 }}>
+                                                Total Tasks
+                                            </Typography>
+                                        </Card>
+                                    </Box>
+                                    <Box>
+                                        <Card sx={{ 
+                                            p: 3, 
+                                            textAlign: 'center',
+                                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                            color: 'white',
+                                            boxShadow: '0 8px 32px rgba(16, 185, 129, 0.3)'
+                                        }}>
+                                            <Box sx={{ mb: 2 }}>
+                                                <CheckCircleIcon sx={{ fontSize: 24, color: 'white' }} />
+                                            </Box>
+                                            <Typography variant="h3" sx={{ fontWeight: 800, color: 'white', mb: 1 }}>
+                                                {analytics.completedTasks}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, opacity: 0.9 }}>
+                                                Completed
+                                            </Typography>
+                                        </Card>
+                                    </Box>
+                                    <Box>
+                                        <Card sx={{ 
+                                            p: 3, 
+                                            textAlign: 'center',
+                                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                            color: 'white',
+                                            boxShadow: '0 8px 32px rgba(245, 158, 11, 0.3)'
+                                        }}>
+                                            <Box sx={{ mb: 2 }}>
+                                                <RadioButtonUncheckedIcon sx={{ fontSize: 24, color: 'white' }} />
+                                            </Box>
+                                            <Typography variant="h3" sx={{ fontWeight: 800, color: 'white', mb: 1 }}>
+                                                {analytics.pendingTasks}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, opacity: 0.9 }}>
+                                                Pending
+                                            </Typography>
+                                        </Card>
+                                    </Box>
+                                    <Box>
+                                        <Card sx={{ 
+                                            p: 3, 
+                                            textAlign: 'center',
+                                            background: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)',
+                                            color: 'white',
+                                            boxShadow: '0 8px 32px rgba(156, 39, 176, 0.3)'
+                                        }}>
+                                            <Box sx={{ mb: 2 }}>
+                                                <TrendingUpIcon sx={{ fontSize: 24, color: 'white' }} />
+                                            </Box>
+                                            <Typography variant="h3" sx={{ fontWeight: 800, color: 'white', mb: 1 }}>
+                                                {analytics.completionRate}%
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, opacity: 0.9 }}>
+                                                Completion Rate
+                                            </Typography>
+                                        </Card>
+                                    </Box>
+                                </Box>
+
+                                {/* Category Breakdown */}
+                                <Card sx={{ p: 3 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
+                                        Category Breakdown
+                                    </Typography>
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+                                        {Object.entries(analytics.categoryBreakdown).map(([category, count]) => {
+                                            const cat = CATEGORIES.find(c => c.id === category);
+                                            return (
+                                                <Box key={category} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                                                    <Box sx={{ 
+                                                        width: 40, 
+                                                        height: 40, 
+                                                        borderRadius: 2, 
+                                                        bgcolor: cat?.color || '#9C27B0',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: 'white'
+                                                    }}>
+                                                        {cat?.icon || '📋'}
+                                                    </Box>
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                            {cat?.label || category}
+                                                        </Typography>
+                                                        <Typography variant="h6" sx={{ fontWeight: 700, color: cat?.color || '#9C27B0' }}>
+                                                            {count}
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+                                            );
+                                        })}
+                                    </Box>
+                                </Card>
+
+                                {/* Priority Breakdown */}
+                                {Object.keys(analytics.priorityBreakdown).length > 0 && (
+                                    <Card sx={{ p: 3 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
+                                            Priority Breakdown
+                                        </Typography>
+                                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+                                            {Object.entries(analytics.priorityBreakdown).map(([priority, count]) => (
+                                                <Box key={priority} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                                                    <Chip 
+                                                        label={priority} 
+                                                        size="small"
+                                                        sx={{ 
+                                                            bgcolor: priority === 'High' ? '#ef4444' : priority === 'Medium' ? '#f59e0b' : '#10b981',
+                                                            color: 'white',
+                                                            fontWeight: 600
+                                                        }}
+                                                    />
+                                                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                                        {count}
+                                                    </Typography>
+                                                </Box>
+                                            ))}
+                                        </Box>
+                                    </Card>
+                                )}
+                            </Box>
+                        );
+                    })()}
+                </DialogContent>
+                <DialogActions sx={{ px: 4, py: 3, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+                    <Button 
+                        onClick={() => setShowAnalytics(false)} 
+                        sx={{ 
+                            fontWeight: 600, 
+                            borderRadius: 3,
+                            textTransform: 'none'
+                        }}
+                    >
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
     );
 };
 

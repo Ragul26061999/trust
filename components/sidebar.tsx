@@ -70,7 +70,7 @@ const Sidebar = () => {
     { text: 'Analytical', icon: <AnalyticsIcon />, path: '/analytical', color: '#2196F3', locked: false },
     { text: 'Professional', icon: <ProfessionalIcon />, path: '/professional', color: '#FF9800', locked: false },
     { text: 'Personal', icon: <PersonalIcon />, path: '/personal', color: '#9C27B0', locked: false },
-    { text: 'Note Taking', icon: <NoteIcon />, path: '/note-taking', color: '#6750A4', locked: true },
+    { text: 'Note Taking', icon: <NoteIcon />, path: '/note-taking', color: '#6750A4', locked: false },
     { text: 'Calendar', icon: <CalendarIcon />, path: '/calendar', color: '#4CAF50', locked: true },
     { text: 'User Clock', icon: <ClockIcon />, path: '/user-clock', color: '#E91E63', locked: true },
   ];
@@ -94,7 +94,8 @@ const Sidebar = () => {
         alignItems: 'center',
         justifyContent: isCollapsed ? 'center' : 'space-between',
         mb: 3,
-        borderBottom: '1px solid rgba(0,0,0,0.08)'
+        borderBottom: '1px solid',
+        borderColor: 'divider'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
           <Box sx={{
@@ -137,9 +138,9 @@ const Sidebar = () => {
             size="small" 
             sx={{ 
               color: 'text.secondary',
-              bgcolor: 'rgba(0,0,0,0.05)',
+              bgcolor: 'action.hover',
               '&:hover': {
-                bgcolor: 'rgba(0,0,0,0.1)',
+                bgcolor: 'action.selected',
                 color: 'text.primary'
               }
             }}
@@ -155,10 +156,10 @@ const Sidebar = () => {
             onClick={handleCollapseToggle} 
             size="small" 
             sx={{ 
-              color: '#667eea', 
-              bgcolor: 'rgba(102, 126, 234, 0.1)',
+              color: 'primary.main', 
+              bgcolor: 'primary.light',
               '&:hover': {
-                bgcolor: 'rgba(102, 126, 234, 0.2)',
+                bgcolor: 'primary.dark',
               }
             }}
           >
@@ -185,7 +186,7 @@ const Sidebar = () => {
                 opacity: item.locked ? 0.6 : 1,
                 cursor: item.locked ? 'not-allowed' : 'pointer',
                 '&:hover': !item.locked ? {
-                  bgcolor: isActive ? `${item.color}25` : 'rgba(0,0,0,0.04)',
+                  bgcolor: isActive ? `${item.color}25` : 'action.hover',
                   transform: 'translateX(4px)'
                 } : {
                   bgcolor: 'transparent',
@@ -202,7 +203,7 @@ const Sidebar = () => {
                   width: 40,
                   height: 40,
                   borderRadius: 3,
-                  bgcolor: isActive ? `${item.color}20` : item.locked ? 'rgba(0,0,0,0.05)' : `${item.color}10`,
+                  bgcolor: isActive ? `${item.color}20` : item.locked ? 'action.disabled' : `${item.color}10`,
                   color: isActive ? item.color : item.locked ? 'text.disabled' : item.color,
                   display: 'flex',
                   alignItems: 'center',
@@ -219,7 +220,7 @@ const Sidebar = () => {
                       width: 16,
                       height: 16,
                       borderRadius: '50%',
-                      bgcolor: 'rgba(0,0,0,0.8)',
+                      bgcolor: 'error.main',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -262,7 +263,7 @@ const Sidebar = () => {
       </List>
 
       {/* Footer Area */}
-      <Box sx={{ p: 2.5, mt: 'auto', borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+      <Box sx={{ p: 2.5, mt: 'auto', borderTop: '1px solid', borderColor: 'divider' }}>
         <Tooltip title={isCollapsed ? "Logout" : ""} placement="right">
           <Button
             variant="text"
@@ -283,8 +284,8 @@ const Sidebar = () => {
                 margin: isCollapsed ? 0 : '',
               },
               '&:hover': {
-                bgcolor: 'rgba(239, 68, 68, 0.1)',
-                color: '#ef4444',
+                bgcolor: 'error.light',
+                color: 'error.main',
                 transform: 'translateX(4px)'
               }
             }}
@@ -305,7 +306,7 @@ const Sidebar = () => {
           sx={{
             bgcolor: 'background.paper',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            '&:hover': { bgcolor: 'grey.100' }
+            '&:hover': { bgcolor: 'action.hover' }
           }}
         >
           <MenuIcon />

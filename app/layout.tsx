@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../lib/auth-context";
+import { ThemeProvider } from "../lib/theme-context";
+import { ThemeProvider as MuiThemeProvider } from "../components/mui-theme-provider";
 import UserNav from "../components/user-nav";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -20,9 +22,13 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <div className="min-h-screen">
-            {children}
-          </div>
+          <ThemeProvider>
+            <MuiThemeProvider>
+              <div className="min-h-screen">
+                {children}
+              </div>
+            </MuiThemeProvider>
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>

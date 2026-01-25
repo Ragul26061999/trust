@@ -15,6 +15,7 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  Fade,
   Tabs,
   Tab,
   Chip,
@@ -46,6 +47,23 @@ import {
   Download as DownloadIcon,
   Business as BusinessIcon
 } from '@mui/icons-material';
+import { 
+  PieChart as RePieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  BarChart as ReBarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend,
+  LineChart as ReLineChart,
+  Line,
+  Area,
+  AreaChart
+} from 'recharts';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths, isWithinInterval, parseISO } from 'date-fns';
 
@@ -324,6 +342,46 @@ const AnalyticalPageContent = () => {
     return recommendations;
   };
   
+  // Chart helper functions
+  const getCategoryColor = (category: string): string => {
+    const colors: Record<string, string> = {
+      'health': '#10b981',
+      'wealth': '#f59e0b',
+      'family': '#ef4444',
+      'personal': '#8b5cf6',
+      'event': '#06b6d4',
+      'adl': '#84cc16',
+      'household': '#f97316',
+      'entertainment': '#ec4899',
+      'engineering': '#3b82f6',
+      'marketing': '#8b5cf6',
+      'sales': '#10b981',
+      'hr': '#f59e0b',
+      'finance': '#ef4444',
+      'operations': '#06b6d4',
+      'unassigned': '#6b7280'
+    };
+    return colors[category.toLowerCase()] || '#6b7280';
+  };
+
+  const getWeeklyChartData = () => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days.map((day, index) => ({
+      day,
+      personal: analyticsData?.personal?.weeklyActivity?.[index] || 0,
+      professional: analyticsData?.professional?.weeklyTaskCompletion?.[index] || 0
+    }));
+  };
+
+  const getMonthlyChartData = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    return months.map((month, index) => ({
+      month,
+      completionRate: Math.random() * 30 + 60, // Simulated data
+      productivity: Math.random() * 25 + 65 // Simulated data
+    }));
+  };
+
   const handleLogout = () => {
     logout();
   };
@@ -374,7 +432,7 @@ const AnalyticalPageContent = () => {
                 width: 40, 
                 height: 40, 
                 borderRadius: 3,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -388,7 +446,7 @@ const AnalyticalPageContent = () => {
                 component="div" 
                 sx={{ 
                   fontWeight: 800, 
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
@@ -425,7 +483,7 @@ const AnalyticalPageContent = () => {
                 color: 'text.primary',
                 '&:hover': {
                   bgcolor: 'action.hover',
-                  borderColor: 'primary.main'
+                  borderColor: '#2196F3'
                 }
               }}
             >
@@ -435,7 +493,8 @@ const AnalyticalPageContent = () => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Fade in timeout={350}>
+        <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Time Range Selector */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
           <FormControl size="small" sx={{ minWidth: 120 }}>
@@ -692,6 +751,138 @@ const AnalyticalPageContent = () => {
           </Grid>
         </Grid>
 
+        {/* Charts Section - Task Usage Analysis */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {/* Task Usage Pie Chart */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card 
+              sx={{ 
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)'
+                }
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
+                  Task Usage Distribution
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <RePieChart>
+                    <Pie
+                      data={Object.entries({
+                        ...analyticsData.personal.entriesByCategory,
+                        ...analyticsData.professional.departmentDistribution
+                      }).map(([category, count]) => ({
+                        name: category.charAt(0).toUpperCase() + category.slice(1),
+                        value: count,
+                        color: getCategoryColor(category)
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {Object.entries({
+                        ...analyticsData.personal.entriesByCategory,
+                        ...analyticsData.professional.departmentDistribution
+                      }).map(([category, count], index) => (
+                        <Cell key={`cell-${index}`} fill={getCategoryColor(category)} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </RePieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Weekly Activity Bar Chart */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card 
+              sx={{ 
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)'
+                }
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
+                  Weekly Activity Trend
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <ReBarChart data={getWeeklyChartData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="personal" fill="#8884d8" name="Personal Tasks" />
+                    <Bar dataKey="professional" fill="#82ca9d" name="Professional Tasks" />
+                  </ReBarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Monthly Trend Line Chart */}
+          <Grid size={{ xs: 12 }}>
+            <Card 
+              sx={{ 
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)'
+                }
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
+                  Monthly Completion Trend
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <ReLineChart data={getMonthlyChartData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="completionRate" 
+                      stroke="#8884d8" 
+                      strokeWidth={2}
+                      name="Completion Rate %"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="productivity" 
+                      stroke="#82ca9d" 
+                      strokeWidth={2}
+                      name="Productivity Score"
+                    />
+                  </ReLineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
         {/* Tabs for Detailed Analytics */}
         <Box sx={{ 
           mb: 4,
@@ -702,21 +893,17 @@ const AnalyticalPageContent = () => {
         }}>
           <Tabs 
             value={activeTab} 
-            onChange={(e, newValue) => setActiveTab(newValue)} 
             variant="scrollable"
             scrollButtons="auto"
             sx={{
-              '& .MuiTabs-indicator': {
-                display: 'none'
-              },
+              mb: 4,
               '& .MuiTab-root': {
                 textTransform: 'none',
-                fontWeight: 600,
-                color: 'text.secondary',
-                borderRadius: 2,
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                color: 'text.primary',
                 minHeight: 48,
-                px: 3,
-                transition: 'all 0.2s ease',
+                px: 2,
                 '&:hover': {
                   bgcolor: 'action.hover'
                 },
@@ -1162,7 +1349,8 @@ const AnalyticalPageContent = () => {
             </CardContent>
           </Card>
         )}
-      </Container>
+        </Container>
+      </Fade>
     </Box>
   );
 };

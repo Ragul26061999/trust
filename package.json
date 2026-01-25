@@ -24,6 +24,7 @@
     "@types/recharts": "^1.8.29",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dayjs": "^1.11.19",
     "dotenv": "^17.2.3",
     "mcp-remote": "^0.1.37",

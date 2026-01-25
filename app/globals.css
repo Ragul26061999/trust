@@ -3,7 +3,59 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary-color: #6750A4;
+  --secondary-color: #625B71;
+  --background-color: #FEF7FF;
+  --text-color: #1C1B1F;
+  --accent-color: #FF7D95;
+  --background-image: none;
 }
+
+/* Light mode */
+.light-mode {
+  --background: #ffffff;
+  --foreground: #171717;
+  --mui-background-paper: #ffffff;
+  --mui-text-primary: rgba(0, 0, 0, 0.87);
+  --mui-text-secondary: rgba(0, 0, 0, 0.6);
+  --mui-divider: rgba(0, 0, 0, 0.12);
+  --mui-surface: #fafafa;
+  --mui-hover: rgba(0, 0, 0, 0.04);
+  --mui-selected: rgba(0, 0, 0, 0.08);
+  --mui-border: rgba(0, 0, 0, 0.23);
+  --mui-icon: rgba(0, 0, 0, 0.54);
+  --mui-disabled: rgba(0, 0, 0, 0.26);
+  --sidebar-bg: #ffffff;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --card-bg: #ffffff;
+  --card-border: rgba(0, 0, 0, 0.12);
+  --header-bg: #ffffff;
+  --header-border: rgba(0, 0, 0, 0.08);
+}
+
+/* Dark mode */
+.dark-mode {
+  --background: #121212;
+  --foreground: #ffffff;
+  --mui-background-paper: #1e1e1e;
+  --mui-text-primary: #ffffff;
+  --mui-text-secondary: rgba(255, 255, 255, 0.7);
+  --mui-divider: rgba(255, 255, 255, 0.12);
+  --mui-surface: #2d2d2d;
+  --mui-hover: rgba(255, 255, 255, 0.04);
+  --mui-selected: rgba(255, 255, 255, 0.08);
+  --mui-border: rgba(255, 255, 255, 0.23);
+  --mui-icon: rgba(255, 255, 255, 0.54);
+  --mui-disabled: rgba(255, 255, 255, 0.26);
+  --sidebar-bg: #1e1e1e;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --card-bg: #1e1e1e;
+  --card-border: rgba(255, 255, 255, 0.12);
+  --header-bg: #1e1e1e;
+  --header-border: rgba(255, 255, 255, 0.12);
+}
+
+/* Auto mode - inherits from system preference */
 
 @theme inline {
   --color-background: var(--background);
@@ -23,4 +75,127 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* MUI Theme Overrides for Dark Mode */
+.dark-mode .MuiPaper-root {
+  background-color: var(--mui-background-paper) !important;
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiTypography-root {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiTypography-colorSecondary {
+  color: var(--mui-text-secondary) !important;
+}
+
+.dark-mode .MuiDivider-root {
+  border-color: var(--mui-divider) !important;
+}
+
+.dark-mode .MuiTextField-root .MuiOutlinedInput-root {
+  background-color: var(--mui-background-paper);
+}
+
+.dark-mode .MuiCard-root {
+  background-color: var(--mui-background-paper);
+  border-color: var(--mui-divider);
+}
+
+.dark-mode .MuiDrawer-paper {
+  background-color: var(--sidebar-bg) !important;
+  border-color: var(--sidebar-border) !important;
+}
+
+.dark-mode .MuiAppBar-root {
+  background-color: var(--header-bg) !important;
+  border-color: var(--header-border) !important;
+}
+
+.dark-mode .MuiIconButton-root {
+  color: var(--mui-icon) !important;
+}
+
+.dark-mode .MuiSvgIcon-root {
+  color: var(--mui-icon) !important;
+}
+
+.dark-mode .MuiButton-text {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiButton-outlined {
+  color: var(--mui-text-primary) !important;
+  border-color: var(--mui-border) !important;
+}
+
+.dark-mode .MuiListItem-root {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiListItemIcon-root {
+  color: var(--mui-icon) !important;
+}
+
+.dark-mode .MuiListItemText-primary {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiListItemText-secondary {
+  color: var(--mui-text-secondary) !important;
+}
+
+/* Hover states for dark mode */
+.dark-mode .MuiButton-outlined:hover {
+  background-color: var(--mui-hover) !important;
+}
+
+.dark-mode .MuiListItem-button:hover {
+  background-color: var(--mui-hover) !important;
+}
+
+.dark-mode .MuiIconButton-root:hover {
+  background-color: var(--mui-hover) !important;
+}
+
+/* Selected/Active states for dark mode */
+.dark-mode .Mui-selected {
+  background-color: var(--mui-selected) !important;
+}
+
+.dark-mode .MuiListItem-button.Mui-selected {
+  background-color: var(--mui-selected) !important;
+}
+
+/* Sidebar specific dark mode styles */
+.dark-mode .sidebar-container {
+  background-color: var(--sidebar-bg) !important;
+  border-color: var(--sidebar-border) !important;
+}
+
+.dark-mode .sidebar-item {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .sidebar-item:hover {
+  background-color: var(--mui-hover) !important;
+}
+
+.dark-mode .sidebar-item.active {
+  background-color: var(--mui-selected) !important;
+}
+
+/* Card specific dark mode styles */
+.dark-mode .dashboard-card {
+  background-color: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+}
+
+/* Header specific dark mode styles */
+.dark-mode .header-container {
+  background-color: var(--header-bg) !important;
+  border-color: var(--header-border) !important;
 }
