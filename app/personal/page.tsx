@@ -626,14 +626,29 @@ const PersonalCalendarPage = () => {
             newStatus: newStatus 
         });
         
-        const success = await updateCalendarEntry(entry.id, { status: newStatus });
-        
-        if (success) {
+        // Check if this is an external calendar entry (mock data)
+        if (entry.source === 'external') {
+            // For external calendar entries, we can't update them in our database
+            // So we just update the local state temporarily
             setEntries(entries.map(e => e.id === entry.id ? { ...e, status: newStatus } : e));
-            console.log('Successfully toggled entry status');
-        } else {
-            console.error('Failed to toggle entry status for entry:', entry.id);
-            // Optionally show user feedback here
+            showSnackbar('Status updated locally for external calendar entry', 'info');
+            return;
+        }
+        
+        try {
+            const success = await updateCalendarEntry(entry.id, { status: newStatus });
+            
+            if (success) {
+                setEntries(entries.map(e => e.id === entry.id ? { ...e, status: newStatus } : e));
+                console.log('Successfully toggled entry status');
+                showSnackbar('Entry status updated successfully', 'success');
+            } else {
+                console.error('Failed to toggle entry status for entry:', entry.id);
+                showSnackbar('Failed to update entry status', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating calendar entry:', error);
+            showSnackbar('An error occurred while updating the entry status', 'error');
         }
     };
 

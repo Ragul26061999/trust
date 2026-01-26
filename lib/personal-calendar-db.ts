@@ -155,19 +155,30 @@ export const updateCalendarEntry = async (entryId: string, updates: Partial<Omit
             preparedUpdates.entry_date = updates.entry_date;
         }
 
+        // Add updated_at timestamp
+        preparedUpdates.updated_at = new Date().toISOString();
+
         const { error } = await supabase
             .from('timetable_entries')
             .update(preparedUpdates)
             .eq('id', entryId);
 
         if (error) {
-            console.error('Error updating calendar entry:', error);
+            console.error('Error updating calendar entry:', {
+                error: error,
+                entryId: entryId,
+                updates: updates
+            });
             return false;
         }
 
         return true;
     } catch (error) {
-        console.error('Unexpected error updating calendar entry:', error);
+        console.error('Unexpected error updating calendar entry:', {
+            error: error,
+            entryId: entryId,
+            updates: updates
+        });
         return false;
     }
 };
