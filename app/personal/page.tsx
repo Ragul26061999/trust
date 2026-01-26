@@ -85,7 +85,9 @@ import {
     Feedback as FeedbackIcon,
     CloudSync as CloudSyncIcon,
     AccessTime as TimeIcon,
-    TrendingUp as TrendingUpIcon
+    TrendingUp as TrendingUpIcon,
+    Visibility as VisibilityIcon,
+    VisibilityOff as VisibilityOffIcon
 } from '@mui/icons-material';
 import ProtectedLayout from '../protected-layout';
 import { useAuth } from '../../lib/auth-context';
@@ -176,6 +178,7 @@ const PersonalCalendarPage = () => {
     );
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearchBar, setShowSearchBar] = useState(false);
+    const [showNoteDetails, setShowNoteDetails] = useState<Record<string, boolean>>({});
     const [openSettings, setOpenSettings] = useState(false);
     const [categoriesExpanded, setCategoriesExpanded] = useState(true);
     const [otherCalendarsExpanded, setOtherCalendarsExpanded] = useState(true);
@@ -741,6 +744,10 @@ const PersonalCalendarPage = () => {
                     : cal
             )
         );
+    };
+
+    const toggleNoteDetails = (entryId: string) => {
+        setShowNoteDetails(prev => ({ ...prev, [entryId]: !prev[entryId] }));
     };
 
     const addNewCalendar = async () => {
@@ -2023,25 +2030,49 @@ const PersonalCalendarPage = () => {
                                                                 />
                                                             </Box>
                                                             {entry.category_data && Object.entries(entry.category_data as Record<string, any>).some(([_, v]) => v) && (
-                                                                <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                                    {(Object.entries(entry.category_data) as [string, any][]).map(([key, value]) => (
-                                                                        value && (
-                                                                            <Chip
-                                                                                key={key}
-                                                                                label={`${key.replace(/_/g, ' ')}: ${value}`}
-                                                                                size="small"
-                                                                                variant="outlined"
-                                                                                sx={{
-                                                                                    fontSize: '0.65rem',
-                                                                                    height: 20,
-                                                                                    borderColor: `${cat?.color}40`,
-                                                                                    color: 'text.secondary',
-                                                                                    bgcolor: `${cat?.color}05`,
-                                                                                    textTransform: 'capitalize'
-                                                                                }}
-                                                                            />
-                                                                        )
-                                                                    ))}
+                                                                <Box sx={{ mt: 1 }}>
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                toggleNoteDetails(entry.id);
+                                                                            }}
+                                                                            sx={{
+                                                                        p: 0.5,
+                                                                        borderRadius: 1,
+                                                                        color: 'text.secondary',
+                                                                        '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
+                                                                            }}
+                                                                        >
+                                                                            {showNoteDetails[entry.id] ? <VisibilityOffIcon sx={{ fontSize: '0.9rem' }} /> : <VisibilityIcon sx={{ fontSize: '0.9rem' }} />}
+                                                                        </IconButton>
+                                                                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                                                            Note Details
+                                                                        </Typography>
+                                                                    </Box>
+                                                                    {showNoteDetails[entry.id] && (
+                                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                            {(Object.entries(entry.category_data) as [string, any][]).map(([key, value]) => (
+                                                                                value && (
+                                                                                    <Chip
+                                                                                        key={key}
+                                                                                        label={`${key.replace(/_/g, ' ')}: ${value}`}
+                                                                                        size="small"
+                                                                                        variant="outlined"
+                                                                                        sx={{
+                                                                                            fontSize: '0.65rem',
+                                                                                            height: 20,
+                                                                                            borderColor: `${cat?.color}40`,
+                                                                                            color: 'text.secondary',
+                                                                                            bgcolor: `${cat?.color}05`,
+                                                                                            textTransform: 'capitalize'
+                                                                                        }}
+                                                                                    />
+                                                                                )
+                                                                            ))}
+                                                                        </Box>
+                                                                    )}
                                                                 </Box>
                                                             )}
                                                         </Box>

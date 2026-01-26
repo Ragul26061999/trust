@@ -242,8 +242,8 @@ const DashboardContent = () => {
       path: '/user-clock',
       color: '#E91E63',
       desc: 'Track time, productivity patterns, and work-life balance.',
-      count: 'Coming Soon',
-      locked: true,
+      count: 'Active',
+      locked: false,
       gradient: 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)'
     },
   ];

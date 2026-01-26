@@ -1,20 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { alpha } from '@mui/material/styles';
 import { useAuth } from '../../lib/auth-context';
 import { ThemeProvider as AppThemeProvider, useTheme as useCustomTheme } from '../../lib/theme-context';
 import ProtectedRoute from '../../lib/protected-route';
 import ProtectedLayout from '../protected-layout';
-import { 
-  Box, 
-  Container, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  CssBaseline, 
+import {
+  Box,
+  Container,
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  CssBaseline,
   IconButton,
   TextField,
   Card,
@@ -42,10 +42,11 @@ import {
   CircularProgress,
   LinearProgress,
   Grid,
-  Fade
+  Fade,
+  Divider
 } from '@mui/material';
 import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-import { 
+import {
   ArrowLeft as ArrowBackIcon,
   Plus as AddIcon,
   Edit as EditIcon,
@@ -78,6 +79,7 @@ import FileUpload from '../../components/file-upload';
 import AudioRecorder from '../../components/audio-recorder';
 import LucideIcon from '../../components/icon-wrapper';
 import NoteMediaDisplay from '../../components/note-media-display';
+
 
 // Dynamic theme based on user preferences
 const DynamicTheme = () => {
@@ -116,7 +118,7 @@ const NoteTakingPageContent = () => {
   const { theme } = useCustomTheme();
   const { user, logout } = useAuth();
   const router = useRouter();
-  
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [tasks, setTasks] = useState<any[]>([]); // Add state for tasks
   const [title, setTitle] = useState('');
@@ -124,7 +126,7 @@ const NoteTakingPageContent = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
-  const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error'}>({open: false, message: '', severity: 'success'});
+  const [snackbar, setSnackbar] = useState<{ open: boolean, message: string, severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
   const [selectedNoteForConversion, setSelectedNoteForConversion] = useState<Note | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
@@ -147,6 +149,13 @@ const NoteTakingPageContent = () => {
   const [noteWithAttachments, setNoteWithAttachments] = useState<(Note & { note_attachments: NoteAttachment[] })[]>([]);
   const [noteColor, setNoteColor] = useState('#ffffff'); // State for note color
   const [timeRange, setTimeRange] = useState('30days'); // Time range state for dropdown
+  const [viewNoteOpen, setViewNoteOpen] = useState(false);
+  const [selectedNoteForView, setSelectedNoteForView] = useState<(Note & { note_attachments: NoteAttachment[] }) | null>(null);
+
+  const mergedNotes = useMemo(() => {
+    const attachmentMap = new Map(noteWithAttachments.map((n) => [n.id, n]));
+    return notes.map((n) => attachmentMap.get(n.id) || n);
+  }, [notes, noteWithAttachments]);
 
   // Define color palette for notes
   const colorPalette = [
@@ -167,7 +176,7 @@ const NoteTakingPageContent = () => {
     const today = new Date();
     const weekStart = startOfWeek(today, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
-    
+
     // Notes analytics
     const totalNotes = notes.length;
     const convertedNotes = notes.filter(note => note.converted_to_task).length;
@@ -175,7 +184,7 @@ const NoteTakingPageContent = () => {
       const noteDate = parseISO(note.created_at);
       return isWithinInterval(noteDate, { start: weekStart, end: weekEnd });
     }).length;
-    
+
     // Tasks analytics
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(task => task.status === 'completed').length;
@@ -184,26 +193,26 @@ const NoteTakingPageContent = () => {
       const taskDate = parseISO(task.created_at);
       return isWithinInterval(taskDate, { start: weekStart, end: weekEnd });
     }).length;
-    
+
     // Priority distribution for tasks
     const priorityData = tasks.reduce((acc, task) => {
       acc[task.priority] = (acc[task.priority] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    
+
     // Status distribution
     const statusData = {
       completed: completedTasks,
       pending: pendingTasks,
       total: totalTasks
     };
-    
+
     // Conversion rate
     const conversionRate = totalNotes > 0 ? Math.round((convertedNotes / totalNotes) * 100) : 0;
-    
+
     // Task completion rate
     const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
+
     return {
       totalNotes,
       convertedNotes,
@@ -228,11 +237,11 @@ const NoteTakingPageContent = () => {
           // Load notes with attachments
           const userNotesWithAttachments = await getNotesWithAttachments(user.id);
           setNoteWithAttachments(userNotesWithAttachments);
-          
+
           // Also load regular notes for backward compatibility
           const userNotes = await getNotes(user.id);
           setNotes(userNotes);
-          
+
           // Load tasks (calendar entries)
           const userTasks = await getCalendarEntries(user.id);
           // Filter for task entries and format them
@@ -250,19 +259,19 @@ const NoteTakingPageContent = () => {
           setTasks(formattedTasks);
         } catch (error) {
           console.error('Error loading data:', error);
-          setSnackbar({open: true, message: 'Failed to load data', severity: 'error'});
+          setSnackbar({ open: true, message: 'Failed to load data', severity: 'error' });
         } finally {
           setLoading(false);
         }
       }
     };
-    
+
     loadData();
   }, [user]);
 
   const handleAddNote = async () => {
     if (!title.trim() || !content.trim() || !user) {
-      setSnackbar({open: true, message: 'Please enter both title and content', severity: 'error'});
+      setSnackbar({ open: true, message: 'Please enter both title and content', severity: 'error' });
       return;
     }
 
@@ -283,14 +292,16 @@ const NoteTakingPageContent = () => {
       if (attachments.length > 0 || drawingData || audioRecordingUrl) {
         // Use the enhanced function for notes with attachments
         const result = await addNoteWithAttachments(newNote, attachments);
-        if (result) {
+        if (result && result.note) {
           addedNote = result.note;
           // Update both note lists
           setNotes([addedNote, ...notes]);
           setNoteWithAttachments([{
             ...addedNote,
-            note_attachments: result.attachments
+            note_attachments: result.attachments || []
           }, ...noteWithAttachments]);
+        } else {
+          throw new Error('Failed to add note with attachments');
         }
       } else {
         // Use regular function for simple notes
@@ -311,13 +322,13 @@ const NoteTakingPageContent = () => {
         setDrawingThumbnail(null);
         setAudioRecordingUrl(null);
         setNoteColor('#ffffff');
-        setSnackbar({open: true, message: 'Note added successfully!', severity: 'success'});
+        setSnackbar({ open: true, message: 'Note added successfully!', severity: 'success' });
       } else {
-        setSnackbar({open: true, message: 'Failed to add note', severity: 'error'});
+        setSnackbar({ open: true, message: 'Failed to add note', severity: 'error' });
       }
     } catch (error) {
       console.error('Error adding note:', error);
-      setSnackbar({open: true, message: 'Failed to add note', severity: 'error'});
+      setSnackbar({ open: true, message: 'Failed to add note', severity: 'error' });
     }
   };
 
@@ -330,7 +341,7 @@ const NoteTakingPageContent = () => {
 
   const handleUpdateNote = async () => {
     if (!title.trim() || !content.trim() || !editingNote) {
-      setSnackbar({open: true, message: 'Please enter both title and content', severity: 'error'});
+      setSnackbar({ open: true, message: 'Please enter both title and content', severity: 'error' });
       return;
     }
 
@@ -341,24 +352,25 @@ const NoteTakingPageContent = () => {
       });
 
       if (success) {
-        const updatedNotes = notes.map(note => 
-          note.id === editingNote.id 
-            ? {...note, title: title.trim(), content: content.trim(), updated_at: new Date().toISOString()} 
+        const updatedNotes = notes.map(note =>
+          note.id === editingNote.id
+            ? { ...note, title: title.trim(), content: content.trim(), updated_at: new Date().toISOString() }
             : note
         );
 
         setNotes(updatedNotes);
+        setNoteWithAttachments(prev => prev.map(n => n.id === editingNote.id ? { ...n, title: title.trim(), content: content.trim(), updated_at: new Date().toISOString() } : n));
         setTitle('');
         setContent('');
         setOpenDialog(false);
         setEditingNote(null);
-        setSnackbar({open: true, message: 'Note updated successfully!', severity: 'success'});
+        setSnackbar({ open: true, message: 'Note updated successfully!', severity: 'success' });
       } else {
-        setSnackbar({open: true, message: 'Failed to update note', severity: 'error'});
+        setSnackbar({ open: true, message: 'Failed to update note', severity: 'error' });
       }
     } catch (error) {
       console.error('Error updating note:', error);
-      setSnackbar({open: true, message: 'Failed to update note', severity: 'error'});
+      setSnackbar({ open: true, message: 'Failed to update note', severity: 'error' });
     }
   };
 
@@ -368,13 +380,14 @@ const NoteTakingPageContent = () => {
       if (success) {
         const updatedNotes = notes.filter(note => note.id !== id);
         setNotes(updatedNotes);
-        setSnackbar({open: true, message: 'Note deleted successfully!', severity: 'success'});
+        setNoteWithAttachments(prev => prev.filter(note => note.id !== id));
+        setSnackbar({ open: true, message: 'Note deleted successfully!', severity: 'success' });
       } else {
-        setSnackbar({open: true, message: 'Failed to delete note', severity: 'error'});
+        setSnackbar({ open: true, message: 'Failed to delete note', severity: 'error' });
       }
     } catch (error) {
       console.error('Error deleting note:', error);
-      setSnackbar({open: true, message: 'Failed to delete note', severity: 'error'});
+      setSnackbar({ open: true, message: 'Failed to delete note', severity: 'error' });
     }
   };
 
@@ -464,10 +477,10 @@ const NoteTakingPageContent = () => {
 
     console.log('Starting conversion:', { conversionType, conversionData });
     setIsConverting(true);
-    
+
     try {
       let success = false;
-      
+
       // Get multimedia data from the current note
       const noteWithMultimedia = noteWithAttachments.find((n: any) => n.id === currentNote.id);
       const multimediaData = {
@@ -478,11 +491,11 @@ const NoteTakingPageContent = () => {
         is_drawing: (currentNote as any).is_drawing || noteWithMultimedia?.is_drawing,
         is_recording: (currentNote as any).is_recording || noteWithMultimedia?.is_recording
       };
-      
+
       console.log('Multimedia data extracted:', multimediaData);
       console.log('Current note ID:', currentNote.id);
       console.log('User ID:', user.id);
-      
+
       if (conversionType === 'personal') {
         // Convert to personal task with multimedia data
         const personalTask = {
@@ -503,10 +516,10 @@ const NoteTakingPageContent = () => {
         console.log('Creating personal task with multimedia:', personalTask);
         const result = await addCalendarEntry(personalTask);
         console.log('Personal task result:', result);
-        
+
         if (result) {
           success = true;
-          setSnackbar({open: true, message: 'Note converted to personal task successfully!', severity: 'success'});
+          setSnackbar({ open: true, message: 'Note converted to personal task successfully!', severity: 'success' });
         } else {
           throw new Error('Failed to add personal calendar entry');
         }
@@ -538,7 +551,7 @@ const NoteTakingPageContent = () => {
         const result = await addProfessionalTask(professionalTask);
         if (result) {
           success = true;
-          setSnackbar({open: true, message: 'Note converted to professional task successfully!', severity: 'success'});
+          setSnackbar({ open: true, message: 'Note converted to professional task successfully!', severity: 'success' });
         } else {
           throw new Error('Failed to add professional task');
         }
@@ -556,7 +569,7 @@ const NoteTakingPageContent = () => {
           priority: 'Medium',
           category: 'task'
         });
-        
+
         // Reload tasks to show the newly converted task
         if (conversionType === 'personal' && user) {
           try {
@@ -577,7 +590,7 @@ const NoteTakingPageContent = () => {
             console.error('Error reloading tasks:', error);
           }
         }
-        
+
         // Mark the original note as converted and reload notes
         if (currentNote) {
           try {
@@ -585,7 +598,7 @@ const NoteTakingPageContent = () => {
             // Reload notes to remove the converted one
             const userNotes = await getNotes(user.id);
             setNotes(userNotes);
-            
+
             // Also reload notes with attachments
             const userNotesWithAttachments = await getNotesWithAttachments(user.id);
             setNoteWithAttachments(userNotesWithAttachments);
@@ -597,8 +610,8 @@ const NoteTakingPageContent = () => {
     } catch (error) {
       console.error(`Error converting note to ${conversionType} task:`, error);
       setSnackbar({
-        open: true, 
-        message: `Failed to convert note to ${conversionType} task: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        open: true,
+        message: `Failed to convert note to ${conversionType} task: ${error instanceof Error ? error.message : 'Unknown error'}`,
         severity: 'error'
       });
     } finally {
@@ -620,10 +633,10 @@ const NoteTakingPageContent = () => {
       }}
     >
       {/* Top App Bar with modern design */}
-      <AppBar 
-        position="static" 
-        elevation={0} 
-        sx={{ 
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{
           bgcolor: 'background.paper',
           color: 'text.primary',
           borderBottom: '1px solid',
@@ -638,7 +651,7 @@ const NoteTakingPageContent = () => {
             color="inherit"
             onClick={handleGoBack}
             aria-label="back"
-            sx={{ 
+            sx={{
               color: 'text.primary',
               '&:hover': {
                 bgcolor: 'action.hover',
@@ -651,11 +664,11 @@ const NoteTakingPageContent = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700, color: 'text.primary' }}>
             Note Taking
           </Typography>
-          
+
           {/* Time Range Selector in Header */}
-          <FormControl 
-            size="small" 
-            sx={{ 
+          <FormControl
+            size="small"
+            sx={{
               minWidth: 180,
               '& .MuiOutlinedInput-root': {
                 borderRadius: 3,
@@ -723,8 +736,8 @@ const NoteTakingPageContent = () => {
           {/* KPI Cards */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card 
-                sx={{ 
+              <Card
+                sx={{
                   height: 140,
                   background: 'linear-gradient(135deg, rgba(103, 80, 164, 0.05) 0%, rgba(98, 91, 113, 0.05) 100%)',
                   border: '1px solid',
@@ -759,11 +772,11 @@ const NoteTakingPageContent = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box 
+                    <Box
                       className="card-icon"
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
+                      sx={{
+                        width: 40,
+                        height: 40,
                         borderRadius: 3,
                         background: 'linear-gradient(135deg, rgba(103, 80, 164, 0.1) 0%, rgba(98, 91, 113, 0.1) 100%)',
                         color: '#6750A4',
@@ -785,11 +798,11 @@ const NoteTakingPageContent = () => {
                     {notes.length}
                   </Typography>
                   <Box sx={{ position: 'relative' }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={100} 
-                      sx={{ 
-                        height: 6, 
+                    <LinearProgress
+                      variant="determinate"
+                      value={100}
+                      sx={{
+                        height: 6,
                         borderRadius: 3,
                         bgcolor: 'rgba(103, 80, 164, 0.1)',
                         '& .MuiLinearProgress-bar': {
@@ -804,10 +817,10 @@ const NoteTakingPageContent = () => {
                 </CardContent>
               </Card>
             </Grid>
-            
+
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card 
-                sx={{ 
+              <Card
+                sx={{
                   height: 140,
                   background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%)',
                   border: '1px solid',
@@ -842,11 +855,11 @@ const NoteTakingPageContent = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box 
+                    <Box
                       className="card-icon"
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
+                      sx={{
+                        width: 40,
+                        height: 40,
                         borderRadius: 3,
                         background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
                         color: '#10b981',
@@ -868,11 +881,11 @@ const NoteTakingPageContent = () => {
                     {notes.filter(note => note.converted_to_task).length}
                   </Typography>
                   <Box sx={{ position: 'relative' }}>
-                    <LinearProgress 
-                      variant="determinate" 
+                    <LinearProgress
+                      variant="determinate"
                       value={notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0}
-                      sx={{ 
-                        height: 6, 
+                      sx={{
+                        height: 6,
                         borderRadius: 3,
                         bgcolor: 'rgba(16, 185, 129, 0.1)',
                         '& .MuiLinearProgress-bar': {
@@ -887,10 +900,10 @@ const NoteTakingPageContent = () => {
                 </CardContent>
               </Card>
             </Grid>
-            
+
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card 
-                sx={{ 
+              <Card
+                sx={{
                   height: 140,
                   background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(217, 119, 6, 0.05) 100%)',
                   border: '1px solid',
@@ -925,11 +938,11 @@ const NoteTakingPageContent = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box 
+                    <Box
                       className="card-icon"
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
+                      sx={{
+                        width: 40,
+                        height: 40,
                         borderRadius: 3,
                         background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)',
                         color: '#f59e0b',
@@ -951,11 +964,11 @@ const NoteTakingPageContent = () => {
                     {notes.length > 0 ? Math.round((notes.filter(note => note.converted_to_task).length / notes.length) * 100) : 0}%
                   </Typography>
                   <Box sx={{ position: 'relative' }}>
-                    <LinearProgress 
-                      variant="determinate" 
+                    <LinearProgress
+                      variant="determinate"
                       value={notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0}
-                      sx={{ 
-                        height: 6, 
+                      sx={{
+                        height: 6,
                         borderRadius: 3,
                         bgcolor: 'rgba(245, 158, 11, 0.1)',
                         '& .MuiLinearProgress-bar': {
@@ -970,10 +983,10 @@ const NoteTakingPageContent = () => {
                 </CardContent>
               </Card>
             </Grid>
-            
+
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card 
-                sx={{ 
+              <Card
+                sx={{
                   height: 140,
                   background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)',
                   border: '1px solid',
@@ -1008,11 +1021,11 @@ const NoteTakingPageContent = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box 
+                    <Box
                       className="card-icon"
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
+                      sx={{
+                        width: 40,
+                        height: 40,
                         borderRadius: 3,
                         background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)',
                         color: '#3b82f6',
@@ -1034,11 +1047,11 @@ const NoteTakingPageContent = () => {
                     {notes.filter(note => !note.converted_to_task).length}
                   </Typography>
                   <Box sx={{ position: 'relative' }}>
-                    <LinearProgress 
-                      variant="determinate" 
+                    <LinearProgress
+                      variant="determinate"
                       value={notes.length > 0 ? (notes.filter(note => !note.converted_to_task).length / notes.length) * 100 : 0}
-                      sx={{ 
-                        height: 6, 
+                      sx={{
+                        height: 6,
                         borderRadius: 3,
                         bgcolor: 'rgba(59, 130, 246, 0.1)',
                         '& .MuiLinearProgress-bar': {
@@ -1057,11 +1070,11 @@ const NoteTakingPageContent = () => {
 
           {/* Add Note Button */}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 4 }}>
-            <Fab 
-              color="primary" 
+            <Fab
+              color="primary"
               aria-label="add note"
               onClick={handleOpenDialog}
-              sx={{ 
+              sx={{
                 boxShadow: 3,
                 '&:hover': {
                   boxShadow: 6,
@@ -1072,400 +1085,325 @@ const NoteTakingPageContent = () => {
             </Fab>
           </Box>
 
-        {snackbar.open && (
-          <Alert 
-            severity={snackbar.severity} 
-            onClose={() => setSnackbar({...snackbar, open: false})}
-            sx={{ mb: 2 }}
-          >
-            {snackbar.message}
-          </Alert>
-        )}
+          {snackbar.open && (
+            <Alert
+              severity={snackbar.severity}
+              onClose={() => setSnackbar({ ...snackbar, open: false })}
+              sx={{ mb: 2 }}
+            >
+              {snackbar.message}
+            </Alert>
+          )}
 
-        {notes.length === 0 && tasks.length === 0 ? (
-          <Paper 
-            sx={{ 
-              p: 6, 
-              textAlign: 'center', 
-              border: '2px dashed #ccc', 
-              borderRadius: 4,
-              backgroundColor: 'background.default'
-            }}
-          >
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              No notes or tasks yet
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Click the + button to create your first note, or convert notes to tasks
-            </Typography>
-          </Paper>
-        ) : (
-          <>
-            {/* Tasks Section */}
-            {tasks.length > 0 && (
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h5" sx={{ mb: 2, color: 'primary.main', fontWeight: 600 }}>
-                  Tasks ({tasks.length})
-                </Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-                  {tasks.map((task) => (
-                    <Card 
-                      key={task.id}
-                      sx={{ 
-                        height: '100%', 
-                        display: 'flex', 
-                        flexDirection: 'column',
-                        border: '2px solid',
-                        borderColor: 'success.main',
-                        backgroundColor: 'success.light',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: 4
-                        }
-                      }}
-                    >
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <LucideIcon icon={TaskIcon} size={20} sx={{ mr: 1, color: 'success.main' }} />
-                          <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
-                            {task.title}
+          {mergedNotes.length === 0 && tasks.length === 0 ? (
+            <Paper
+              sx={{
+                p: 6,
+                textAlign: 'center',
+                border: '2px dashed #ccc',
+                borderRadius: 4,
+                backgroundColor: 'background.default'
+              }}
+            >
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No notes or tasks yet
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Click the + button to create your first note, or convert notes to tasks
+              </Typography>
+            </Paper>
+          ) : (
+            <>
+              {/* Tasks Section */}
+              {tasks.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant="h5" sx={{ mb: 2, color: 'primary.main', fontWeight: 600 }}>
+                    Tasks ({tasks.length})
+                  </Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+                    {tasks.map((task) => (
+                      <Card
+                        key={task.id}
+                        sx={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          border: '2px solid',
+                          borderColor: 'success.main',
+                          backgroundColor: 'success.light',
+                          transition: 'transform 0.2s, box-shadow 0.2s',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: 4
+                          }
+                        }}
+                      >
+                        <CardContent sx={{ flexGrow: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <LucideIcon icon={TaskIcon} size={20} sx={{ mr: 1, color: 'success.main' }} />
+                            <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
+                              {task.title}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            {task.content}
                           </Typography>
-                        </Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          {task.content}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                          <Chip 
-                            label={task.priority} 
-                            size="small" 
-                            color={task.priority === 'High' ? 'error' : task.priority === 'Medium' ? 'warning' : 'default'}
-                          />
-                          <Chip 
-                            label={task.status} 
-                            size="small" 
-                            color={task.status === 'completed' ? 'success' : 'info'}
-                          />
-                          <Chip 
-                            label="Task" 
-                            size="small" 
-                            color="success"
-                            icon={<TaskIcon />}
-                          />
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Box>
-              </Box>
-            )}
-            
-            {/* Notes Section */}
-            {notes.length > 0 && (
-              <Box>
-                <Typography variant="h5" sx={{ mb: 2, color: 'primary.main', fontWeight: 600 }}>
-                  Notes ({notes.length})
-                </Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-                  {notes.map((note) => (
-              <Card 
-                key={note.id}
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  backgroundColor: note.color || '#ffffff', // Apply custom color
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 4
-                  }
-                }}
-              >
-                <CardContent sx={{ flex: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'primary.main' }}>
-                      {note.title}
-                    </Typography>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleNoteMenuOpen(e, note)}
-                    >
-                      <MoreVertIcon fontSize="small" />
-                    </IconButton>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Chip
+                              label={task.priority}
+                              size="small"
+                              color={task.priority === 'High' ? 'error' : task.priority === 'Medium' ? 'warning' : 'default'}
+                            />
+                            <Chip
+                              label={task.status}
+                              size="small"
+                              color={task.status === 'completed' ? 'success' : 'info'}
+                            />
+                            <Chip
+                              label="Task"
+                              size="small"
+                              color="success"
+                              icon={<TaskIcon />}
+                            />
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </Box>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    {note.content.substring(0, 100)}{note.content.length > 100 ? '...' : ''}
-                  </Typography>
-                  
-                  {/* Display multimedia content for notes with attachments */}
-                  <NoteMediaDisplay
-                    attachments={[]}
-                    drawingData={(note as any).drawing_data}
-                    drawingThumbnail={(note as any).drawing_thumbnail}
-                    audioRecordingUrl={(note as any).audio_recording_url}
-                    isDrawing={(note as any).is_drawing}
-                    isRecording={(note as any).is_recording}
-                    compact={true}
-                  />
-                  
-                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                    {formatDate(note.updated_at)}
-                  </Typography>
-                </CardContent>
-                <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
-                  <Button 
-                    size="small" 
-                    startIcon={<EditIcon />} 
-                    onClick={() => handleEditNote(note)}
-                    sx={{ mr: 1 }}
-                  >
-                    Edit
-                  </Button>
-                  <Button 
-                    size="small" 
-                    color="error" 
-                    startIcon={<DeleteIcon />} 
-                    onClick={() => handleDeleteNote(note.id)}
-                  >
-                    Delete
-                  </Button>
-                </CardActions>
-              </Card>
-            ))}
                 </Box>
-              </Box>
-            )}
-            
-            {/* Notes with Attachments Section */}
-            {noteWithAttachments.length > 0 && (
-              <Box sx={{ mt: 4 }}>
-                <Typography variant="h5" sx={{ mb: 2, color: 'primary.main', fontWeight: 600 }}>
-                  Enhanced Notes ({noteWithAttachments.length})
-                </Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-                  {noteWithAttachments.map((note) => (
-                    <Card 
-                      key={note.id}
-                      sx={{ 
-                        height: '100%', 
-                        display: 'flex', 
-                        flexDirection: 'column',
-                        border: '2px solid',
-                        borderColor: 'secondary.main',
-                        backgroundColor: note.color || '#ffffff',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: 4
-                        }
-                      }}
-                    >
-                      <CardContent sx={{ flex: 1 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'primary.main' }}>
-                            {note.title}
-                          </Typography>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => handleNoteMenuOpen(e, note)}
-                          >
-                            <MoreVertIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                        <Typography variant="body2" color="text.secondary" paragraph>
-                          {note.content.substring(0, 100)}{note.content.length > 100 ? '...' : ''}
-                        </Typography>
-                        
-                        {/* Display multimedia content */}
-                        <NoteMediaDisplay
-                          attachments={note.note_attachments}
-                          drawingData={note.drawing_data}
-                          drawingThumbnail={note.drawing_thumbnail}
-                          audioRecordingUrl={note.audio_recording_url}
-                          isDrawing={note.is_drawing}
-                          isRecording={note.is_recording}
-                          compact={true}
-                        />
-                        
-                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                          {formatDate(note.updated_at)}
-                        </Typography>
-                      </CardContent>
-                      <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
-                        <Button 
-                          size="small" 
-                          startIcon={<EditIcon />} 
-                          onClick={() => handleEditNote(note)}
-                          sx={{ mr: 1 }}
+              )}
+
+              {/* Notes Section */}
+              {mergedNotes.length > 0 && (
+                <Box>
+                  <Typography variant="h5" sx={{ mb: 2, color: 'primary.main', fontWeight: 700 }}>
+                    Notes ({mergedNotes.length})
+                  </Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+                    {mergedNotes.map((note) => {
+                      const attachmentsForNote = (note as any).note_attachments || [];
+                      return (
+                        <Card
+                          key={note.id}
+                          sx={{
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            borderRadius: 3,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            background: note.color || '#f8fafc',
+                            boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+                            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+                            '&:hover': {
+                              transform: 'translateY(-6px)',
+                              boxShadow: '0 16px 40px rgba(0,0,0,0.12)'
+                            }
+                          }}
                         >
-                          Edit
-                        </Button>
-                        <Button 
-                          size="small" 
-                          color="error" 
-                          startIcon={<DeleteIcon />} 
-                          onClick={() => handleDeleteNote(note.id)}
-                        >
-                          Delete
-                        </Button>
-                      </CardActions>
-                    </Card>
-                  ))}
+                          <CardContent sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
+                                  {formatDate(note.created_at)}
+                                </Typography>
+                                <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                                  {note.title}
+                                </Typography>
+                              </Box>
+                              <IconButton size="small" onClick={(e) => handleNoteMenuOpen(e, note)}>
+                                <MoreVertIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+
+                            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                              {note.content.length > 140 ? `${note.content.substring(0, 140)}...` : note.content}
+                            </Typography>
+
+                            <NoteMediaDisplay
+                              attachments={attachmentsForNote}
+                              drawingData={(note as any).drawing_data}
+                              drawingThumbnail={(note as any).drawing_thumbnail}
+                              audioRecordingUrl={(note as any).audio_recording_url}
+                              isDrawing={(note as any).is_drawing}
+                              isRecording={(note as any).is_recording}
+                              compact={true}
+                            />
+                          </CardContent>
+                          <Divider />
+                          <CardActions sx={{ p: 2, justifyContent: 'flex-end', gap: 1 }}>
+                            <Button size="small" variant="outlined" startIcon={<LucideIcon icon={InsightsIcon} size={16} />} onClick={() => {
+                              const attachmentNote = noteWithAttachments.find((n) => n.id === note.id);
+                              setSelectedNoteForView(attachmentNote || { ...(note as any), note_attachments: attachmentsForNote });
+                              setViewNoteOpen(true);
+                            }}>
+                              View
+                            </Button>
+                            <Button size="small" startIcon={<EditIcon />} onClick={() => handleEditNote(note)}>
+                              Edit
+                            </Button>
+                            <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteNote(note.id)}>
+                              Delete
+                            </Button>
+                          </CardActions>
+                        </Card>
+                      );
+                    })}
+                  </Box>
                 </Box>
-              </Box>
-            )}
-          </>
-        )}
-      </Container>
+              )}
+            </>
+          )}
+        </Container>
       </Fade>
 
       {/* Add/Edit Note Dialog */}
-      <Dialog 
-        open={openDialog} 
+      <Dialog
+        open={openDialog}
         onClose={handleCloseDialog}
         maxWidth="lg"
         fullWidth
       >
-        <DialogTitle>
-          {editingNote ? 'Edit Note' : 'Add New Note'}
-          <IconButton
-            aria-label="close"
-            onClick={handleCloseDialog}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
+        <DialogTitle sx={{ p: 0 }}>
+          <Box sx={{
+            px: 3,
+            py: 2,
+            background: 'linear-gradient(135deg, #6750A4 0%, #4a387d 100%)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <Box>
+              <Typography variant="overline" sx={{ opacity: 0.8 }}>
+                {editingNote ? 'Update your note' : 'Create a new note'}
+              </Typography>
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                {editingNote ? 'Edit Note' : 'Add Note'}
+              </Typography>
+            </Box>
+            <IconButton onClick={handleCloseDialog} sx={{ color: 'white' }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
         </DialogTitle>
-        <DialogContent dividers sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Title"
-            fullWidth
-            variant="outlined"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Content"
-            fullWidth
-            multiline
-            rows={4}
-            variant="outlined"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          
-          {/* Multimedia Options */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-              Multimedia Options
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-              <Button
-                variant={showDrawingCanvas ? "contained" : "outlined"}
-                size="small"
-                startIcon={<BrushIcon />}
-                onClick={() => setShowDrawingCanvas(!showDrawingCanvas)}
-              >
-                {showDrawingCanvas ? 'Hide Drawing' : 'Add Drawing'}
-              </Button>
-              <Button
-                variant={showAudioRecorder ? "contained" : "outlined"}
-                size="small"
-                startIcon={<MicIcon />}
-                onClick={() => setShowAudioRecorder(!showAudioRecorder)}
-              >
-                {showAudioRecorder ? 'Hide Recorder' : 'Add Audio'}
-              </Button>
-            </Box>
-          </Box>
-
-          {/* Drawing Canvas */}
-          {showDrawingCanvas && (
-            <Box sx={{ mb: 2 }}>
-              <DrawingCanvas
-                width={500}
-                height={300}
-                onSave={(imageData, thumbnailData) => {
-                  setDrawingData(imageData);
-                  setDrawingThumbnail(thumbnailData);
-                  setShowDrawingCanvas(false);
-                }}
-                initialData={drawingData || undefined}
-              />
-            </Box>
-          )}
-
-          {/* Audio Recorder */}
-          {showAudioRecorder && (
-            <Box sx={{ mb: 2 }}>
-              <AudioRecorder
-                onRecordingComplete={(audioData, duration) => {
-                  setAudioRecordingUrl(audioData);
-                  setShowAudioRecorder(false);
-                }}
-              />
-            </Box>
-          )}
-
-          {/* File Upload */}
-          <Box sx={{ mb: 2 }}>
-            <FileUpload
-              onFilesChange={setAttachments}
-              maxFiles={5}
-              maxSize={10}
-            />
-          </Box>
-          
-          {/* Color Picker Section */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-              <LucideIcon icon={ZapIcon} size={18} sx={{ mr: 1 }} />
-              Note Color
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {colorPalette.map((color) => (
-                <Box
-                  key={color}
-                  onClick={() => setNoteColor(color)}
-                  sx={{
-                    width: 32,
-                    height: 32,
-                    backgroundColor: color,
-                    border: noteColor === color ? '3px solid #1976d2' : '2px solid #ddd',
-                    borderRadius: 1,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      transform: 'scale(1.1)',
-                      boxShadow: 2
-                    }
-                  }}
+        <DialogContent dividers sx={{ maxHeight: '75vh', overflowY: 'auto', p: 3, backgroundColor: '#f8f8fb' }}>
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 12, md: 7 }}>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider', backgroundColor: 'white' }}>
+                <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700, color: 'text.secondary' }}>
+                  Note Details
+                </Typography>
+                <TextField
+                  label="Title"
+                  fullWidth
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  sx={{ mb: 2 }}
                 />
-              ))}
-            </Box>
-          </Box>
+                <TextField
+                  label="Content"
+                  fullWidth
+                  multiline
+                  minRows={6}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                />
+              </Paper>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 5 }}>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider', backgroundColor: 'white', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: 'text.secondary' }}>
+                    Media & Tools
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Button
+                      variant={showDrawingCanvas ? 'contained' : 'outlined'}
+                      startIcon={<BrushIcon />}
+                      onClick={() => setShowDrawingCanvas(!showDrawingCanvas)}
+                    >
+                      {showDrawingCanvas ? 'Close Canvas' : 'Add Drawing'}
+                    </Button>
+                    <Button
+                      variant={showAudioRecorder ? 'contained' : 'outlined'}
+                      startIcon={<MicIcon />}
+                      onClick={() => setShowAudioRecorder(!showAudioRecorder)}
+                    >
+                      {showAudioRecorder ? 'Close Recorder' : 'Add Audio'}
+                    </Button>
+                  </Box>
+                </Box>
+
+                {showDrawingCanvas && (
+                  <Box sx={{ border: '1px dashed', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+                    <DrawingCanvas
+                      width={420}
+                      height={240}
+                      onSave={(imageData, thumbnailData) => {
+                        setDrawingData(imageData);
+                        setDrawingThumbnail(thumbnailData);
+                        setShowDrawingCanvas(false);
+                      }}
+                      initialData={drawingData || undefined}
+                    />
+                  </Box>
+                )}
+
+                {showAudioRecorder && (
+                  <Box sx={{ border: '1px dashed', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+                    <AudioRecorder
+                      onRecordingComplete={(audioData) => {
+                        setAudioRecordingUrl(audioData);
+                        setShowAudioRecorder(false);
+                      }}
+                    />
+                  </Box>
+                )}
+
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: 'text.secondary' }}>
+                    Attachments
+                  </Typography>
+                  <FileUpload onFilesChange={setAttachments} maxFiles={5} maxSize={15} />
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <LucideIcon icon={ZapIcon} size={16} /> Color
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {colorPalette.map((color) => (
+                      <Box
+                        key={color}
+                        onClick={() => setNoteColor(color)}
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          backgroundColor: color,
+                          border: noteColor === color ? '3px solid #6750A4' : '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: noteColor === color ? '0 0 0 4px rgba(103,80,164,0.12)' : 'none',
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 8px 20px rgba(0,0,0,0.08)'
+                          }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2, backgroundColor: '#f8f8fb' }}>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button 
-            onClick={editingNote ? handleUpdateNote : handleAddNote} 
-            variant="contained" 
-            color="primary"
-          >
-            {editingNote ? 'Update' : 'Add'} Note
+          <Button onClick={editingNote ? handleUpdateNote : handleAddNote} variant="contained" sx={{ boxShadow: '0 10px 20px rgba(103,80,164,0.25)' }}>
+            {editingNote ? 'Update Note' : 'Save Note'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1499,111 +1437,144 @@ const NoteTakingPageContent = () => {
       </Menu>
 
       {/* Conversion Confirmation Dialog */}
-      <Dialog 
-        open={conversionDialogOpen} 
+      <Dialog
+        open={conversionDialogOpen}
         onClose={handleConversionCancel}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>
-          Convert Note to {conversionType === 'personal' ? 'Personal' : 'Professional'} Task
-          <IconButton
-            aria-label="close"
-            onClick={handleConversionCancel}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
+        <DialogTitle sx={{ p: 0 }}>
+          <Box sx={{
+            px: 3,
+            py: 2,
+            background: conversionType === 'personal' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #6750A4 0%, #4a387d 100%)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Convert to {conversionType === 'personal' ? 'Personal' : 'Professional'} Task
+            </Typography>
+            <IconButton onClick={handleConversionCancel} sx={{ color: 'white' }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
         </DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            {conversionData.title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            {conversionData.description}
-          </Typography>
-          
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                label="Task Title"
-                fullWidth
-                variant="outlined"
-                value={conversionData.title}
-                onChange={(e) => setConversionData({...conversionData, title: e.target.value})}
-                sx={{ mb: 2 }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                label="Date"
-                type="date"
-                fullWidth
-                variant="outlined"
-                value={conversionData.date}
-                InputLabelProps={{ shrink: true }}
-                onChange={(e) => setConversionData({...conversionData, date: e.target.value})}
-                sx={{ mb: 2 }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth variant="outlined" sx={{ mb: 2 }}>
-                <InputLabel>Priority</InputLabel>
-                <Select
-                  value={conversionData.priority}
-                  onChange={(e) => setConversionData({...conversionData, priority: e.target.value})}
-                  label="Priority"
-                >
-                  <MenuItem value="Low">Low</MenuItem>
-                  <MenuItem value="Medium">Medium</MenuItem>
-                  <MenuItem value="High">High</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            {conversionType === 'personal' && (
+        <DialogContent dividers sx={{ backgroundColor: '#f8f8fb' }}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider', backgroundColor: 'white' }}>
+            <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 700 }}>
+              {conversionData.title}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, lineHeight: 1.6 }}>
+              {conversionData.description}
+            </Typography>
+
+            <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 6 }}>
-                <FormControl fullWidth variant="outlined" sx={{ mb: 2 }}>
-                  <InputLabel>Category</InputLabel>
+                <TextField
+                  label="Task Title"
+                  fullWidth
+                  value={conversionData.title}
+                  onChange={(e) => setConversionData({ ...conversionData, title: e.target.value })}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  label="Date"
+                  type="date"
+                  fullWidth
+                  value={conversionData.date}
+                  InputLabelProps={{ shrink: true }}
+                  onChange={(e) => setConversionData({ ...conversionData, date: e.target.value })}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Priority</InputLabel>
                   <Select
-                    value={conversionData.category}
-                    onChange={(e) => setConversionData({...conversionData, category: e.target.value})}
-                    label="Category"
+                    value={conversionData.priority}
+                    label="Priority"
+                    onChange={(e) => setConversionData({ ...conversionData, priority: e.target.value })}
                   >
-                    <MenuItem value="task">Task</MenuItem>
-                    <MenuItem value="event">Event</MenuItem>
-                    <MenuItem value="goal">Goal</MenuItem>
-                    <MenuItem value="health">Health</MenuItem>
-                    <MenuItem value="wealth">Wealth</MenuItem>
-                    <MenuItem value="adls">ADLs</MenuItem>
-                    <MenuItem value="family">Family</MenuItem>
-                    <MenuItem value="entertainment">Entertainment</MenuItem>
-                    <MenuItem value="household">Household</MenuItem>
+                    <MenuItem value="Low">Low</MenuItem>
+                    <MenuItem value="Medium">Medium</MenuItem>
+                    <MenuItem value="High">High</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
-            )}
-          </Grid>
+              {conversionType === 'personal' && (
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                      value={conversionData.category}
+                      label="Category"
+                      onChange={(e) => setConversionData({ ...conversionData, category: e.target.value })}
+                    >
+                      <MenuItem value="task">Task</MenuItem>
+                      <MenuItem value="event">Event</MenuItem>
+                      <MenuItem value="goal">Goal</MenuItem>
+                      <MenuItem value="health">Health</MenuItem>
+                      <MenuItem value="wealth">Wealth</MenuItem>
+                      <MenuItem value="adls">ADLs</MenuItem>
+                      <MenuItem value="family">Family</MenuItem>
+                      <MenuItem value="entertainment">Entertainment</MenuItem>
+                      <MenuItem value="household">Household</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
+            </Grid>
+          </Paper>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleConversionCancel} disabled={isConverting}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleConversionConfirm} 
-            variant="contained" 
-            color="primary"
+        <DialogActions sx={{ px: 3, py: 2, backgroundColor: '#f8f8fb' }}>
+          <Button onClick={handleConversionCancel} disabled={isConverting}>Cancel</Button>
+          <Button
+            onClick={handleConversionConfirm}
+            variant="contained"
             disabled={isConverting}
             startIcon={isConverting ? <CircularProgress size={20} /> : null}
+            sx={{ boxShadow: conversionType === 'personal' ? '0 10px 20px rgba(16,185,129,0.25)' : '0 10px 20px rgba(103,80,164,0.25)' }}
           >
             {isConverting ? 'Converting...' : `Convert to ${conversionType === 'personal' ? 'Personal' : 'Professional'} Task`}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* View Note Dialog */}
+      {selectedNoteForView && (
+        <Dialog open={viewNoteOpen} onClose={() => setViewNoteOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="overline" sx={{ color: 'text.secondary' }}>Note Preview</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>{selectedNoteForView.title}</Typography>
+            </Box>
+            <IconButton onClick={() => setViewNoteOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers sx={{ backgroundColor: '#fafafa' }}>
+            <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.7 }}>
+              {selectedNoteForView.content}
+            </Typography>
+            <NoteMediaDisplay
+              attachments={selectedNoteForView.note_attachments}
+              drawingData={selectedNoteForView.drawing_data}
+              drawingThumbnail={selectedNoteForView.drawing_thumbnail}
+              audioRecordingUrl={selectedNoteForView.audio_recording_url}
+              isDrawing={selectedNoteForView.is_drawing}
+              isRecording={selectedNoteForView.is_recording}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+              Last updated: {formatDate(selectedNoteForView.updated_at)}
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setViewNoteOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Box>
   );
 };

@@ -1,8 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY! // Note: Use service role key for server-side operations
-
+const supabaseUrl = 'https://zkezubbjstrixkpqjias.supabase.co'
+const supabaseServiceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZXp1YmJqc3RyaXhrcHFqaWFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzc5NTMxNiwiZXhwIjoyMDgzMzcxMzE2fQ.9A9AiGDAWc-vAvIvg0-RoI5frwbue6YGKrKmJ_95cjE'
 export const supabaseServer = createClient(supabaseUrl, supabaseServiceRoleKey)
 
 // Helper function for server-side authentication

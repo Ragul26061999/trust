@@ -47,7 +47,7 @@ const NoteMediaDisplay: React.FC<NoteMediaDisplayProps> = ({
   compact = false
 }) => {
   const [previewMedia, setPreviewMedia] = useState<{
-    type: 'image' | 'video' | 'audio' | 'drawing';
+    type: 'image' | 'video' | 'audio' | 'document' | 'drawing';
     url: string;
     title: string;
   } | null>(null);
@@ -65,7 +65,7 @@ const NoteMediaDisplay: React.FC<NoteMediaDisplayProps> = ({
     }
   };
 
-  const handlePreview = (type: 'image' | 'video' | 'audio' | 'drawing', url: string, title: string) => {
+  const handlePreview = (type: 'image' | 'video' | 'audio' | 'document' | 'drawing', url: string, title: string) => {
     setPreviewMedia({ type, url, title });
   };
 
@@ -98,6 +98,18 @@ const NoteMediaDisplay: React.FC<NoteMediaDisplayProps> = ({
             <source src={previewMedia.url} />
             Your browser does not support the audio tag.
           </audio>
+        );
+      case 'document':
+        return (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <FileIcon size={48} color="text.secondary" />
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              {previewMedia.title}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Document preview not available. Click Download to view.
+            </Typography>
+          </Box>
         );
       default:
         return null;
@@ -218,11 +230,16 @@ const NoteMediaDisplay: React.FC<NoteMediaDisplayProps> = ({
                   size="small"
                   variant="outlined"
                   clickable
-                  onClick={() => attachment.file_data && handlePreview(
-                    attachment.file_type as any, 
-                    attachment.file_data, 
-                    attachment.file_name
-                  )}
+                  onClick={() => {
+                    const previewUrl = attachment.file_url || attachment.file_data;
+                    if (previewUrl) {
+                      handlePreview(
+                        attachment.file_type as 'image' | 'video' | 'audio' | 'document' | 'drawing', 
+                        previewUrl, 
+                        attachment.file_name
+                      );
+                    }
+                  }}
                   sx={{ fontSize: '0.7rem' }}
                 />
               ))}
