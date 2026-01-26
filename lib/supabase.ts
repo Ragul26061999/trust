@@ -6,9 +6,13 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // Check if environment variables are properly set
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase environment variables are not properly configured. Please check your .env.local file.')
-  console.warn('NEXT_PUBLIC_SUPABASE_URL:', !!supabaseUrl)
-  console.warn('NEXT_PUBLIC_SUPABASE_ANON_KEY:', !!supabaseAnonKey)
+  console.error('❌ Supabase environment variables are not properly configured.');
+  console.error('📋 Missing variables:');
+  if (!supabaseUrl) console.error('   - NEXT_PUBLIC_SUPABASE_URL');
+  if (!supabaseAnonKey) console.error('   - NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  console.error('🔧 Please check your environment variables in .env.local (local) or deployment platform (production)');
+} else {
+  console.log('✅ Supabase environment variables configured successfully');
 }
 
 // Create client for client-side usage

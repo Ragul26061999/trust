@@ -1,0 +1,10 @@
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://zkezubbjstrixkpqjias.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZXp1YmJqc3RyaXhrcHFqaWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3OTUzMTYsImV4cCI6MjA4MzM3MTMxNn0.MgNnEbpZ-WM_W7ehpQtlBEnKYYMbFMhhvPDOTUo8jR4
+
+# Alternative: Use the modern publishable key (recommended)
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_n33bKjm3gri-8MoyjneS9A_kAqs1ZJa
+
+# Google OAuth (if configured)
+# NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
+# GOOGLE_CLIENT_SECRET=your_google_client_secret

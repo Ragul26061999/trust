@@ -12,6 +12,13 @@ export interface CalendarEntry {
     status?: string;
     created_at?: string;
     updated_at?: string;
+    multimedia_content?: {
+        has_attachments: boolean;
+        attachments: any[];
+        has_drawing: boolean;
+        has_recording: boolean;
+        tags: string[];
+    }; // Multimedia content from converted notes
 }
 
 export interface CustomCalendar {

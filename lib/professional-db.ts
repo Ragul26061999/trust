@@ -27,6 +27,22 @@ export interface ProfessionalTask {
     rescheduled_from?: string;
     created_at?: string;
     updated_at?: string;
+    // Multimedia fields for converted notes
+    drawing_data?: any;
+    drawing_thumbnail?: string;
+    audio_recording_url?: string;
+    attachments?: any[];
+    is_drawing?: boolean;
+    is_recording?: boolean;
+    original_note_id?: string;
+    conversion_date?: string;
+    multimedia_content?: {
+        has_attachments: boolean;
+        attachments: any[];
+        has_drawing: boolean;
+        has_recording: boolean;
+        tags: string[];
+    }; // Legacy field for backward compatibility
 }
 
 export const getProfessionalRole = async (userId: string) => {
@@ -391,6 +407,8 @@ export const addProfessionalTask = async (task: Omit<ProfessionalTask, 'id' | 'c
     }
 
     try {
+        console.log('Adding professional task:', task);
+        
         // Ensure required fields are provided
         const taskWithDefaults = {
             ...task,
@@ -398,7 +416,21 @@ export const addProfessionalTask = async (task: Omit<ProfessionalTask, 'id' | 'c
             role: task.role || '',
             responsibilities: task.responsibilities || '',
             experience: task.experience || '',
+            priority: task.priority || 'Medium',
+            status: task.status || 'pending',
         };
+        
+        console.log('Task with defaults:', taskWithDefaults);
+        
+        // Validate that we have the required fields
+        if (!taskWithDefaults.user_id || !taskWithDefaults.title || !taskWithDefaults.task_date) {
+            console.error('Missing required fields for professional task:', {
+                user_id: !!taskWithDefaults.user_id,
+                title: !!taskWithDefaults.title,
+                task_date: !!taskWithDefaults.task_date
+            });
+            return null;
+        }
         
         const { data, error } = await supabase
             .from('professional_tasks')
@@ -416,6 +448,7 @@ export const addProfessionalTask = async (task: Omit<ProfessionalTask, 'id' | 'c
             return null;
         }
 
+        console.log('Successfully added professional task:', data);
         return data as ProfessionalTask;
     } catch (error) {
         console.error('Unexpected error adding professional task:', error);

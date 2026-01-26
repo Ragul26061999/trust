@@ -64,19 +64,20 @@ import {
   Zap as ZapIcon,
   Calendar as CalendarIcon,
   RefreshCw as RefreshIcon,
-  ChevronDown
+  ChevronDown,
+  Brush as BrushIcon,
+  Mic as MicIcon
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { addCalendarEntry, getCalendarEntries } from '../../lib/personal-calendar-db';
 import { addProfessionalTask } from '../../lib/professional-db';
-import { getNotes, addNote, updateNote, deleteNote, markNoteAsConverted, Note } from '../../lib/notes-db';
+import { getNotes, addNote, updateNote, deleteNote, markNoteAsConverted, Note, addNoteWithAttachments, getNotesWithAttachments, deleteNoteWithAttachments, NoteAttachment } from '../../lib/notes-db';
 
-// Create icon wrapper components for Lucide icons to work with MUI
-const LucideIcon = ({ icon: Icon, size = 20, sx, ...props }: any) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', ...sx }} {...props}>
-    <Icon size={size} />
-  </Box>
-);
+import DrawingCanvas from '../../components/drawing-canvas';
+import FileUpload from '../../components/file-upload';
+import AudioRecorder from '../../components/audio-recorder';
+import LucideIcon from '../../components/icon-wrapper';
+import NoteMediaDisplay from '../../components/note-media-display';
 
 // Dynamic theme based on user preferences
 const DynamicTheme = () => {
@@ -137,6 +138,13 @@ const NoteTakingPageContent = () => {
     category: 'task'
   });
   const [isConverting, setIsConverting] = useState(false);
+  const [attachments, setAttachments] = useState<NoteAttachment[]>([]);
+  const [drawingData, setDrawingData] = useState<string | null>(null);
+  const [drawingThumbnail, setDrawingThumbnail] = useState<string | null>(null);
+  const [audioRecordingUrl, setAudioRecordingUrl] = useState<string | null>(null);
+  const [showDrawingCanvas, setShowDrawingCanvas] = useState(false);
+  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
+  const [noteWithAttachments, setNoteWithAttachments] = useState<(Note & { note_attachments: NoteAttachment[] })[]>([]);
   const [noteColor, setNoteColor] = useState('#ffffff'); // State for note color
   const [timeRange, setTimeRange] = useState('30days'); // Time range state for dropdown
 
@@ -217,7 +225,11 @@ const NoteTakingPageContent = () => {
       if (user) {
         setLoading(true);
         try {
-          // Load notes
+          // Load notes with attachments
+          const userNotesWithAttachments = await getNotesWithAttachments(user.id);
+          setNoteWithAttachments(userNotesWithAttachments);
+          
+          // Also load regular notes for backward compatibility
           const userNotes = await getNotes(user.id);
           setNotes(userNotes);
           
@@ -259,16 +271,46 @@ const NoteTakingPageContent = () => {
       title: title.trim(),
       content: content.trim(),
       color: noteColor,
+      drawing_data: drawingData || undefined,
+      drawing_thumbnail: drawingThumbnail || undefined,
+      audio_recording_url: audioRecordingUrl || undefined,
+      is_drawing: !!drawingData,
+      is_recording: !!audioRecordingUrl,
     };
 
     try {
-      const addedNote = await addNote(newNote);
+      let addedNote;
+      if (attachments.length > 0 || drawingData || audioRecordingUrl) {
+        // Use the enhanced function for notes with attachments
+        const result = await addNoteWithAttachments(newNote, attachments);
+        if (result) {
+          addedNote = result.note;
+          // Update both note lists
+          setNotes([addedNote, ...notes]);
+          setNoteWithAttachments([{
+            ...addedNote,
+            note_attachments: result.attachments
+          }, ...noteWithAttachments]);
+        }
+      } else {
+        // Use regular function for simple notes
+        addedNote = await addNote(newNote);
+        if (addedNote) {
+          setNotes([addedNote, ...notes]);
+        }
+      }
+
       if (addedNote) {
-        setNotes([addedNote, ...notes]);
+        // Reset form
         setTitle('');
         setContent('');
         setOpenDialog(false);
         setEditingNote(null);
+        setAttachments([]);
+        setDrawingData(null);
+        setDrawingThumbnail(null);
+        setAudioRecordingUrl(null);
+        setNoteColor('#ffffff');
         setSnackbar({open: true, message: 'Note added successfully!', severity: 'success'});
       } else {
         setSnackbar({open: true, message: 'Failed to add note', severity: 'error'});
@@ -349,6 +391,12 @@ const NoteTakingPageContent = () => {
     setContent('');
     setNoteColor('#ffffff'); // Reset color to default
     setEditingNote(null);
+    setAttachments([]);
+    setDrawingData(null);
+    setDrawingThumbnail(null);
+    setAudioRecordingUrl(null);
+    setShowDrawingCanvas(false);
+    setShowAudioRecorder(false);
   };
 
   const handleLogout = () => {
@@ -420,20 +468,39 @@ const NoteTakingPageContent = () => {
     try {
       let success = false;
       
+      // Get multimedia data from the current note
+      const noteWithMultimedia = noteWithAttachments.find((n: any) => n.id === currentNote.id);
+      const multimediaData = {
+        drawing_data: (currentNote as any).drawing_data || noteWithMultimedia?.drawing_data,
+        drawing_thumbnail: (currentNote as any).drawing_thumbnail || noteWithMultimedia?.drawing_thumbnail,
+        audio_recording_url: (currentNote as any).audio_recording_url || noteWithMultimedia?.audio_recording_url,
+        attachments: noteWithMultimedia?.note_attachments || [],
+        is_drawing: (currentNote as any).is_drawing || noteWithMultimedia?.is_drawing,
+        is_recording: (currentNote as any).is_recording || noteWithMultimedia?.is_recording
+      };
+      
+      console.log('Multimedia data extracted:', multimediaData);
+      console.log('Current note ID:', currentNote.id);
+      console.log('User ID:', user.id);
+      
       if (conversionType === 'personal') {
-        // Convert to personal task
+        // Convert to personal task with multimedia data
         const personalTask = {
           user_id: user.id,
           title: conversionData.title,
           category: conversionData.category,
           entry_date: new Date(conversionData.date).toISOString(),
-          category_data: {},
+          category_data: {
+            ...multimediaData,
+            original_note_id: currentNote.id,
+            conversion_date: new Date().toISOString()
+          },
           priority: conversionData.priority,
           status: 'pending',
           description: conversionData.description
         };
 
-        console.log('Creating personal task:', personalTask);
+        console.log('Creating personal task with multimedia:', personalTask);
         const result = await addCalendarEntry(personalTask);
         console.log('Personal task result:', result);
         
@@ -444,7 +511,7 @@ const NoteTakingPageContent = () => {
           throw new Error('Failed to add personal calendar entry');
         }
       } else if (conversionType === 'professional') {
-        // Convert to professional task
+        // Convert to professional task with multimedia data
         const professionalTask = {
           user_id: user.id,
           title: conversionData.title,
@@ -453,11 +520,21 @@ const NoteTakingPageContent = () => {
           role: 'General',
           responsibilities: '',
           experience: '',
-          task_date: conversionData.date,
+          task_date: conversionData.date, // This should be a date string that works with both date and text types
           priority: conversionData.priority,
-          status: 'pending'
+          status: 'pending',
+          // Add multimedia data as additional fields
+          drawing_data: multimediaData.drawing_data,
+          drawing_thumbnail: multimediaData.drawing_thumbnail,
+          audio_recording_url: multimediaData.audio_recording_url,
+          attachments: multimediaData.attachments, // This will be stored as JSON
+          is_drawing: multimediaData.is_drawing,
+          is_recording: multimediaData.is_recording,
+          original_note_id: currentNote.id,
+          conversion_date: new Date().toISOString()
         };
 
+        console.log('Creating professional task with multimedia:', professionalTask);
         const result = await addProfessionalTask(professionalTask);
         if (result) {
           success = true;
@@ -508,6 +585,10 @@ const NoteTakingPageContent = () => {
             // Reload notes to remove the converted one
             const userNotes = await getNotes(user.id);
             setNotes(userNotes);
+            
+            // Also reload notes with attachments
+            const userNotesWithAttachments = await getNotesWithAttachments(user.id);
+            setNoteWithAttachments(userNotesWithAttachments);
           } catch (error) {
             console.error('Error marking note as converted:', error);
           }
@@ -1118,6 +1199,18 @@ const NoteTakingPageContent = () => {
                   <Typography variant="body2" color="text.secondary" paragraph>
                     {note.content.substring(0, 100)}{note.content.length > 100 ? '...' : ''}
                   </Typography>
+                  
+                  {/* Display multimedia content for notes with attachments */}
+                  <NoteMediaDisplay
+                    attachments={[]}
+                    drawingData={(note as any).drawing_data}
+                    drawingThumbnail={(note as any).drawing_thumbnail}
+                    audioRecordingUrl={(note as any).audio_recording_url}
+                    isDrawing={(note as any).is_drawing}
+                    isRecording={(note as any).is_recording}
+                    compact={true}
+                  />
+                  
                   <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
                     {formatDate(note.updated_at)}
                   </Typography>
@@ -1145,6 +1238,85 @@ const NoteTakingPageContent = () => {
                 </Box>
               </Box>
             )}
+            
+            {/* Notes with Attachments Section */}
+            {noteWithAttachments.length > 0 && (
+              <Box sx={{ mt: 4 }}>
+                <Typography variant="h5" sx={{ mb: 2, color: 'primary.main', fontWeight: 600 }}>
+                  Enhanced Notes ({noteWithAttachments.length})
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+                  {noteWithAttachments.map((note) => (
+                    <Card 
+                      key={note.id}
+                      sx={{ 
+                        height: '100%', 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        border: '2px solid',
+                        borderColor: 'secondary.main',
+                        backgroundColor: note.color || '#ffffff',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        '&:hover': {
+                          transform: 'translateY(-4px)',
+                          boxShadow: 4
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ flex: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'primary.main' }}>
+                            {note.title}
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleNoteMenuOpen(e, note)}
+                          >
+                            <MoreVertIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                          {note.content.substring(0, 100)}{note.content.length > 100 ? '...' : ''}
+                        </Typography>
+                        
+                        {/* Display multimedia content */}
+                        <NoteMediaDisplay
+                          attachments={note.note_attachments}
+                          drawingData={note.drawing_data}
+                          drawingThumbnail={note.drawing_thumbnail}
+                          audioRecordingUrl={note.audio_recording_url}
+                          isDrawing={note.is_drawing}
+                          isRecording={note.is_recording}
+                          compact={true}
+                        />
+                        
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                          {formatDate(note.updated_at)}
+                        </Typography>
+                      </CardContent>
+                      <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+                        <Button 
+                          size="small" 
+                          startIcon={<EditIcon />} 
+                          onClick={() => handleEditNote(note)}
+                          sx={{ mr: 1 }}
+                        >
+                          Edit
+                        </Button>
+                        <Button 
+                          size="small" 
+                          color="error" 
+                          startIcon={<DeleteIcon />} 
+                          onClick={() => handleDeleteNote(note.id)}
+                        >
+                          Delete
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  ))}
+                </Box>
+              </Box>
+            )}
           </>
         )}
       </Container>
@@ -1154,7 +1326,7 @@ const NoteTakingPageContent = () => {
       <Dialog 
         open={openDialog} 
         onClose={handleCloseDialog}
-        maxWidth="sm"
+        maxWidth="lg"
         fullWidth
       >
         <DialogTitle>
@@ -1172,7 +1344,7 @@ const NoteTakingPageContent = () => {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
           <TextField
             autoFocus
             margin="dense"
@@ -1188,12 +1360,74 @@ const NoteTakingPageContent = () => {
             label="Content"
             fullWidth
             multiline
-            rows={6}
+            rows={4}
             variant="outlined"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             sx={{ mb: 2 }}
           />
+          
+          {/* Multimedia Options */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+              Multimedia Options
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+              <Button
+                variant={showDrawingCanvas ? "contained" : "outlined"}
+                size="small"
+                startIcon={<BrushIcon />}
+                onClick={() => setShowDrawingCanvas(!showDrawingCanvas)}
+              >
+                {showDrawingCanvas ? 'Hide Drawing' : 'Add Drawing'}
+              </Button>
+              <Button
+                variant={showAudioRecorder ? "contained" : "outlined"}
+                size="small"
+                startIcon={<MicIcon />}
+                onClick={() => setShowAudioRecorder(!showAudioRecorder)}
+              >
+                {showAudioRecorder ? 'Hide Recorder' : 'Add Audio'}
+              </Button>
+            </Box>
+          </Box>
+
+          {/* Drawing Canvas */}
+          {showDrawingCanvas && (
+            <Box sx={{ mb: 2 }}>
+              <DrawingCanvas
+                width={500}
+                height={300}
+                onSave={(imageData, thumbnailData) => {
+                  setDrawingData(imageData);
+                  setDrawingThumbnail(thumbnailData);
+                  setShowDrawingCanvas(false);
+                }}
+                initialData={drawingData || undefined}
+              />
+            </Box>
+          )}
+
+          {/* Audio Recorder */}
+          {showAudioRecorder && (
+            <Box sx={{ mb: 2 }}>
+              <AudioRecorder
+                onRecordingComplete={(audioData, duration) => {
+                  setAudioRecordingUrl(audioData);
+                  setShowAudioRecorder(false);
+                }}
+              />
+            </Box>
+          )}
+
+          {/* File Upload */}
+          <Box sx={{ mb: 2 }}>
+            <FileUpload
+              onFilesChange={setAttachments}
+              maxFiles={5}
+              maxSize={10}
+            />
+          </Box>
           
           {/* Color Picker Section */}
           <Box sx={{ mb: 2 }}>
