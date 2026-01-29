@@ -12,7 +12,6 @@ import {
   Container,
   Divider,
   FormControl,
-  Grid,
   IconButton,
   InputLabel,
   MenuItem,
@@ -197,8 +196,8 @@ const UserClockPageContent = () => {
 
           <Box sx={{ p: 3 }}>
             {tab === "timezone" && (
-              <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 6 }}>
+              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 300px' }}>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
                     Global Timezone
                   </Typography>
@@ -239,9 +238,9 @@ const UserClockPageContent = () => {
                     </Stack>
                     <Chip label={`Current: ${timezone}`} color="primary" variant="outlined" />
                   </Stack>
-                </Grid>
+                </Box>
 
-                <Grid size={{ xs: 12, md: 6 }}>
+                <Box sx={{ flex: '1 1 300px' }}>
                   <Card variant="outlined" sx={{ p: 2 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
                       Architecture
@@ -251,13 +250,13 @@ const UserClockPageContent = () => {
                       Dashboard, Tasks, Notes, Alarms, Stopwatch, Bedtime.
                     </Typography>
                   </Card>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
             )}
 
             {tab === "stopwatch" && (
-              <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 5 }}>
+              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 250px' }}>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
                     Create Stopwatch Entry
                   </Typography>
@@ -294,9 +293,9 @@ const UserClockPageContent = () => {
                       Start Tracking
                     </Button>
                   </Stack>
-                </Grid>
+                </Box>
 
-                <Grid size={{ xs: 12, md: 7 }}>
+                <Box sx={{ flex: '1 1 350px' }}>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
                     <TextField
                       size="small"
@@ -330,20 +329,20 @@ const UserClockPageContent = () => {
                         </Stack>
 
                         <Divider sx={{ my: 1.5 }} />
-                        <Grid container spacing={2}>
-                          <Grid size={{ xs: 12, sm: 6 }}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                          <Box sx={{ flex: 1 }}>
                             <Typography variant="caption" color="text.secondary">
                               Start ({timezone})
                             </Typography>
                             <Typography variant="body2">{formatWithTz(entry.startUtc, "PPpp")}</Typography>
-                          </Grid>
-                          <Grid size={{ xs: 12, sm: 6 }}>
+                          </Box>
+                          <Box sx={{ flex: 1 }}>
                             <Typography variant="caption" color="text.secondary">
                               End ({timezone})
                             </Typography>
                             <Typography variant="body2">{formatWithTz(entry.endUtc, "PPpp")}</Typography>
-                          </Grid>
-                        </Grid>
+                          </Box>
+                        </Box>
                       </Card>
                     ))}
 
@@ -353,13 +352,13 @@ const UserClockPageContent = () => {
                       </Typography>
                     )}
                   </Stack>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
             )}
 
             {tab === "bedtime" && (
-              <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 4 }}>
+              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 200px' }}>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
                     Log Sleep
                   </Typography>
@@ -393,9 +392,9 @@ const UserClockPageContent = () => {
                       </Typography>
                     </Card>
                   )}
-                </Grid>
+                </Box>
 
-                <Grid size={{ xs: 12, md: 8 }}>
+                <Box sx={{ flex: '1 1 400px' }}>
                   <Stack spacing={2}>
                     {bedtime.map((entry) => (
                       <Card key={entry.id} variant="outlined" sx={{ p: 2 }}>
@@ -406,20 +405,20 @@ const UserClockPageContent = () => {
                           <Chip label={formatDuration(entry.durationMs)} color="primary" />
                         </Stack>
                         <Divider sx={{ my: 1.5 }} />
-                        <Grid container spacing={2}>
-                          <Grid size={{ xs: 12, sm: 6 }}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                          <Box sx={{ flex: 1 }}>
                             <Typography variant="caption" color="text.secondary">
                               Sleep ({timezone})
                             </Typography>
                             <Typography variant="body2">{formatWithTz(entry.sleepUtc, "PPpp")}</Typography>
-                          </Grid>
-                          <Grid size={{ xs: 12, sm: 6 }}>
+                          </Box>
+                          <Box sx={{ flex: 1 }}>
                             <Typography variant="caption" color="text.secondary">
                               Wake ({timezone})
                             </Typography>
                             <Typography variant="body2">{formatWithTz(entry.wakeUtc, "PPpp")}</Typography>
-                          </Grid>
-                        </Grid>
+                          </Box>
+                        </Box>
                       </Card>
                     ))}
 
@@ -429,13 +428,13 @@ const UserClockPageContent = () => {
                       </Typography>
                     )}
                   </Stack>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
             )}
 
             {tab === "alarm" && (
-              <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 4 }}>
+              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 200px' }}>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
                     Create Alarm
                   </Typography>
@@ -477,9 +476,9 @@ const UserClockPageContent = () => {
                       Save Alarm
                     </Button>
                   </Stack>
-                </Grid>
+                </Box>
 
-                <Grid size={{ xs: 12, md: 8 }}>
+                <Box sx={{ flex: '1 1 400px' }}>
                   <Stack spacing={2}>
                     {alarms.map((alarm) => (
                       <Card key={alarm.id} variant="outlined" sx={{ p: 2 }}>
@@ -560,8 +559,8 @@ const UserClockPageContent = () => {
                       </Typography>
                     )}
                   </Stack>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
             )}
           </Box>
         </Paper>

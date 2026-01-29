@@ -11,6 +11,9 @@ import {
 } from "./timezone-utils";
 import { getTimezonePreference, setTimezonePreference } from "./settings-service";
 import { useAuth } from "./auth-context";
+import { createStopwatchSession, getStopwatchSessions } from "./stopwatch-service";
+import { createBedtimeLog, getBedtimeLogs } from "./bedtime-service";
+import { createAlarm, getAlarms, updateAlarmStatus, deleteAlarm } from "./alarm-service";
 
 export type StopwatchEntry = {
   id: string;
@@ -28,6 +31,7 @@ export type BedtimeEntry = {
   wakeUtc: string;
   durationMs: number;
   dateLabel: string; // e.g., 2024-05-01
+  notes?: string;
 };
 
 export type AlarmEntry = {
@@ -59,7 +63,7 @@ type TimeEngineContextValue = {
     endLocalIso: string;
   }) => void;
   stopwatch: StopwatchEntry[];
-  addBedtimeEntry: (payload: { sleepLocalIso: string; wakeLocalIso: string }) => void;
+  addBedtimeEntry: (payload: { sleepLocalIso: string; wakeLocalIso: string; notes?: string }) => void,
   bedtime: BedtimeEntry[];
   addAlarm: (payload: { title: string; source: AlarmEntry["source"]; triggerLocalIso: string; link?: string }) => void;
   updateAlarmStatus: (id: string, status: AlarmEntry["status"], newTriggerLocalIso?: string) => void;
@@ -153,95 +157,148 @@ export function TimeEngineProvider({ children }: { children: React.ReactNode }) 
   );
 
   const addStopwatchEntry = useCallback(
-    ({ heading, purpose, startLocalIso, endLocalIso }: { heading: string; purpose: string; startLocalIso: string; endLocalIso: string }) => {
+    async ({ heading, purpose, startLocalIso, endLocalIso }: { heading: string; purpose: string; startLocalIso: string; endLocalIso: string }) => {
+      if (!user?.id) return;
+      
       const startUtc = convertToUTC(parseISO(startLocalIso), state.timezone).toISOString();
       const endUtc = convertToUTC(parseISO(endLocalIso), state.timezone).toISOString();
-      const durationMs = Math.max(0, differenceInMilliseconds(parseISO(endUtc), parseISO(startUtc)));
-      const entry: StopwatchEntry = {
-        id: crypto.randomUUID(),
+      
+      // Save to database
+      const dbEntry = await createStopwatchSession(
+        user.id,
         heading,
         purpose,
         startUtc,
         endUtc,
-        durationMs,
-        createdAtUtc: new Date().toISOString(),
-      };
-      setState((prev) => {
-        const next = { ...prev, stopwatch: [entry, ...prev.stopwatch] };
-        persistState(next);
-        return next;
-      });
+        state.timezone
+      );
+      
+      if (dbEntry) {
+        const entry: StopwatchEntry = {
+          id: dbEntry.id,
+          heading: dbEntry.heading,
+          purpose: dbEntry.purpose,
+          startUtc: dbEntry.start_time_utc,
+          endUtc: dbEntry.end_time_utc,
+          durationMs: dbEntry.duration_ms,
+          createdAtUtc: dbEntry.created_at,
+        };
+        setState((prev) => {
+          const next = { ...prev, stopwatch: [entry, ...prev.stopwatch] };
+          persistState(next);
+          return next;
+        });
+      }
     },
-    [state.timezone]
+    [state.timezone, user?.id]
   );
 
   const addBedtimeEntry = useCallback(
-    ({ sleepLocalIso, wakeLocalIso }: { sleepLocalIso: string; wakeLocalIso: string }) => {
+    async ({ sleepLocalIso, wakeLocalIso, notes }: { sleepLocalIso: string; wakeLocalIso: string; notes?: string }) => {
+      if (!user?.id) return;
+      
       const sleepUtc = convertToUTC(parseISO(sleepLocalIso), state.timezone).toISOString();
       const wakeUtc = convertToUTC(parseISO(wakeLocalIso), state.timezone).toISOString();
-      const durationMs = Math.max(0, differenceInMilliseconds(parseISO(wakeUtc), parseISO(sleepUtc)));
-      const dateLabel = formatWithTz(sleepUtc, "yyyy-MM-dd");
-      const entry: BedtimeEntry = {
-        id: crypto.randomUUID(),
+      
+      // Save to database
+      const dbEntry = await createBedtimeLog(
+        user.id,
         sleepUtc,
         wakeUtc,
-        durationMs,
-        dateLabel,
-      };
-      setState((prev) => {
-        const next = { ...prev, bedtime: [entry, ...prev.bedtime] };
-        persistState(next);
-        return next;
-      });
+        state.timezone,
+        notes
+      );
+      
+      if (dbEntry) {
+        const entry: BedtimeEntry = {
+          id: dbEntry.id,
+          sleepUtc: dbEntry.sleep_time_utc,
+          wakeUtc: dbEntry.wake_time_utc,
+          durationMs: dbEntry.duration_ms,
+          dateLabel: dbEntry.date_label,
+        };
+        setState((prev) => {
+          const next = { ...prev, bedtime: [entry, ...prev.bedtime] };
+          persistState(next);
+          return next;
+        });
+      }
     },
-    [formatWithTz, state.timezone]
+    [state.timezone, user?.id]
   );
 
   const addAlarm = useCallback(
-    ({ title, source, triggerLocalIso, link }: { title: string; source: AlarmEntry["source"]; triggerLocalIso: string; link?: string }) => {
+    async ({ title, source, triggerLocalIso, link }: { title: string; source: AlarmEntry["source"]; triggerLocalIso: string; link?: string }) => {
+      if (!user?.id) return;
+      
       const triggerUtc = convertToUTC(parseISO(triggerLocalIso), state.timezone).toISOString();
-      const entry: AlarmEntry = {
-        id: crypto.randomUUID(),
+      
+      // Save to database
+      const dbEntry = await createAlarm(
+        user.id,
         title,
         source,
         triggerUtc,
-        status: "Active",
-        link,
-      };
-      setState((prev) => {
-        const next = { ...prev, alarms: [entry, ...prev.alarms] };
-        persistState(next);
-        return next;
-      });
+        state.timezone
+      );
+      
+      if (dbEntry) {
+        const entry: AlarmEntry = {
+          id: dbEntry.id,
+          title: dbEntry.title,
+          source: dbEntry.source_type as AlarmEntry["source"],
+          triggerUtc: dbEntry.trigger_time_utc,
+          status: dbEntry.status as AlarmEntry["status"],
+          link,
+        };
+        setState((prev) => {
+          const next = { ...prev, alarms: [entry, ...prev.alarms] };
+          persistState(next);
+          return next;
+        });
+      }
     },
-    [state.timezone]
+    [state.timezone, user?.id]
   );
 
-  const updateAlarmStatus = useCallback(
-    (id: string, status: AlarmEntry["status"], newTriggerLocalIso?: string) => {
+  const updateAlarmStatusLocal = useCallback(
+    async (id: string, status: AlarmEntry["status"], newTriggerLocalIso?: string) => {
+      if (!user?.id) return;
+      
+      const newTriggerUtc = newTriggerLocalIso
+        ? convertToUTC(parseISO(newTriggerLocalIso), state.timezone).toISOString()
+        : undefined;
+      
+      // Update in database
+      await updateAlarmStatus(user.id, id, status, newTriggerUtc);
+      
+      // Update local state
       setState((prev) => {
         const updated = prev.alarms.map((a) => {
           if (a.id !== id) return a;
-          const nextTriggerUtc = newTriggerLocalIso
-            ? convertToUTC(parseISO(newTriggerLocalIso), state.timezone).toISOString()
-            : a.triggerUtc;
-          return { ...a, status, triggerUtc: nextTriggerUtc };
+          return { ...a, status, triggerUtc: newTriggerUtc || a.triggerUtc };
         });
         const next = { ...prev, alarms: updated };
         persistState(next);
         return next;
       });
     },
-    [state.timezone]
+    [state.timezone, user?.id]
   );
 
-  const deleteAlarm = useCallback((id: string) => {
+  const deleteAlarmLocal = useCallback(async (id: string) => {
+    if (!user?.id) return;
+    
+    // Delete from database
+    await deleteAlarm(user.id, id);
+    
+    // Update local state
     setState((prev) => {
       const next = { ...prev, alarms: prev.alarms.filter((a) => a.id !== id) };
       persistState(next);
       return next;
     });
-  }, []);
+  }, [user?.id]);
 
   const value: TimeEngineContextValue = useMemo(
     () => ({
@@ -256,8 +313,8 @@ export function TimeEngineProvider({ children }: { children: React.ReactNode }) 
       addBedtimeEntry,
       alarms: state.alarms,
       addAlarm,
-      updateAlarmStatus,
-      deleteAlarm,
+      updateAlarmStatus: updateAlarmStatusLocal,
+      deleteAlarm: deleteAlarmLocal,
     }),
     [
       state.timezone,

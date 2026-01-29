@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { alpha } from '@mui/material/styles';
 import { useAuth } from '../../lib/auth-context';
+import { useTimeEngine } from '../../lib/time-engine';
 import { ThemeProvider as AppThemeProvider, useTheme as useCustomTheme } from '../../lib/theme-context';
 import ProtectedRoute from '../../lib/protected-route';
 import ProtectedLayout from '../protected-layout';
@@ -43,7 +44,9 @@ import {
   LinearProgress,
   Grid,
   Fade,
-  Divider
+  Divider,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import {
@@ -117,6 +120,7 @@ const DynamicTheme = () => {
 const NoteTakingPageContent = () => {
   const { theme } = useCustomTheme();
   const { user, logout } = useAuth();
+  const { addAlarm } = useTimeEngine();
   const router = useRouter();
 
   const [notes, setNotes] = useState<Note[]>([]);
@@ -151,6 +155,10 @@ const NoteTakingPageContent = () => {
   const [timeRange, setTimeRange] = useState('30days'); // Time range state for dropdown
   const [viewNoteOpen, setViewNoteOpen] = useState(false);
   const [selectedNoteForView, setSelectedNoteForView] = useState<(Note & { note_attachments: NoteAttachment[] }) | null>(null);
+  
+  // State for alarm functionality
+  const [alarmEnabled, setAlarmEnabled] = useState(false);
+  const [alarmTime, setAlarmTime] = useState('');
 
   const mergedNotes = useMemo(() => {
     const attachmentMap = new Map(noteWithAttachments.map((n) => [n.id, n]));
@@ -312,6 +320,16 @@ const NoteTakingPageContent = () => {
       }
 
       if (addedNote) {
+        // Create alarm if enabled
+        if (alarmEnabled && alarmTime && user) {
+          await addAlarm({
+            title: `Alarm for: ${title}`,
+            source: 'Note',
+            triggerLocalIso: alarmTime,
+            link: `/note-taking`
+          });
+        }
+        
         // Reset form
         setTitle('');
         setContent('');
@@ -322,6 +340,8 @@ const NoteTakingPageContent = () => {
         setDrawingThumbnail(null);
         setAudioRecordingUrl(null);
         setNoteColor('#ffffff');
+        setAlarmEnabled(false);
+        setAlarmTime('');
         setSnackbar({ open: true, message: 'Note added successfully!', severity: 'success' });
       } else {
         setSnackbar({ open: true, message: 'Failed to add note', severity: 'error' });
@@ -360,10 +380,23 @@ const NoteTakingPageContent = () => {
 
         setNotes(updatedNotes);
         setNoteWithAttachments(prev => prev.map(n => n.id === editingNote.id ? { ...n, title: title.trim(), content: content.trim(), updated_at: new Date().toISOString() } : n));
+        
+        // Create alarm if enabled
+        if (alarmEnabled && alarmTime && user) {
+          await addAlarm({
+            title: `Alarm for: ${title}`,
+            source: 'Note',
+            triggerLocalIso: alarmTime,
+            link: `/note-taking`
+          });
+        }
+        
         setTitle('');
         setContent('');
         setOpenDialog(false);
         setEditingNote(null);
+        setAlarmEnabled(false);
+        setAlarmTime('');
         setSnackbar({ open: true, message: 'Note updated successfully!', severity: 'success' });
       } else {
         setSnackbar({ open: true, message: 'Failed to update note', severity: 'error' });
@@ -1399,6 +1432,48 @@ const NoteTakingPageContent = () => {
               </Paper>
             </Grid>
           </Grid>
+          
+          {/* Alarm Controls */}
+          <Box sx={{ mt: 3 }}>
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider', backgroundColor: 'white' }}>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <LucideIcon icon={ZapIcon} size={16} /> Alarm Settings
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={alarmEnabled}
+                      onChange={(e) => setAlarmEnabled(e.target.checked)}
+                    />
+                  }
+                  label="Enable Alarm"
+                  sx={{ mr: 2 }}
+                />
+                <TextField
+                  label="Alarm Time"
+                  type="datetime-local"
+                  fullWidth
+                  value={alarmTime}
+                  onChange={(e) => setAlarmTime(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  disabled={!alarmEnabled}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      '&:hover fieldset': {
+                        borderColor: 'rgba(103, 80, 164, 0.5)'
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#6750A4',
+                        boxShadow: '0 0 0 2px rgba(103, 80, 164, 0.2)'
+                      }
+                    }
+                  }}
+                />
+              </Box>
+            </Paper>
+          </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, backgroundColor: '#f8f8fb' }}>
           <Button onClick={handleCloseDialog}>Cancel</Button>
@@ -1579,10 +1654,14 @@ const NoteTakingPageContent = () => {
   );
 };
 
+import { TimeEngineProvider } from '../../lib/time-engine';
+
 export default function NoteTakingPage() {
   return (
     <ProtectedLayout>
-      <NoteTakingPageContent />
+      <TimeEngineProvider>
+        <NoteTakingPageContent />
+      </TimeEngineProvider>
     </ProtectedLayout>
   );
 }

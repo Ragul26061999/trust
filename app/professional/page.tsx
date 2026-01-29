@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ChangeEvent } from 'react';
 import { useAuth } from '../../lib/auth-context';
+import { useTimeEngine } from '../../lib/time-engine';
 import ProtectedLayout from '../protected-layout';
 import {
   Box,
@@ -37,6 +38,8 @@ import {
   useTheme,
   alpha,
   Menu,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -83,6 +86,7 @@ import { isSupabaseConfigured } from '../../lib/supabase';
 
 const ProfessionalPageContent = () => {
   const { user, logout } = useAuth();
+  const { addAlarm } = useTimeEngine();
   const router = useRouter();
   
   // State for user profile information
@@ -106,6 +110,10 @@ const ProfessionalPageContent = () => {
     priority: 'Medium',
     task_date: format(new Date(), 'yyyy-MM-dd'),
   });
+  
+  // State for alarm functionality
+  const [alarmEnabled, setAlarmEnabled] = useState(false);
+  const [alarmTime, setAlarmTime] = useState('');
   
   // State for rescheduling dialog
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
@@ -322,6 +330,17 @@ const ProfessionalPageContent = () => {
       const newTaskResult = await addProfessionalTask(taskData);
       if (newTaskResult) {
         setTasks([...tasks, newTaskResult]);
+        
+        // Create alarm if enabled
+        if (alarmEnabled && alarmTime && user) {
+          await addAlarm({
+            title: `Alarm for: ${newTask.title}`,
+            source: 'Professional Task',
+            triggerLocalIso: alarmTime,
+            link: `/professional`
+          });
+        }
+        
         setShowTaskForm(false);
         setNewTask({
           title: '',
@@ -329,6 +348,8 @@ const ProfessionalPageContent = () => {
           priority: 'Medium',
           task_date: format(new Date(), 'yyyy-MM-dd'),
         });
+        setAlarmEnabled(false);
+        setAlarmTime('');
       }
     } catch (error) {
       console.error('Error creating task:', error);
@@ -1410,11 +1431,55 @@ ${index + 1}. ${task.title}
                   />
                 </Grid>
               </Grid>
+              
+              {/* Alarm Controls */}
+              <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
+                  Alarm Settings
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={alarmEnabled}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAlarmEnabled(e.target.checked)}
+                      />
+                    }
+                    label="Enable Alarm"
+                    sx={{ mr: 2 }}
+                  />
+                  <TextField
+                    label="Alarm Time"
+                    type="datetime-local"
+                    fullWidth
+                    value={alarmTime}
+                    onChange={(e) => setAlarmTime(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    disabled={!alarmEnabled}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(102, 126, 234, 0.5)'
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#667eea',
+                          boxShadow: '0 0 0 2px rgba(102, 126, 234, 0.2)'
+                        }
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
             </Box>
           </DialogContent>
           <DialogActions sx={{ px: 4, py: 3, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
             <Button 
-              onClick={() => setShowTaskForm(false)} 
+              onClick={() => {
+                setShowTaskForm(false);
+                setAlarmEnabled(false);
+                setAlarmTime('');
+              }} 
               sx={{ 
                 fontWeight: 600, 
                 borderRadius: 3,
@@ -1901,10 +1966,14 @@ ${index + 1}. ${task.title}
   );
 };
 
+import { TimeEngineProvider } from '../../lib/time-engine';
+
 export default function ProfessionalPage() {
   return (
     <ProtectedLayout>
-      <ProfessionalPageContent />
+      <TimeEngineProvider>
+        <ProfessionalPageContent />
+      </TimeEngineProvider>
     </ProtectedLayout>
   );
 }

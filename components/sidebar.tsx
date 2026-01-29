@@ -86,7 +86,7 @@ const Sidebar = () => {
     { text: 'Personal', icon: <LucideIcon icon={PersonalIcon} />, path: '/personal', color: '#9C27B0', locked: false },
     { text: 'Note Taking', icon: <LucideIcon icon={NoteIcon} />, path: '/note-taking', color: '#6750A4', locked: false },
     { text: 'Calendar', icon: <LucideIcon icon={CalendarIcon} />, path: '/calendar', color: '#4CAF50', locked: true },
-    { text: 'User Clock', icon: <LucideIcon icon={ClockIcon} />, path: '/user-clock', color: '#E91E63', locked: true },
+    { text: 'User Clock', icon: <LucideIcon icon={ClockIcon} />, path: '/user-clock', color: '#E91E63', locked: false },
   ];
 
   const currentWidth = isCollapsed ? collapsedWidth : drawerWidth;

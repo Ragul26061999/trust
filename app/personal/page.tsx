@@ -90,6 +90,7 @@ import {
     VisibilityOff as VisibilityOffIcon
 } from '@mui/icons-material';
 import ProtectedLayout from '../protected-layout';
+import { useTimeEngine, TimeEngineProvider } from '../../lib/time-engine';
 import { useAuth } from '../../lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { getCalendarEntries, addCalendarEntry, updateCalendarEntry, deleteCalendarEntry, getCustomCalendars, addCustomCalendar } from '../../lib/personal-calendar-db';
@@ -3137,7 +3138,9 @@ const PersonalCalendarPage = () => {
 export default function PersonalPage() {
     return (
         <ProtectedLayout>
-            <PersonalCalendarPage />
+            <TimeEngineProvider>
+                <PersonalCalendarPage />
+            </TimeEngineProvider>
         </ProtectedLayout>
     );
 }
