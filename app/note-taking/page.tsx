@@ -107,6 +107,7 @@ const DynamicTheme = () => {
     },
     typography: {
       fontFamily: [
+        'Poppins',
         'Inter',
         'Roboto',
         '"Helvetica Neue"',

@@ -104,6 +104,7 @@ const AddOnPageContent = () => {
     },
     typography: {
       fontFamily: [
+        'Poppins',
         'Inter',
         'Roboto',
         '"Helvetica Neue"',

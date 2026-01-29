@@ -141,6 +141,7 @@ export default function ProtectedLayout({
     },
     typography: {
       fontFamily: [
+        'Poppins',
         'Inter',
         'Roboto',
         '"Helvetica Neue"',

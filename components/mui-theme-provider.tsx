@@ -120,7 +120,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         },
       },
       typography: {
-        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+        fontFamily: '"Poppins", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
         h1: { fontWeight: 700 },
         h2: { fontWeight: 700 },
         h3: { fontWeight: 700 },
