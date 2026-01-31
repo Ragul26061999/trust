@@ -664,18 +664,20 @@ ${index + 1}. ${task.title}
               <IconButton
                 edge="start"
                 onClick={handleGoBack}
-                sx={{
-                  borderRadius: 3,
-                  bgcolor: 'action.hover',
-                  '&:hover': { bgcolor: 'action.selected' }
+                sx={{ 
+                  color: 'text.primary',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderRadius: 2
+                  }
                 }}
               >
                 <ArrowBackIcon />
               </IconButton>
               <Box 
                 sx={{ 
-                  width: { xs: 48, md: 64 }, 
-                  height: { xs: 48, md: 64 }, 
+                  width: { xs: 40, md: 48 }, 
+                  height: { xs: 40, md: 48 }, 
                   borderRadius: 3,
                   background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
                   display: 'flex',
@@ -684,7 +686,7 @@ ${index + 1}. ${task.title}
                   boxShadow: '0 4px 20px rgba(255, 152, 0, 0.35)'
                 }}
               >
-                <WorkIcon sx={{ fontSize: { xs: 24, md: 32 }, color: 'white' }} />
+                <WorkIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'white' }} />
               </Box>
               <Box>
                 <Typography 
@@ -703,17 +705,18 @@ ${index + 1}. ${task.title}
                   Professional Dashboard
                 </Typography>
                 <Typography 
-                  variant="body1" 
+                  variant="body2" 
                   sx={{ 
                     color: 'text.secondary',
                     fontSize: { xs: '0.875rem', md: '1rem' },
-                    fontWeight: 500
+                    fontWeight: 500,
+                    mt: 0.5
                   }}
                 >
-                  {profileInfo.role}, {profileInfo.department}
+                  Manage your professional tasks and track performance metrics
                 </Typography>
                 <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, opacity: 0.7 }}>
-                  {profileInfo.experience}
+                  {profileInfo.role}, {profileInfo.department} • {profileInfo.experience}
                 </Typography>
               </Box>
             </Box>
@@ -751,27 +754,343 @@ ${index + 1}. ${task.title}
               >
                 Edit Profile
               </Button>
-              <Button
-                variant="contained"
-                onClick={logout}
-                sx={{ 
-                  background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
-                  color: 'white', 
-                  '&:hover': { 
-                    background: 'linear-gradient(135deg, #FB8C00 0%, #EF6C00 100%)',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 6px 20px rgba(255, 152, 0, 0.45)'
-                  }, 
-                  textTransform: 'none',
-                  borderRadius: 3,
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                Logout
-              </Button>
             </Box>
           </Box>
         </Box>
+
+        {/* KPI Cards Section */}
+        <Container maxWidth="xl" sx={{ mb: 4 }}>
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Card 
+                sx={{ 
+                  height: 140,
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(217, 119, 6, 0.05) 100%)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    transform: 'translateY(-8px) scale(1.02)',
+                    boxShadow: '0 12px 40px rgba(245, 158, 11, 0.2)',
+                    borderColor: '#f59e0b',
+                    '& .card-icon': {
+                      transform: 'scale(1.1) rotate(5deg)',
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      color: 'white'
+                    }
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: 4,
+                    background: 'linear-gradient(180deg, #f59e0b 0%, #d97706 100%)',
+                    opacity: 0.8,
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box 
+                      className="card-icon"
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)',
+                        color: '#f59e0b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
+                      }}
+                    >
+                      <TrendingUpIcon sx={{ fontSize: 20 }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
+                      Pending Tasks
+                    </Typography>
+                  </Box>
+                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
+                    {tasks.filter(t => t.status === 'pending').length}
+                  </Typography>
+                  <Box sx={{ position: 'relative' }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={tasks.length > 0 ? (tasks.filter(t => t.status === 'pending').length / tasks.length) * 100 : 0} 
+                      sx={{ 
+                        height: 6, 
+                        borderRadius: 3,
+                        bgcolor: 'rgba(245, 158, 11, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          background: 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)',
+                          borderRadius: 3,
+                          boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
+                          transition: 'all 0.3s ease'
+                        }
+                      }}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Card 
+                sx={{ 
+                  height: 140,
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    transform: 'translateY(-8px) scale(1.02)',
+                    boxShadow: '0 12px 40px rgba(16, 185, 129, 0.2)',
+                    borderColor: '#10b981',
+                    '& .card-icon': {
+                      transform: 'scale(1.1) rotate(5deg)',
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: 'white'
+                    }
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: 4,
+                    background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                    opacity: 0.8,
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box 
+                      className="card-icon"
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
+                        color: '#10b981',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+                      }}
+                    >
+                      <CheckCircleIcon sx={{ fontSize: 20 }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
+                      Completed
+                    </Typography>
+                  </Box>
+                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
+                    {tasks.filter(t => t.status === 'completed').length}
+                  </Typography>
+                  <Box sx={{ position: 'relative' }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={tasks.length > 0 ? (tasks.filter(t => t.status === 'completed').length / tasks.length) * 100 : 0} 
+                      sx={{ 
+                        height: 6, 
+                        borderRadius: 3,
+                        bgcolor: 'rgba(16, 185, 129, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                          borderRadius: 3,
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+                          transition: 'all 0.3s ease'
+                        }
+                      }}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Card 
+                sx={{ 
+                  height: 140,
+                  background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.05) 100%)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    transform: 'translateY(-8px) scale(1.02)',
+                    boxShadow: '0 12px 40px rgba(239, 68, 68, 0.2)',
+                    borderColor: '#ef4444',
+                    '& .card-icon': {
+                      transform: 'scale(1.1) rotate(5deg)',
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      color: 'white'
+                    }
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: 4,
+                    background: 'linear-gradient(180deg, #ef4444 0%, #dc2626 100%)',
+                    opacity: 0.8,
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box 
+                      className="card-icon"
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%)',
+                        color: '#ef4444',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                      }}
+                    >
+                      <TimelineIcon sx={{ fontSize: 20 }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
+                      Rescheduled
+                    </Typography>
+                  </Box>
+                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
+                    {tasks.filter(t => t.status === 'rescheduled').length}
+                  </Typography>
+                  <Box sx={{ position: 'relative' }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={tasks.length > 0 ? (tasks.filter(t => t.status === 'rescheduled').length / tasks.length) * 100 : 0} 
+                      sx={{ 
+                        height: 6, 
+                        borderRadius: 3,
+                        bgcolor: 'rgba(239, 68, 68, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          background: 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
+                          borderRadius: 3,
+                          boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)',
+                          transition: 'all 0.3s ease'
+                        }
+                      }}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Card 
+                sx={{ 
+                  height: 140,
+                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    transform: 'translateY(-8px) scale(1.02)',
+                    boxShadow: '0 12px 40px rgba(59, 130, 246, 0.2)',
+                    borderColor: '#3b82f6',
+                    '& .card-icon': {
+                      transform: 'scale(1.1) rotate(5deg)',
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      color: 'white'
+                    }
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: 4,
+                    background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
+                    opacity: 0.8,
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box 
+                      className="card-icon"
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)',
+                        color: '#3b82f6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
+                      }}
+                    >
+                      <AssessmentIcon sx={{ fontSize: 20 }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
+                      Completion Rate
+                    </Typography>
+                  </Box>
+                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
+                    {tasks.length > 0 ? Math.round((tasks.filter(t => t.status === 'completed').length / tasks.length) * 100) : 0}%
+                  </Typography>
+                  <Box sx={{ position: 'relative' }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={tasks.length > 0 ? (tasks.filter(t => t.status === 'completed').length / tasks.length) * 100 : 0} 
+                      sx={{ 
+                        height: 6, 
+                        borderRadius: 3,
+                        bgcolor: 'rgba(59, 130, 246, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
+                          borderRadius: 3,
+                          boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
+                          transition: 'all 0.3s ease'
+                        }
+                      }}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Container>
 
         <Container maxWidth="xl">
           <Grid container spacing={4}>
@@ -899,90 +1218,6 @@ ${index + 1}. ${task.title}
                   </Box>
                 </CardContent>
               </Card>
-              
-              {/* Stats Cards */}
-              <Grid container spacing={2}>
-                <Grid size={6}>
-                  <Card 
-                    sx={{ 
-                      borderRadius: 3, 
-                      textAlign: 'center', 
-                      p: 2.5,
-                      background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)',
-                      border: '1px solid rgba(245, 158, 11, 0.2)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: '0 8px 30px rgba(245, 158, 11, 0.15)'
-                      }
-                    }}
-                  >
-                    <Box sx={{ mb: 2 }}>
-                      <Box 
-                        sx={{ 
-                          width: 40, 
-                          height: 40, 
-                          borderRadius: 3,
-                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mx: 'auto',
-                          boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
-                        }}
-                      >
-                        <TrendingUpIcon sx={{ fontSize: 20, color: 'white' }} />
-                      </Box>
-                    </Box>
-                    <Typography variant="h4" sx={{ fontWeight: 800, color: '#f59e0b', mb: 0.5 }}>
-                      {tasks.filter(t => t.status === 'pending').length}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      Pending Tasks
-                    </Typography>
-                  </Card>
-                </Grid>
-                <Grid size={6}>
-                  <Card 
-                    sx={{ 
-                      borderRadius: 3, 
-                      textAlign: 'center', 
-                      p: 2.5,
-                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
-                      border: '1px solid rgba(16, 185, 129, 0.2)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: '0 8px 30px rgba(16, 185, 129, 0.15)'
-                      }
-                    }}
-                  >
-                    <Box sx={{ mb: 2 }}>
-                      <Box 
-                        sx={{ 
-                          width: 40, 
-                          height: 40, 
-                          borderRadius: 3,
-                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mx: 'auto',
-                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
-                        }}
-                      >
-                        <CheckCircleIcon sx={{ fontSize: 20, color: 'white' }} />
-                      </Box>
-                    </Box>
-                    <Typography variant="h4" sx={{ fontWeight: 800, color: '#10b981', mb: 0.5 }}>
-                      {tasks.filter(t => t.status === 'completed').length}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      Completed
-                    </Typography>
-                  </Card>
-                </Grid>
-              </Grid>
             </Grid>
 
             {/* Tasks Section */}
@@ -997,31 +1232,6 @@ ${index + 1}. ${task.title}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<FilterListIcon />}
-                    onClick={() => setFilterMode(filterMode === 'default' ? 'monthYear' : 'default')}
-                    sx={{ 
-                      borderRadius: 3, 
-                      textTransform: 'none',
-                      bgcolor: filterMode === 'monthYear' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
-                      borderColor: filterMode === 'monthYear' ? theme.palette.primary.main : 'rgba(0,0,0,0.23)',
-                      color: filterMode === 'monthYear' ? theme.palette.primary.main : 'text.primary',
-                    }}
-                  >
-                    {filterMode === 'default' ? 'Month/Year Filter' : format(selectedMonth, 'MMMM yyyy')}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<DownloadIcon />}
-                    onClick={(e) => setDownloadMenuAnchor(e.currentTarget)}
-                    sx={{ 
-                      borderRadius: 3, 
-                      textTransform: 'none',
-                    }}
-                  >
-                    Download
-                  </Button>
                   <Button
                     variant="contained"
                     startIcon={<AddIcon />}
@@ -1047,39 +1257,6 @@ ${index + 1}. ${task.title}
                 </Box>
               </Box>
               
-              {/* Month/Year Filter */}
-              {filterMode === 'monthYear' && (
-                <Paper 
-                  sx={{ 
-                    mb: 3, 
-                    p: 2,
-                    borderRadius: 3,
-                    bgcolor: alpha(theme.palette.primary.main, 0.05),
-                    border: '1px solid rgba(0,0,0,0.08)',
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      Filter by:
-                    </Typography>
-                    <DatePicker
-                      label="Select Month"
-                      views={['month', 'year']}
-                      value={selectedMonth}
-                      onChange={(newValue) => {
-                        if (newValue) {
-                          setSelectedMonth(newValue);
-                          setSelectedYear(newValue);
-                        }
-                      }}
-                      sx={{ minWidth: 200 }}
-                    />
-                    <Typography variant="body2" color="text.secondary">
-                      {getFilteredTasks().length} tasks found
-                    </Typography>
-                  </Box>
-                </Paper>
-              )}
               
               {/* Tabs for filtering tasks */}
               {filterMode === 'default' && (

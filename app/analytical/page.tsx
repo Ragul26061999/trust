@@ -788,29 +788,22 @@ const AnalyticalPageContent = () => {
                 <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
                   {analyticsData.personal.totalEntries + analyticsData.professional.totalTasks}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <Chip 
-                    label={`${analyticsData.personal.totalEntries} Personal`} 
-                    size="small" 
+                <Box sx={{ position: 'relative' }}>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={analyticsData.personal.totalEntries + analyticsData.professional.totalTasks > 0 ? 
+                      ((analyticsData.personal.completedEntries + analyticsData.professional.completedTasks) / 
+                       (analyticsData.personal.totalEntries + analyticsData.professional.totalTasks)) * 100 : 0} 
                     sx={{ 
+                      height: 6, 
+                      borderRadius: 3,
                       bgcolor: 'rgba(59, 130, 246, 0.1)',
-                      color: '#3b82f6',
-                      border: '1px solid rgba(59, 130, 246, 0.2)',
-                      fontWeight: 600,
-                      borderRadius: 2,
-                      fontSize: '0.7rem'
-                    }}
-                  />
-                  <Chip 
-                    label={`${analyticsData.professional.totalTasks} Professional`} 
-                    size="small" 
-                    sx={{ 
-                      bgcolor: 'rgba(37, 99, 235, 0.1)',
-                      color: '#2563eb',
-                      border: '1px solid rgba(37, 99, 235, 0.2)',
-                      fontWeight: 600,
-                      borderRadius: 2,
-                      fontSize: '0.7rem'
+                      '& .MuiLinearProgress-bar': {
+                        background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
+                        borderRadius: 3,
+                        boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
+                        transition: 'all 0.3s ease'
+                      }
                     }}
                   />
                 </Box>
