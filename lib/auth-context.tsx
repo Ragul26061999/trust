@@ -64,7 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if Supabase is configured
     if (!isSupabaseConfigured() || !supabase) {
       // Fallback to demo credentials for development purposes
-      if (email === 'ragul@gmail.com' && password === 'password') {
+      if ((email === 'ragul@gmail.com' && password === 'password') || 
+          (email === 'anandans0007@gmail.com' && password === 'password123')) {
         const userData = {
           email,
           id: 'demo-user-id-' + Date.now(),
@@ -93,9 +94,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error.message.includes('AuthApiError') ||
           error.message.includes('401') ||
           error.message.includes('unauthorized') ||
-          error.message.includes('expired')) {
+          error.message.includes('expired') ||
+          error.message.includes('Invalid login credentials')) {
           // Fallback to demo credentials for development purposes
-          if (email === 'ragul@gmail.com' && password === 'password') {
+          if ((email === 'ragul@gmail.com' && password === 'password') || 
+              (email === 'anandans0007@gmail.com' && password === 'password123')) {
             const userData = {
               email,
               id: 'demo-user-id-' + Date.now(),
@@ -125,9 +128,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error.message.includes('AuthApiError') ||
           error.message.includes('401') ||
           error.message.includes('unauthorized') ||
-          error.message.includes('expired'))) {
+          error.message.includes('expired') ||
+          error.message.includes('Invalid login credentials'))) {
         // For development, allow demo credentials
-        if (email === 'ragul@gmail.com' && password === 'password') {
+        if ((email === 'ragul@gmail.com' && password === 'password') || 
+            (email === 'anandans0007@gmail.com' && password === 'password123')) {
           const userData = {
             email,
             id: 'demo-user-id-' + Date.now(),

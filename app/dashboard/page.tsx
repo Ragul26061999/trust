@@ -6,6 +6,7 @@ import { useTheme } from '../../lib/theme-context';
 import { getTimeBasedGreeting, ThemeMode } from '../../lib/user-preferences';
 import { useRouter } from 'next/navigation';
 import ProtectedLayout from '../protected-layout';
+import FirstTimeLoginChecker from '../../components/first-time-login-checker';
 import {
   Box,
   Typography,
@@ -277,8 +278,10 @@ const DashboardContent = () => {
   const activities = realTimeData.recentActivities;
 
   return (
-    <Fade in timeout={600}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+    <>
+      <FirstTimeLoginChecker />
+      <Fade in timeout={600}>
+        <Container maxWidth="xl" sx={{ py: 4 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* Modern Header */}
           <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -833,6 +836,7 @@ const DashboardContent = () => {
         </Box>
       </Container>
     </Fade>
+    </>
   );
 };
 

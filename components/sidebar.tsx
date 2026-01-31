@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import ProfileModal from './profile-modal';
 import {
   Box,
   Drawer,
@@ -20,6 +22,9 @@ import {
   Tooltip,
   Avatar,
   Badge,
+  Menu,
+  MenuItem,
+  ListItemAvatar,
 } from '@mui/material';
 import {
   LayoutDashboard as DashboardIcon,
@@ -34,6 +39,8 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   Lock as LockIcon,
+  Settings as SettingsIcon,
+  UserCircle as ProfileIcon,
 } from 'lucide-react';
 
 // Create icon wrapper components for Lucide icons to work with MUI
@@ -53,13 +60,80 @@ const LockIconWrapper = ({ size = 20, sx }: any) => (
 export const drawerWidth = 280;
 export const collapsedWidth = 88;
 
+// UserAvatar component to display profile photo
+const UserAvatar: React.FC<{ user: any; size: number }> = ({ user, size }) => {
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!user) return;
+
+      try {
+        if (isSupabaseConfigured() && supabase) {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('avatar_url, full_name')
+            .eq('user_id', user.id)
+            .single();
+
+          if (error && error.code !== 'PGRST116') {
+            console.error('Error loading user profile:', error);
+          } else if (data) {
+            setProfile(data);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserProfile();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <Avatar
+        sx={{ 
+          width: size, 
+          height: size, 
+          bgcolor: 'primary.main',
+          fontSize: size * 0.4,
+          fontWeight: 600,
+        }}
+      >
+        {user?.email?.charAt(0)?.toUpperCase() || 'U'}
+      </Avatar>
+    );
+  }
+
+  return (
+    <Avatar
+      src={profile?.avatar_url}
+      sx={{ 
+        width: size, 
+        height: size, 
+        bgcolor: 'primary.main',
+        fontSize: size * 0.4,
+        fontWeight: 600,
+      }}
+    >
+      {profile?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+    </Avatar>
+  );
+};
+
 const Sidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const theme = useTheme();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -77,6 +151,24 @@ const Sidebar = () => {
   const handleSignOut = () => {
     logout();
     router.push('/login');
+    setSettingsAnchorEl(null);
+  };
+
+  const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
+    setSettingsAnchorEl(event.currentTarget);
+  };
+
+  const handleSettingsClose = () => {
+    setSettingsAnchorEl(null);
+  };
+
+  const handleProfileClick = () => {
+    setProfileModalOpen(true);
+    handleSettingsClose();
+  };
+
+  const handleProfileModalClose = () => {
+    setProfileModalOpen(false);
   };
 
   const navItems = [
@@ -278,12 +370,12 @@ const Sidebar = () => {
 
       {/* Footer Area */}
       <Box sx={{ p: 2.5, mt: 'auto', borderTop: '1px solid', borderColor: 'divider' }}>
-        <Tooltip title={isCollapsed ? "Logout" : ""} placement="right">
+        <Tooltip title={isCollapsed ? "Settings" : ""} placement="right">
           <Button
             variant="text"
             color="inherit"
-            startIcon={<LucideIcon icon={LogoutIcon} />}
-            onClick={handleSignOut}
+            startIcon={<LucideIcon icon={SettingsIcon} />}
+            onClick={handleSettingsClick}
             fullWidth
             sx={{
               py: 2,
@@ -298,15 +390,88 @@ const Sidebar = () => {
                 margin: isCollapsed ? 0 : '',
               },
               '&:hover': {
-                bgcolor: 'error.light',
-                color: 'error.main',
+                bgcolor: 'primary.light',
+                color: 'primary.main',
                 transform: 'translateX(4px)'
               }
             }}
           >
-            {!isCollapsed && "Logout"}
+            {!isCollapsed && "Settings"}
           </Button>
         </Tooltip>
+
+        {/* Settings Dropdown Menu */}
+        <Menu
+          anchorEl={settingsAnchorEl}
+          open={Boolean(settingsAnchorEl)}
+          onClose={handleSettingsClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          PaperProps={{
+            sx: {
+              mt: -8, // Position above the button
+              minWidth: 280, // Increased width
+              borderRadius: 3,
+              boxShadow: '0 12px 48px rgba(0,0,0,0.15)',
+              overflow: 'visible',
+            }
+          }}
+        >
+          {/* User Profile Section */}
+          {user && (
+            <Box sx={{ px: 3, py: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <UserAvatar user={user} size={40} />
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
+                    {user.email?.split('@')[0]}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                    {user.email}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 500 }}>
+                    User Account
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          {/* Profile Menu Item */}
+          <MenuItem onClick={handleProfileClick} sx={{ py: 2, px: 3 }}>
+            <ListItemIcon sx={{ minWidth: 48 }}>
+              <LucideIcon icon={ProfileIcon} size={24} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Profile" 
+              primaryTypographyProps={{ 
+                fontSize: '0.9rem',
+                fontWeight: 600 
+              }} 
+            />
+          </MenuItem>
+
+          {/* Logout Menu Item */}
+          <MenuItem onClick={handleSignOut} sx={{ py: 2, px: 3, color: 'error.main' }}>
+            <ListItemIcon sx={{ minWidth: 48 }}>
+              <LucideIcon icon={LogoutIcon} size={20} sx={{ color: 'error.main' }} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Logout" 
+              primaryTypographyProps={{ 
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                color: 'error.main'
+              }} 
+            />
+          </MenuItem>
+        </Menu>
       </Box>
     </Box>
   );
@@ -371,6 +536,13 @@ const Sidebar = () => {
       >
         {drawer}
       </Drawer>
+
+      {/* Profile Modal */}
+      <ProfileModal 
+        open={profileModalOpen} 
+        onClose={handleProfileModalClose}
+        isFirstTime={false}
+      />
     </>
   );
 };

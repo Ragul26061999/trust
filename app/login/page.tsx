@@ -53,11 +53,27 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl">
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
+        {/* Animated background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-100 via-purple-100 to-indigo-100">
+          <div 
+            className="absolute inset-0 animate-pulse" 
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C7B8EA' fill-opacity='0.1'%3E%3Ccircle cx='7' cy='7' r='7'/%3E%3Ccircle cx='53' cy='7' r='7'/%3E%3Ccircle cx='30' cy='30' r='7'/%3E%3Ccircle cx='7' cy='53' r='7'/%3E%3Ccircle cx='53' cy='53' r='7'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+            }}
+          ></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-200/20 via-transparent to-pink-200/20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        </div>
+        
+        <div className="relative z-10 max-w-md w-full space-y-8 bg-white/90 backdrop-blur-md p-8 rounded-3xl shadow-2xl border border-blue-200/50">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
+            <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-300 to-pink-300 rounded-full flex items-center justify-center mb-4 shadow-lg">
+              <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <p className="text-gray-600 font-medium">Loading your workspace...</p>
           </div>
         </div>
       </div>
@@ -65,16 +81,32 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-pink-100 to-purple-100">
+        <div 
+          className="absolute inset-0 animate-pulse" 
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Ccircle cx='7' cy='7' r='7'/%3E%3Ccircle cx='53' cy='7' r='7'/%3E%3Ccircle cx='30' cy='30' r='7'/%3E%3Ccircle cx='7' cy='53' r='7'/%3E%3Ccircle cx='53' cy='53' r='7'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          }}
+        ></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-blue-200/20 via-transparent to-pink-200/20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+      </div>
+      
+      <div className="relative z-10 max-w-md w-full space-y-8 bg-white/90 backdrop-blur-md p-8 rounded-3xl shadow-2xl border border-blue-200/50">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Please sign in to your account</p>
+          <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-300 to-pink-300 rounded-full flex items-center justify-center mb-4 shadow-lg">
+            <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-pink-500 bg-clip-text text-transparent mb-2">Welcome Back</h1>
+          <p className="text-gray-600">Please sign in to continue to your account</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="username" className="block text-sm font-medium text-blue-700 mb-1">
               Username or Email
             </label>
             <input
@@ -82,14 +114,14 @@ export default function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+              className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 hover:border-blue-300 bg-blue-50/50"
               placeholder="Enter your email"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-blue-700 mb-1">
               Password
             </label>
             <input
@@ -97,7 +129,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+              className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 hover:border-blue-300 bg-blue-50/50"
               placeholder="Enter your password"
               required
             />
@@ -112,22 +144,32 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition duration-200 disabled:opacity-50"
+            className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-pink-500 hover:from-blue-600 hover:to-pink-600 text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg"
           >
-            {isLoading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Signing in...
+              </span>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
+            <div className="w-full border-t border-blue-200"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            <span className="px-4 bg-white text-blue-500 font-medium">Or continue with</span>
           </div>
         </div>
 
-        <div className="text-center text-xs text-gray-500 mt-2">
+        <div className="text-center text-xs text-blue-500 mt-2">
           <p>Note: Only Gmail accounts are accepted for Google login</p>
         </div>
 
@@ -143,7 +185,7 @@ export default function LoginPage() {
               setIsLoading(false);
             }
           }}
-          className="w-full flex items-center justify-center py-3 px-4 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700 font-medium transition duration-200"
+          className="w-full flex items-center justify-center py-3 px-4 border border-blue-200 rounded-lg bg-white hover:bg-blue-50 text-blue-700 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg"
         >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
             <path
@@ -166,14 +208,6 @@ export default function LoginPage() {
           Google
         </button>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Demo credentials: <br />
-            <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
-              ragul@gmail.com / password
-            </span>
-          </p>
-        </div>
       </div>
     </div>
   );
