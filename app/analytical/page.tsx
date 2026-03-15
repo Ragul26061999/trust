@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth-context';
+import { useThemeSync } from '../../lib/use-theme-sync';
+import useTranslations from '../../lib/use-translations';
 import ProtectedLayout from '../protected-layout';
 import {
   Box,
@@ -132,6 +134,8 @@ interface AnalyticsData {
 
 const AnalyticalPageContent = () => {
   const { user, logout } = useAuth();
+  const { syncTheme } = useThemeSync(); // Add theme sync
+  const { t } = useTranslations('common');
   const router = useRouter();
   const theme = useTheme();
   
@@ -456,20 +460,21 @@ const AnalyticalPageContent = () => {
             <Box>
               <Typography 
                 variant="h4" 
-                component="div" 
+                component="h1" 
                 sx={{ 
                   fontWeight: 800, 
-                  background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
+                  color: 'text.primary',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
-                  lineHeight: 1.2
+                  fontSize: { xs: '1.5rem', md: '1.8rem' }
                 }}
               >
-                Analytics Dashboard
+                {t('analytical.title')}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Track your productivity and performance metrics
+                {t('analytical.subtitle')}
               </Typography>
             </Box>
           </Box>
@@ -616,7 +621,7 @@ const AnalyticalPageContent = () => {
                     <LucideIcon icon={AnalyticsIcon} size={20} />
                   </Box>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                    Productivity Score
+                    {t('analytical.productivity_score')}
                   </Typography>
                 </Box>
                 <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
@@ -699,7 +704,7 @@ const AnalyticalPageContent = () => {
                     <LucideIcon icon={Target} size={20} />
                   </Box>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                    Total Tasks
+                    {t('analytical.total_tasks')}
                   </Typography>
                 </Box>
                 <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
@@ -782,7 +787,7 @@ const AnalyticalPageContent = () => {
                     <LucideIcon icon={Activity} size={20} />
                   </Box>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                    Total Activities
+                    {t('analytical.total_activities')}
                   </Typography>
                 </Box>
                 <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
@@ -867,7 +872,7 @@ const AnalyticalPageContent = () => {
                     <LucideIcon icon={Zap} size={20} />
                   </Box>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                    Balance Score
+                    {t('analytical.balance_score')}
                   </Typography>
                 </Box>
                 <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
@@ -913,7 +918,7 @@ const AnalyticalPageContent = () => {
             >
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
-                  Task Usage Distribution
+                  {t('analytical.task_usage_distribution')}
                 </Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <RePieChart>
@@ -964,7 +969,7 @@ const AnalyticalPageContent = () => {
             >
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
-                  Weekly Activity Trend
+                  {t('analytical.weekly_activity_trend')}
                 </Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <ReBarChart data={getWeeklyChartData()}>
@@ -997,7 +1002,7 @@ const AnalyticalPageContent = () => {
             >
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
-                  Monthly Completion Trend
+                  {t('analytical.monthly_completion_trend')}
                 </Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <ReLineChart data={getMonthlyChartData()}>
@@ -1120,7 +1125,7 @@ const AnalyticalPageContent = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
-                    Activity Distribution
+                    {t('analytical.activity_distribution')}
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                     {Object.entries({

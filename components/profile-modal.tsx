@@ -17,6 +17,10 @@ import {
   Grid,
   Alert,
   CircularProgress,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import { Camera as CameraIcon } from 'lucide-react';
 
@@ -25,6 +29,8 @@ interface UserProfile {
   email: string;
   phone?: string;
   age?: number;
+  date_of_birth?: string;
+  gender?: string;
   bio?: string;
   avatar_url?: string;
   is_first_time_login?: boolean;
@@ -71,9 +77,33 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, isFirstTime 
           setProfile(data);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading profile:', err);
-      setError('Failed to load profile data');
+      // If the error is about date_of_birth or gender column, try loading without them
+      if (err.message && (err.message.includes('date_of_birth') || err.message.includes('gender'))) {
+        try {
+          if (isSupabaseConfigured() && supabase) {
+            const { data, error } = await supabase
+              .from('user_profiles')
+              .select('full_name, email, phone, age, bio, avatar_url, is_first_time_login')
+              .eq('user_id', user.id)
+              .single();
+
+            if (error && error.code !== 'PGRST116') {
+              throw error;
+            }
+
+            if (data) {
+              setProfile(data);
+            }
+          }
+        } catch (fallbackErr: any) {
+          console.error('Error loading profile (fallback):', fallbackErr);
+          setError('Failed to load profile data');
+        }
+      } else {
+        setError('Failed to load profile data');
+      }
     }
   };
 
@@ -84,6 +114,35 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, isFirstTime 
     }));
   };
 
+  const handleDateOfBirthChange = (dateString: string) => {
+    setProfile(prev => ({
+      ...prev,
+      date_of_birth: dateString,
+    }));
+
+    // Calculate age automatically
+    if (dateString) {
+      const birthDate = new Date(dateString);
+      const today = new Date();
+      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+      }
+      
+      setProfile(prev => ({
+        ...prev,
+        age: calculatedAge,
+      }));
+    } else {
+      setProfile(prev => ({
+        ...prev,
+        age: undefined,
+      }));
+    }
+  };
+
   const handleSubmit = async () => {
     if (!user) return;
 
@@ -92,20 +151,33 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, isFirstTime 
     setSuccess(null);
 
     try {
-      const profileData = {
-        ...profile,
+      // Prepare profile data, excluding undefined values
+      const profileData: any = {
         user_id: user.id,
         is_first_time_login: false,
         updated_at: new Date().toISOString(),
       };
 
+      // Only include fields that have values
+      if (profile.full_name) profileData.full_name = profile.full_name;
+      if (profile.phone) profileData.phone = profile.phone;
+      if (profile.age !== undefined) profileData.age = profile.age;
+      if (profile.date_of_birth) profileData.date_of_birth = profile.date_of_birth;
+      if (profile.gender) profileData.gender = profile.gender;
+      if (profile.bio) profileData.bio = profile.bio;
+      if (profile.avatar_url) profileData.avatar_url = profile.avatar_url;
+
       if (isSupabaseConfigured() && supabase) {
         // Check if profile exists
-        const { data: existingProfile } = await supabase
+        const { data: existingProfile, error: checkError } = await supabase
           .from('user_profiles')
           .select('id')
           .eq('user_id', user.id)
           .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
 
         let result;
         if (existingProfile) {
@@ -122,7 +194,27 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, isFirstTime 
         }
 
         if (result.error) {
-          throw result.error;
+          // If the error is about date_of_birth or gender column not existing, retry without them
+          if (result.error.message && (result.error.message.includes('date_of_birth') || result.error.message.includes('gender'))) {
+            const { date_of_birth, gender, ...profileDataWithoutOptionalFields } = profileData;
+            
+            if (existingProfile) {
+              result = await supabase
+                .from('user_profiles')
+                .update(profileDataWithoutOptionalFields)
+                .eq('user_id', user.id);
+            } else {
+              result = await supabase
+                .from('user_profiles')
+                .insert(profileDataWithoutOptionalFields);
+            }
+            
+            if (result.error) {
+              throw result.error;
+            }
+          } else {
+            throw result.error;
+          }
         }
       }
 
@@ -301,14 +393,54 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, isFirstTime 
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
+              label="Date of Birth"
+              type="date"
+              value={profile.date_of_birth || ''}
+              onChange={(e) => handleDateOfBirthChange(e.target.value)}
+              variant="outlined"
+              InputLabelProps={{
+                shrink: true,
+              }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
               label="Age"
               type="number"
               value={profile.age || ''}
-              onChange={(e) => handleInputChange('age', parseInt(e.target.value) || '')}
+              disabled
               variant="outlined"
               inputProps={{ min: 1, max: 120 }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              helperText="Automatically calculated from date of birth"
+              sx={{ 
+                '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                '& .MuiInputBase-input.Mui-disabled': { 
+                  WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
+                  color: 'text.primary',
+                },
+              }}
             />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel>Gender</InputLabel>
+              <Select
+                value={profile.gender || ''}
+                onChange={(e) => handleInputChange('gender', e.target.value)}
+                label="Gender"
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              >
+                <MenuItem value="">Select Gender</MenuItem>
+                <MenuItem value="Male">Male</MenuItem>
+                <MenuItem value="Female">Female</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+                <MenuItem value="Prefer not to say">Prefer not to say</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
 
           <Grid size={{ xs: 12 }}>

@@ -148,6 +148,10 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       attributeFilter: ['class'],
     });
 
+    // Also check immediately
+    const isDarkMode = document.documentElement.classList.contains('dark-mode');
+    setMuiTheme(buildMuiTheme(isDarkMode));
+
     return () => observer.disconnect();
   }, [customTheme]);
 

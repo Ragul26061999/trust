@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Chào buổi sáng",
+    "welcome": "Chào mừng trở lại! Đây là tổng quan không gian làm việc của bạn hôm nay.",
+    "search_placeholder": "Tìm kiếm không gian làm việc...",
+    "categories": {
+      "analytical": "Phân tích",
+      "professional": "Chuyên nghiệp", 
+      "personal": "Cá nhân",
+      "note_taking": "Ghi chú",
+      "calendar": "Lịch"
+    },
+    "descriptions": {
+      "analytical": "Phân tích nâng cao và thông tin chi tiết dữ liệu cho dự án của bạn.",
+      "professional": "Quản lý dự án công việc, nhiệm vụ và mục tiêu chuyên nghiệp.",
+      "personal": "Theo dõi mục tiêu cá nhân, thói quen và cột mốc cuộc sống.",
+      "note_taking": "Nắm bắt ý tưởng, tổ chức suy nghĩ và tăng cường sáng tạo.",
+      "calendar": "Lên lịch sự kiện và quản lý thời gian hiệu quả."
+    },
+    "coming_soon": "Sắp ra mắt",
+    "performance_metrics": "Chỉ số hiệu suất",
+    "task_completion": "Hoàn thành nhiệm vụ",
+    "active_modules": "Mô-đun hoạt động", 
+    "productivity_score": "Điểm năng suất",
+    "recent_activity": "Hoạt động gần đây",
+    "view_all_activity": "Xem tất cả hoạt động",
+    "no_matching_categories": "Không tìm thấy danh mục phù hợp."
+  },
+  "tooltips": {
+    "user_clock": "Đồng hồ người dùng",
+    "language": "Ngôn ngữ",
+    "notifications": "Thông báo",
+    "light_mode": "Chế độ sáng",
+    "dark_mode": "Chế độ tối", 
+    "auto_mode": "Chế độ tự động"
+  },
+  "theme": {
+    "light_mode_description": "Giao diện sáng và sạch",
+    "dark_mode_description": "Dễ cho mắt vào ban đêm",
+    "auto_mode_description": "Thích ứng với môi trường của bạn"
+  }
+}

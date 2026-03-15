@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Selamat pagi",
+    "welcome": "Selamat datang kembali! Berikut adalah ringkasan ruang kerja Anda untuk hari ini.",
+    "search_placeholder": "Cari ruang kerja...",
+    "categories": {
+      "analytical": "Analitis",
+      "professional": "Profesional", 
+      "personal": "Pribadi",
+      "note_taking": "Catatan",
+      "calendar": "Kalender"
+    },
+    "descriptions": {
+      "analytical": "Analisis lanjutan dan wawasan data untuk proyek Anda.",
+      "professional": "Kelola proyek kerja, tugas, dan tujuan profesional.",
+      "personal": "Lacak tujuan pribadi, kebiasaan, dan tonggak sejarah kehidupan.",
+      "note_taking": "Tangkap ide, organisir pemikiran, dan tingkatkan kreativitas.",
+      "calendar": "Jadwalkan acara dan kelola waktu Anda secara efisien."
+    },
+    "coming_soon": "Segera Hadir",
+    "performance_metrics": "Metrik Kinerja",
+    "task_completion": "Penyelesaian Tugas",
+    "active_modules": "Modul Aktif", 
+    "productivity_score": "Skor Produktivitas",
+    "recent_activity": "Aktivitas Terbaru",
+    "view_all_activity": "Lihat Semua Aktivitas",
+    "no_matching_categories": "Tidak ada kategori yang cocok ditemukan."
+  },
+  "tooltips": {
+    "user_clock": "Jam Pengguna",
+    "language": "Bahasa",
+    "notifications": "Notifikasi",
+    "light_mode": "Mode Terang",
+    "dark_mode": "Mode Gelap", 
+    "auto_mode": "Mode Otomatis"
+  },
+  "theme": {
+    "light_mode_description": "Antarmuka yang cerah dan bersih",
+    "dark_mode_description": "Nyaman untuk mata di malam hari",
+    "auto_mode_description": "Menyesuaikan dengan lingkungan Anda"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Hyvää huomenta",
+    "welcome": "Tervetuloa takaisin! Tässä on työtilan yleiskatsaus tälle päivälle.",
+    "search_placeholder": "Etsi työtilaa...",
+    "categories": {
+      "analytical": "Analyyttinen",
+      "professional": "Ammattimainen", 
+      "personal": "Henkilökohtainen",
+      "note_taking": "Muistiinpanot",
+      "calendar": "Kalenteri"
+    },
+    "descriptions": {
+      "analytical": "Edistyneet analyysit ja data-analyysit projekteillesi.",
+      "professional": "Hallinnoi työprojekteja, tehtäviä ja ammatillisia tavoitteita.",
+      "personal": "Seuraa henkilökohtaisia tavoitteita, tapoja ja elämän virstanpylväitä.",
+      "note_taking": "Kaappaa ideoita, järjestä ajatuksia ja lisää luovuutta.",
+      "calendar": "Aikatauluta tapahtumia ja hallitse aikaasi tehokkaasti."
+    },
+    "coming_soon": "Tulossa pian",
+    "performance_metrics": "Suorituskykymittarit",
+    "task_completion": "Tehtävän suoritus",
+    "active_modules": "Aktiiviset moduulit", 
+    "productivity_score": "Tuottavuuspisteet",
+    "recent_activity": "Viimeaikainen toiminta",
+    "view_all_activity": "Näytä kaikki toiminta",
+    "no_matching_categories": "Vastaavia kategorioita ei löytynyt."
+  },
+  "tooltips": {
+    "user_clock": "Käyttäjän kello",
+    "language": "Kieli",
+    "notifications": "Ilmoitukset",
+    "light_mode": "Vaalea tila",
+    "dark_mode": "Tumma tila", 
+    "auto_mode": "Automaattinen tila"
+  },
+  "theme": {
+    "light_mode_description": "Kirkas ja siisti käyttöliittymä",
+    "dark_mode_description": "Ystävällinen silmille yöllä",
+    "auto_mode_description": "Sovittuu ympäristöösi"
+  }
+}

@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { useTheme } from '../../lib/theme-context';
+import { useThemeSync } from '../../lib/use-theme-sync';
+import { useLanguage } from '../../lib/language-context';
+import useTranslations from '../../lib/use-translations';
 import { getTimeBasedGreeting, ThemeMode } from '../../lib/user-preferences';
+import { getTimeBasedGreetingByLanguage } from '../../lib/language-greetings';
 import { useRouter } from 'next/navigation';
 import ProtectedLayout from '../protected-layout';
 import FirstTimeLoginChecker from '../../components/first-time-login-checker';
@@ -66,6 +70,7 @@ import {
   Clock,
   Bell,
   Monitor,
+  Languages as LanguageIcon,
 } from 'lucide-react';
 
 // Create icon wrapper components for Lucide icons to work with MUI
@@ -85,10 +90,14 @@ const LockIcon = ({ size }: any) => (
 const DashboardContent = () => {
   const { user } = useAuth();
   const { theme, setThemeMode } = useTheme();
+  const { syncTheme } = useThemeSync(); // Add theme sync
+  const { currentLanguage, setLanguage, availableLanguages } = useLanguage();
+  const { t } = useTranslations('common');
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [greeting, setGreeting] = useState(getTimeBasedGreeting());
+  const [greeting, setGreeting] = useState(getTimeBasedGreetingByLanguage(currentLanguage));
   const [themeMenuAnchor, setThemeMenuAnchor] = useState<null | HTMLElement>(null);
+  const [languageMenuAnchor, setLanguageMenuAnchor] = useState<null | HTMLElement>(null);
   const [realTimeData, setRealTimeData] = useState({
     totalTasks: 0,
     completedTasks: 0,
@@ -104,10 +113,10 @@ const DashboardContent = () => {
     }>
   });
 
-  // Update greeting based on time
+  // Update greeting based on time and language
   useEffect(() => {
     const updateGreeting = () => {
-      setGreeting(getTimeBasedGreeting());
+      setGreeting(getTimeBasedGreetingByLanguage(currentLanguage));
     };
 
     // Update greeting immediately
@@ -117,7 +126,7 @@ const DashboardContent = () => {
     const interval = setInterval(updateGreeting, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [currentLanguage]);
 
   // Fetch real-time data
   useEffect(() => {
@@ -159,7 +168,21 @@ const DashboardContent = () => {
 
   const handleThemeChange = (mode: ThemeMode) => {
     setThemeMode(mode);
+    syncTheme(); // Sync theme immediately after change
     handleThemeMenuClose();
+  };
+
+  const handleLanguageMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setLanguageMenuAnchor(event.currentTarget);
+  };
+
+  const handleLanguageMenuClose = () => {
+    setLanguageMenuAnchor(null);
+  };
+
+  const handleLanguageChange = (languageCode: string) => {
+    setLanguage(languageCode);
+    handleLanguageMenuClose();
   };
 
   const getThemeIcon = () => {
@@ -188,64 +211,54 @@ const DashboardContent = () => {
 
   const categories = [
     {
-      text: 'Analytical',
+      text: t('dashboard.categories.analytical'),
       icon: <BarChart3 size={32} />,
       path: '/analytical',
       color: '#2196F3',
-      desc: 'Advanced analytics and data insights for your projects.',
+      desc: t('dashboard.descriptions.analytical'),
       count: '3 Reports',
       locked: false,
       gradient: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)'
     },
     {
-      text: 'Professional',
+      text: t('dashboard.categories.professional'),
       icon: <Briefcase size={32} />,
       path: '/professional',
       color: '#FF9800',
-      desc: 'Manage work projects, tasks, and professional goals.',
+      desc: t('dashboard.descriptions.professional'),
       count: '8 Tasks',
       locked: false,
       gradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
     },
     {
-      text: 'Personal',
+      text: t('dashboard.categories.personal'),
       icon: <User size={32} />,
       path: '/personal',
       color: '#9C27B0',
-      desc: 'Track personal goals, habits, and life milestones.',
+      desc: t('dashboard.descriptions.personal'),
       count: '4 Goals',
       locked: false,
       gradient: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)'
     },
     {
-      text: 'Note Taking',
+      text: t('dashboard.categories.note_taking'),
       icon: <FileText size={32} />,
       path: '/note-taking',
       color: '#6750A4',
-      desc: 'Capture ideas, organize thoughts, and boost creativity.',
+      desc: t('dashboard.descriptions.note_taking'),
       count: '0 Notes',
       locked: false,
       gradient: 'linear-gradient(135deg, #6750A4 0%, #512DA8 100%)'
     },
     {
-      text: 'Calendar',
+      text: t('dashboard.categories.calendar'),
       icon: <Calendar size={32} />,
       path: '/calendar',
       color: '#4CAF50',
-      desc: 'Schedule events and manage your time efficiently.',
-      count: 'Coming Soon',
+      desc: t('dashboard.descriptions.calendar'),
+      count: '2 Events',
       locked: true,
       gradient: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
-    },
-    {
-      text: 'User Clock',
-      icon: <Clock size={32} />,
-      path: '/user-clock',
-      color: '#E91E63',
-      desc: 'Track time, productivity patterns, and work-life balance.',
-      count: 'Active',
-      locked: false,
-      gradient: 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)'
     },
   ];
 
@@ -256,19 +269,19 @@ const DashboardContent = () => {
 
   const progressData = [
     { 
-      label: 'Task Completion', 
+      label: t('dashboard.task_completion'), 
       value: realTimeData.completedTasks, 
       total: realTimeData.totalTasks || 1, 
       color: '#FF9800' 
     },
     { 
-      label: 'Active Modules', 
+      label: t('dashboard.active_modules'), 
       value: 3, // Analytical, Professional, Personal are unlocked
-      total: 6, 
+      total: 5, 
       color: '#2196F3' 
     },
     { 
-      label: 'Productivity Score', 
+      label: t('dashboard.productivity_score'), 
       value: realTimeData.totalTasks > 0 ? Math.round((realTimeData.completedTasks / realTimeData.totalTasks) * 10) : 0, 
       total: 10, 
       color: '#4CAF50' 
@@ -303,13 +316,13 @@ const DashboardContent = () => {
                 {greeting}, {user.email?.split('@')[0]}
               </Typography>
               <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.8 }}>
-                Welcome back! Here's your workspace overview for today.
+                {t('dashboard.welcome')}
               </Typography>
             </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
               <TextField
                 size="medium"
-                placeholder="Search workspace..."
+                placeholder={t('dashboard.search_placeholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 InputProps={{
@@ -339,6 +352,32 @@ const DashboardContent = () => {
                 }}
                 sx={{ width: { xs: 200, md: 320 } }}
               />
+              <Tooltip title="User Clock">
+                <IconButton 
+                  onClick={() => router.push('/user-clock')}
+                  sx={{ 
+                    bgcolor: 'background.paper', 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
+                    border: '1px solid', 
+                    borderColor: 'divider',
+                    borderRadius: '50%',
+                    width: 48,
+                    height: 48,
+                    position: 'relative',
+                    '&:hover': {
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                      bgcolor: '#E91E63',
+                      color: 'white',
+                      transform: 'scale(1.05)'
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Clock size={20} />
+                  </Box>
+                </IconButton>
+              </Tooltip>
               <Tooltip title={getThemeTooltip()}>
                 <IconButton 
                   onClick={handleThemeMenuOpen}
@@ -360,6 +399,31 @@ const DashboardContent = () => {
                   }}
                 >
                   {getThemeIcon()}
+                </IconButton>
+              </Tooltip>
+              <Tooltip title={t('tooltips.language')}>
+                <IconButton 
+                  onClick={handleLanguageMenuOpen}
+                  sx={{ 
+                    bgcolor: 'background.paper', 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
+                    border: '1px solid', 
+                    borderColor: 'divider',
+                    borderRadius: '50%',
+                    width: 48,
+                    height: 48,
+                    '&:hover': {
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                      bgcolor: '#4CAF50',
+                      color: 'white',
+                      transform: 'scale(1.05)'
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <LanguageIcon size={20} />
+                  </Box>
                 </IconButton>
               </Tooltip>
               <Tooltip title="Notifications">
@@ -541,7 +605,7 @@ const DashboardContent = () => {
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.05em'
                               }}>
-                                {category.locked ? 'Coming Soon' : category.count}
+                                {category.locked ? t('dashboard.coming_soon') : category.count}
                               </Typography>
                               {!category.locked && (
                                 <Box 
@@ -563,7 +627,7 @@ const DashboardContent = () => {
                 </Grid>
               ) : (
                 <Box sx={{ textAlign: 'center', py: 10 }}>
-                  <Typography variant="h6" color="text.secondary">No matching categories found.</Typography>
+                  <Typography variant="h6" color="text.secondary">{t('dashboard.no_matching_categories')}</Typography>
                 </Box>
               )}
             </Grid>
@@ -599,7 +663,7 @@ const DashboardContent = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
                           <TrendingUp size={24} />
                         </Box>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>Performance Metrics</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>{t('dashboard.performance_metrics')}</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                         {progressData.map((item, index) => (
@@ -670,7 +734,7 @@ const DashboardContent = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
                           <Activity size={24} />
                         </Box>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>Recent Activity</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>{t('dashboard.recent_activity')}</Typography>
                       </Box>
                       <List disablePadding>
                         {activities.map((activity, idx) => (
@@ -737,7 +801,7 @@ const DashboardContent = () => {
                           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                       >
-                        View All Activity
+                        {t('dashboard.view_all_activity')}
                       </Button>
                     </CardContent>
                   </Card>
@@ -832,6 +896,84 @@ const DashboardContent = () => {
                 </Box>
               </Box>
             </MenuItem>
+          </Menu>
+
+          {/* Language Selection Menu */}
+          <Menu
+            anchorEl={languageMenuAnchor}
+            open={Boolean(languageMenuAnchor)}
+            onClose={handleLanguageMenuClose}
+            PaperProps={{
+              elevation: 8,
+              sx: {
+                borderRadius: 3,
+                mt: 1,
+                minWidth: 280,
+                maxWidth: 400,
+                boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+                border: '1px solid',
+                borderColor: 'divider',
+                maxHeight: 400,
+                overflow: 'auto'
+              }
+            }}
+          >
+            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
+                Select Language
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Choose your preferred language
+              </Typography>
+            </Box>
+            {availableLanguages.map((language) => (
+              <MenuItem
+                key={language.code}
+                onClick={() => handleLanguageChange(language.code)}
+                selected={currentLanguage === language.code}
+                sx={{ 
+                  transition: 'all 0.2s ease',
+                  py: 1.5,
+                  '&:hover': {
+                    bgcolor: 'action.hover'
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    fontSize: '1.5rem',
+                    color: currentLanguage === language.code ? 'primary.main' : 'text.secondary'
+                  }}>
+                    {language.flag}
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontWeight: currentLanguage === language.code ? 600 : 400,
+                        color: 'text.primary'
+                      }}
+                    >
+                      {language.nativeName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {language.name}
+                    </Typography>
+                  </Box>
+                  {currentLanguage === language.code && (
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      color: 'primary.main' 
+                    }}>
+                      <ChevronRight size={16} />
+                    </Box>
+                  )}
+                </Box>
+              </MenuItem>
+            ))}
           </Menu>
         </Box>
       </Container>

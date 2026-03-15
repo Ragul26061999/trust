@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Bon dia",
+    "welcome": "Benvingut de nou! Aquí tens la vista general del teu espai de treball per avui.",
+    "search_placeholder": "Cerca espai de treball...",
+    "categories": {
+      "analytical": "Analític",
+      "professional": "Professional", 
+      "personal": "Personal",
+      "note_taking": "Prenar notes",
+      "calendar": "Calendari"
+    },
+    "descriptions": {
+      "analytical": "Anàlisis avançats i informació de dades per als teus projectes.",
+      "professional": "Gestiona projectes de treball, tasques i objectius professionals.",
+      "personal": "Segueix objectius personals, hàbits i fites de vida.",
+      "note_taking": "Captura idees, organitza pensaments i augmenta la creativitat.",
+      "calendar": "Programa esdeveniments i gestiona el teu temps de manera eficient."
+    },
+    "coming_soon": "Aviat disponible",
+    "performance_metrics": "Mètriques de rendiment",
+    "task_completion": "Compleció de tasques",
+    "active_modules": "Mòduls actius", 
+    "productivity_score": "Puntuació de productivitat",
+    "recent_activity": "Activitat recent",
+    "view_all_activity": "Veure tota l'activitat",
+    "no_matching_categories": "No s'han trobat categories coincidents."
+  },
+  "tooltips": {
+    "user_clock": "Rellotge d'usuari",
+    "language": "Idioma",
+    "notifications": "Notificacions",
+    "light_mode": "Mode clar",
+    "dark_mode": "Mode fosc", 
+    "auto_mode": "Mode automàtic"
+  },
+  "theme": {
+    "light_mode_description": "Interfície brillant i neta",
+    "dark_mode_description": "Fàcil per als ulls de nit",
+    "auto_mode_description": "S'adapta al teu entorn"
+  }
+}

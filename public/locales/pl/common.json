@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Dzień dobry",
+    "welcome": "Witaj ponownie! Oto przegląd Twojej przestrzeni roboczej na dziś.",
+    "search_placeholder": "Przeszukaj przestrzeń roboczą...",
+    "categories": {
+      "analytical": "Analityczny",
+      "professional": "Profesjonalny", 
+      "personal": "Osobisty",
+      "note_taking": "Notatki",
+      "calendar": "Kalendarz"
+    },
+    "descriptions": {
+      "analytical": "Zaawansowane analizy i wgląd w dane dla Twoich projektów.",
+      "professional": "Zarządzaj projektami pracy, zadaniami i celami zawodowymi.",
+      "personal": "Śledź cele osobiste, nawyki i kamienie milowe życia.",
+      "note_taking": "Przechwytuj pomysły, organizuj myśli i zwiększaj kreatywność.",
+      "calendar": "Planuj wydarzenia i zarządzaj czasem efektywnie."
+    },
+    "coming_soon": "Wkrótce",
+    "performance_metrics": "Metryki wydajności",
+    "task_completion": "Ukończenie zadań",
+    "active_modules": "Aktywne moduły", 
+    "productivity_score": "Wynik produktywności",
+    "recent_activity": "Ostatnia aktywność",
+    "view_all_activity": "Zobacz całą aktywność",
+    "no_matching_categories": "Nie znaleziono pasujących kategorii."
+  },
+  "tooltips": {
+    "user_clock": "Zegar użytkownika",
+    "language": "Język",
+    "notifications": "Powiadomienia",
+    "light_mode": "Tryb jasny",
+    "dark_mode": "Tryb ciemny", 
+    "auto_mode": "Tryb automatyczny"
+  },
+  "theme": {
+    "light_mode_description": "Jasny i czysty interfejs",
+    "dark_mode_description": "Łatwy dla oczu w nocy",
+    "auto_mode_description": "Dostosowuje się do Twojego otoczenia"
+  }
+}

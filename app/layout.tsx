@@ -3,8 +3,10 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../lib/auth-context";
 import { ThemeProvider } from "../lib/theme-context";
+import { LanguageProvider } from "../lib/language-context";
 import { ThemeProvider as MuiThemeProvider } from "../components/mui-theme-provider";
 import UserNav from "../components/user-nav";
+import ThemeInitializer from "../components/theme-initializer";
 
 const poppins = Poppins({ 
   subsets: ["latin"],
@@ -27,11 +29,14 @@ export default function RootLayout({
       <body className={poppins.className}>
         <AuthProvider>
           <ThemeProvider>
-            <MuiThemeProvider>
-              <div className="min-h-screen">
-                {children}
-              </div>
-            </MuiThemeProvider>
+            <LanguageProvider>
+              <MuiThemeProvider>
+                <div className="min-h-screen">
+                  <ThemeInitializer />
+                  {children}
+                </div>
+              </MuiThemeProvider>
+            </LanguageProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

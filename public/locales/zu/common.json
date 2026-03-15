@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Sawubona",
+    "welcome": "Siyakwamukela ukubuya! Leli ukubukeka kwasemsebenzini wakho namhlanje.",
+    "search_placeholder": "Funa indawo yokusebenzela...",
+    "categories": {
+      "analytical": "Ukuhloli",
+      "professional": "Abasebenzi", 
+      "personal": "Okwakho",
+      "note_taking": "Ukubhala amazwibela",
+      "calendar": "Ikhalenda"
+    },
+    "descriptions": {
+      "analytical": "Ukuhloli oluphezulu kanye nokubona kwedatha yamaprojekthi yakho.",
+      "professional": "Phatha amaprojekthi omsebenzi, imisebenzi, kanye nezinhloso zokusebenzela.",
+      "personal": "Landela izinhloso zakho, iziwalo, kanye namashu omsebenzi.",
+      "note_taking": "Thatha izicoco, hlela izicoco, futhi wandisa ubumsimba.",
+      "calendar": "Hlela izenzakalo futhi ulawul isikhathi sakho ngokuhle."
+    },
+    "coming_soon": "IZOza kususa kakhulu",
+    "performance_metrics": "Izilinganiso zokusebenza",
+    "task_completion": "Ukugqamula umsebenzi",
+    "active_modules": "Izinhlelo ezisebenzayo", 
+    "productivity_score": "Isilinganiso sokukhiqiza",
+    "recent_activity": "Okwakamuva kakhulu",
+    "view_all_activity": "Bona zonke izenzo",
+    "no_matching_categories": "Akukho kufanekiwe okutholakele."
+  },
+  "tooltips": {
+    "user_clock": "Iwashi lomsebenzisi",
+    "language": "Ulimi",
+    "notifications": "Izaziso",
+    "light_mode": "Indlela eswakile",
+    "dark_mode": "Indlela esmnyama", 
+    "auto_mode": "Indlela eyenzekelona"
+  },
+  "theme": {
+    "light_mode_description": "I-interface eliphuzile kanye elicocekile",
+    "dark_mode_description": "Lula emehlweni ebusuku",
+    "auto_mode_description": "Ilingana nobuhlakani bakho"
+  }
+}

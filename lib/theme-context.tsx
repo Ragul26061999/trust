@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { DEFAULT_THEME, getUserPreferences, saveUserPreferences, applyTheme, detectAmbientBrightness, ThemeMode } from './user-preferences';
+import { DEFAULT_THEME, getUserPreferences, saveUserPreferences, applyTheme, detectAmbientBrightness, ThemeMode, ensureThemeApplied } from './user-preferences';
 import { getUserPreferencesFromDB, saveUserPreferencesToDB } from './user-preferences-db';
 import { useAuth } from './auth-context';
 
@@ -36,25 +36,35 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   // Load theme preferences on initial render
   useEffect(() => {
-    if (user?.id) {  // Only load from DB if user is authenticated
-      const loadTheme = async () => {
+    const loadTheme = async () => {
+      if (user?.id) {  // Only load from DB if user is authenticated
         const savedTheme = getUserPreferences();
         setTheme(savedTheme);
         setCurrentThemeMode(savedTheme.themeMode || 'light');
         applyTheme(savedTheme);
         
         await loadThemeFromDB();
-      };
-      
-      loadTheme();
-    } else {
-      // Just load from local storage if not authenticated
-      const savedTheme = getUserPreferences();
-      setTheme(savedTheme);
-      setCurrentThemeMode(savedTheme.themeMode || 'light');
-      applyTheme(savedTheme);
-    }
+      } else {
+        // Just load from local storage if not authenticated
+        const savedTheme = getUserPreferences();
+        setTheme(savedTheme);
+        setCurrentThemeMode(savedTheme.themeMode || 'light');
+        applyTheme(savedTheme);
+      }
+    };
+    
+    loadTheme();
   }, [user?.id]);
+
+  // Also apply theme immediately on mount
+  useEffect(() => {
+    ensureThemeApplied();
+  }, []);
+
+  // Re-apply theme when theme mode changes
+  useEffect(() => {
+    ensureThemeApplied();
+  }, [theme.themeMode]);
 
   // Handle auto theme mode changes
   useEffect(() => {
@@ -82,6 +92,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     setTheme(updatedTheme);
     saveUserPreferences(updatedTheme);
     applyTheme(updatedTheme);
+    
+    // Dispatch custom event for theme change
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('themeChanged', { detail: updatedTheme }));
+    }
   };
 
   // Function to set theme mode specifically
@@ -91,6 +106,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     setCurrentThemeMode(mode);
     saveUserPreferences(updatedTheme);
     applyTheme(updatedTheme);
+    
+    // Dispatch custom event for theme change
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('themeChanged', { detail: updatedTheme }));
+    }
   };
 
   // Function to reset theme to default
@@ -99,6 +119,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     setCurrentThemeMode(DEFAULT_THEME.themeMode);
     saveUserPreferences(DEFAULT_THEME);
     applyTheme(DEFAULT_THEME);
+    
+    // Dispatch custom event for theme change
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('themeChanged', { detail: DEFAULT_THEME }));
+    }
   };
   
   // Function to save theme to database

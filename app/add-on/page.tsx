@@ -3,12 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { supabase } from '../../lib/supabase';
-import { ThemeProvider as AppThemeProvider, useTheme as useCustomTheme } from '../../lib/theme-context';
+import { useTheme as useCustomTheme } from '../../lib/theme-context';
 import ProtectedRoute from '../../lib/protected-route';
 import ProtectedLayout from '../protected-layout';
 import { Box, Container, AppBar, Toolbar, Typography, Button, CssBaseline, IconButton, Paper, Card, CardContent, Chip, FormControl, InputLabel, Select, MenuItem, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress } from '@mui/material';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
-import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -458,7 +458,7 @@ const AddOnPageContent = () => {
   // Show loading state while fetching data
   if (!user) {
     return (
-      <MuiThemeProvider theme={muiTheme}>
+      <ThemeProvider theme={muiTheme}>
         <CssBaseline />
         <Box 
           sx={{ 
@@ -469,12 +469,12 @@ const AddOnPageContent = () => {
         >
           <CircularProgress />
         </Box>
-      </MuiThemeProvider>
+      </ThemeProvider>
     );
   }
 
   return (
-    <MuiThemeProvider theme={muiTheme}>
+    <ThemeProvider theme={muiTheme}>
       <CssBaseline />
       <Container maxWidth="xl" sx={{ py: 3 }}>
         <Box sx={{ 
@@ -918,7 +918,7 @@ const AddOnPageContent = () => {
           </Dialog>
         </Box>
       </Container>
-    </MuiThemeProvider>
+    </ThemeProvider>
   );
 };
 

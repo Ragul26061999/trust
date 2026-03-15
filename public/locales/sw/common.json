@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Habari za asubuhi",
+    "welcome": "Karibu tena! Hii ni muhtasari wa eneo lako la kazi kwa leo.",
+    "search_placeholder": "Tafuta eneo la kazi...",
+    "categories": {
+      "analytical": "Uchambuzi",
+      "professional": "Kitaalamu", 
+      "personal": "Binafsi",
+      "note_taking": "Kuchukua maoni",
+      "calendar": "Kalenda"
+    },
+    "descriptions": {
+      "analytical": "Uchambuzi wa juu na mawazo ya data kwa miradi yako.",
+      "professional": "Dhibiti miradi ya kazi, majukumu, na malengo ya kitaalamu.",
+      "personal": "Fuatilia malengo binafsi, tabia, na hatua maisha.",
+      "note_taking": "Kamata mawazo, panga mawazo, na kuongeza ubunifu.",
+      "calendar": "Panga matukio na dhibiti muda wako kwa ufanisi."
+    },
+    "coming_soon": "Akuja hivi karibuni",
+    "performance_metrics": "Vipimo vya Utendaji",
+    "task_completion": "Kumaliza kazi",
+    "active_modules": "Moduli zinazofanya kazi", 
+    "productivity_score": "Alama ya Uzalishaji",
+    "recent_activity": "Shughuli za hivi karibuni",
+    "view_all_activity": "Ona shughuli zote",
+    "no_matching_categories": "Hakuna vikosi vinavyolingana vilivyopatikana."
+  },
+  "tooltips": {
+    "user_clock": "Saa ya Mtumiaji",
+    "language": "Lugha",
+    "notifications": "Arifa",
+    "light_mode": "Hali ya Mwanga",
+    "dark_mode": "Hali ya Giza", 
+    "auto_mode": "Hali ya Otomatiki"
+  },
+  "theme": {
+    "light_mode_description": "Interfeisi angavu na safi",
+    "dark_mode_description": "Rahisi kwa macho usiku",
+    "auto_mode_description": "Inalingana na mazingira yako"
+  }
+}

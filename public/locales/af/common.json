@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Goeie more",
+    "welcome": "Welkom terug! Hier is u werksplek oorsig vir vandag.",
+    "search_placeholder": "Soek werksplek...",
+    "categories": {
+      "analytical": "Analitiese",
+      "professional": "Professionele", 
+      "personal": "Persoonlike",
+      "note_taking": "Aantekeninge neem",
+      "calendar": "Kalender"
+    },
+    "descriptions": {
+      "analytical": "Gevorderde analises en data-insigte vir u projekte.",
+      "professional": "Bestuur werkprojekte, take en professionele doelwitte.",
+      "personal": "Volg persoonlike doelwitte, gewoontes en leefmylpale.",
+      "note_taking": "Vang idees, organiseer gedagtes en verhoog kreatiwiteit.",
+      "calendar": "Skeduleer gebeurtenisse en bestuur u tyd doeltreffend."
+    },
+    "coming_soon": "Binnekort beskikbaar",
+    "performance_metrics": "Prestasie-metrieke",
+    "task_completion": "Taakvoltooiing",
+    "active_modules": "Aktiewe modules", 
+    "productivity_score": "Produktiwiteits telling",
+    "recent_activity": "Onlangse aktiwiteit",
+    "view_all_activity": "Bekyk alle aktiwiteit",
+    "no_matching_categories": "Geen ooreenstemmende kategorieë gevind nie."
+  },
+  "tooltips": {
+    "user_clock": "Gebruiker horlosie",
+    "language": "Taal",
+    "notifications": "Kennisgewings",
+    "light_mode": "Ligte modus",
+    "dark_mode": "Donker modus", 
+    "auto_mode": "Automatiese modus"
+  },
+  "theme": {
+    "light_mode_description": "Helder en skoon koppelvlak",
+    "dark_mode_description": "Maklik vir die oog snags",
+    "auto_mode_description": "Pas aan by u omgewing"
+  }
+}

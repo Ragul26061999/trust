@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "صباح الخير",
+    "welcome": "مرحباً بعودتك! إليك نظرة عامة على مساحة العملك لليوم.",
+    "search_placeholder": "البحث في مساحة العمل...",
+    "categories": {
+      "analytical": "تحليلي",
+      "professional": "احترافي", 
+      "personal": "شخصي",
+      "note_taking": "-taking ملاحظات",
+      "calendar": "تقويم"
+    },
+    "descriptions": {
+      "analytical": "تحليلات متقدمة ورؤى بيانات لمشاريعك.",
+      "professional": "إدارة مشاريع العمل والمهام والأهداف المهنية.",
+      "personal": "تتبع الأهداف الشخصية والعادات ومعالم الحياة.",
+      "note_taking": "التقاط الأفكار وتنظيم الأفكار وتعزيز الإبداع.",
+      "calendar": "جدولة الأحداث وإدارة وقتك بكفاءة."
+    },
+    "coming_soon": "قريباً",
+    "performance_metrics": "مقاييس الأداء",
+    "task_completion": "إكمال المهام",
+    "active_modules": "الوحدات النشطة", 
+    "productivity_score": "درجة الإنتاجية",
+    "recent_activity": "النشاط الأخير",
+    "view_all_activity": "عرض كل النشاط",
+    "no_matching_categories": "لم يتم العثور على فئات مطابقة."
+  },
+  "tooltips": {
+    "user_clock": "ساعة المستخدم",
+    "language": "اللغة",
+    "notifications": "الإشعارات",
+    "light_mode": "الوضع الفاتح",
+    "dark_mode": "الوضع الداكن", 
+    "auto_mode": "الوضع التلقائي"
+  },
+  "theme": {
+    "light_mode_description": "واجهة ساطعة ونظيفة",
+    "dark_mode_description": "سهل على العينين ليلاً",
+    "auto_mode_description": "يتكيف مع بيئتك"
+  }
+}

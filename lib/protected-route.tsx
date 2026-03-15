@@ -12,7 +12,8 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading && !user) {
       // Redirect to login with return URL
-      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+      const redirectUrl = pathname || '/dashboard';
+      router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
     }
   }, [user, loading, router, pathname]);
 

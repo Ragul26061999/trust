@@ -15,11 +15,13 @@ export default function LoginPage() {
 
   // Get URL parameters using searchParams hook
   useEffect(() => {
-    const urlError = searchParams.get('error');
-    const email = searchParams.get('email');
-    
-    if (urlError === 'invalid_email_domain' && email) {
-      setError(`Only Gmail accounts are allowed. ${email} is not a Gmail account.`);
+    if (searchParams) {
+      const urlError = searchParams.get('error');
+      const email = searchParams.get('email');
+      
+      if (urlError === 'invalid_email_domain' && email) {
+        setError(`Only Gmail accounts are allowed. ${email} is not a Gmail account.`);
+      }
     }
   }, [searchParams]);
 

@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Bom dia",
+    "welcome": "Bem-vindo de volta! Aqui está a visão geral do seu espaço de trabalho para hoje.",
+    "search_placeholder": "Pesquisar espaço de trabalho...",
+    "categories": {
+      "analytical": "Analítico",
+      "professional": "Profissional", 
+      "personal": "Pessoal",
+      "note_taking": "Tirar notas",
+      "calendar": "Calendário"
+    },
+    "descriptions": {
+      "analytical": "Análises avançadas e insights de dados para seus projetos.",
+      "professional": "Gerencie projetos de trabalho, tarefas e objetivos profissionais.",
+      "personal": "Acompanhe metas pessoais, hábitos e marcos da vida.",
+      "note_taking": "Capture ideias, organize pensamentos e aumente a criatividade.",
+      "calendar": "Programe eventos e gerencie seu tempo eficientemente."
+    },
+    "coming_soon": "Em breve",
+    "performance_metrics": "Métricas de desempenho",
+    "task_completion": "Conclusão de tarefas",
+    "active_modules": "Módulos ativos", 
+    "productivity_score": "Pontuação de produtividade",
+    "recent_activity": "Atividade recente",
+    "view_all_activity": "Ver todas as atividades",
+    "no_matching_categories": "Nenhuma categoria correspondente encontrada."
+  },
+  "tooltips": {
+    "user_clock": "Relógio do usuário",
+    "language": "Idioma",
+    "notifications": "Notificações",
+    "light_mode": "Modo claro",
+    "dark_mode": "Modo escuro", 
+    "auto_mode": "Modo automático"
+  },
+  "theme": {
+    "light_mode_description": "Interface clara e limpa",
+    "dark_mode_description": "Fácil para os olhos à noite",
+    "auto_mode_description": "Adapta-se ao seu ambiente"
+  }
+}

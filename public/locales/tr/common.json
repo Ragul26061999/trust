@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Günaydın",
+    "welcome": "Tekrar hoş geldiniz! İşte bugün için çalışma alanınızın genel bir görünümü.",
+    "search_placeholder": "Çalışma alanını ara...",
+    "categories": {
+      "analytical": "Analitik",
+      "professional": "Profesyonel", 
+      "personal": "Kişisel",
+      "note_taking": "Not alma",
+      "calendar": "Takvim"
+    },
+    "descriptions": {
+      "analytical": "Projeleriniz için gelişmiş analizler ve veri içgörüleri.",
+      "professional": "İş projelerini, görevleri ve profesyonel hedefleri yönetin.",
+      "personal": "Kişisel hedefleri, alışkanlıkları ve yaşam kilometre taşlarını takip edin.",
+      "note_taking": "Fikirleri yakalayın, düşünceleri düzenleyin ve yaratıcılığı artırın.",
+      "calendar": "Etkinlikleri planlayın ve zamanınızı verimli bir şekilde yönetin."
+    },
+    "coming_soon": "Yakında",
+    "performance_metrics": "Performans Metrikleri",
+    "task_completion": "Görev Tamamlama",
+    "active_modules": "Aktif Modüller", 
+    "productivity_score": "Verimlilik Skoru",
+    "recent_activity": "Son Etkinlik",
+    "view_all_activity": "Tüm Etkinlikleri Görüntüle",
+    "no_matching_categories": "Eşleşen kategori bulunamadı."
+  },
+  "tooltips": {
+    "user_clock": "Kullanıcı Saati",
+    "language": "Dil",
+    "notifications": "Bildirimler",
+    "light_mode": "Açık Mod",
+    "dark_mode": "Koyu Mod", 
+    "auto_mode": "Otomatik Mod"
+  },
+  "theme": {
+    "light_mode_description": "Açık ve temiz arayüz",
+    "dark_mode_description": "Gece gözler için kolay",
+    "auto_mode_description": "Ortamınıza uyum sağlar"
+  }
+}

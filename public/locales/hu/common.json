@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Jó reggelt",
+    "welcome": "Üdv újra! Itt van a munkaterület áttekintése a mai napra.",
+    "search_placeholder": "Munkaterület keresése...",
+    "categories": {
+      "analytical": "Analitikai",
+      "professional": "Professzionális", 
+      "personal": "Személyes",
+      "note_taking": "Jegyzetelés",
+      "calendar": "Naptár"
+    },
+    "descriptions": {
+      "analytical": "Fejlett elemzések és adatbemutatók a projektjeihez.",
+      "professional": "Kezelje a munkaprojekteket, feladatokat és szakmai célokat.",
+      "personal": "Kövesse nyomon a személyes célokat, szokásokat és életeseményeket.",
+      "note_taking": "Rögzítsen ötleteket, szervezze a gondolatokat és növelje a kreativitást.",
+      "calendar": "Tervezzen eseményeket és hatékonyan kezelje az idejét."
+    },
+    "coming_soon": "Hamarosan",
+    "performance_metrics": "Teljesítménymutatók",
+    "task_completion": "Feladat befejezése",
+    "active_modules": "Aktív modulok", 
+    "productivity_score": "Termelkenységi pontszám",
+    "recent_activity": "Legutóbbi tevékenység",
+    "view_all_activity": "Összes tevékenység megtekintése",
+    "no_matching_categories": "Nem található megfelelő kategória."
+  },
+  "tooltips": {
+    "user_clock": "Felhasználói óra",
+    "language": "Nyelv",
+    "notifications": "Értesítések",
+    "light_mode": "Világos mód",
+    "dark_mode": "Sötét mód", 
+    "auto_mode": "Automatikus mód"
+  },
+  "theme": {
+    "light_mode_description": "Világos és tiszta felület",
+    "dark_mode_description": "Éjszaka kíméletes a szemnek",
+    "auto_mode_description": "Alkalmazkodik a környezetéhez"
+  }
+}

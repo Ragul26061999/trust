@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Goedemorgen",
+    "welcome": "Welkom terug! Hier is uw werkruimte-overzicht voor vandaag.",
+    "search_placeholder": "Werkruimte zoeken...",
+    "categories": {
+      "analytical": "Analytisch",
+      "professional": "Professioneel", 
+      "personal": "Persoonlijk",
+      "note_taking": "Notities maken",
+      "calendar": "Kalender"
+    },
+    "descriptions": {
+      "analytical": "Geavanceerde analyses en data-inzichten voor uw projecten.",
+      "professional": "Beheer werkprojecten, taken en professionele doelen.",
+      "personal": "Volg persoonlijke doelen, gewoontes en levensmijlpalen.",
+      "note_taking": "Vang ideeën op, organiseer gedachten en stimuleer creativiteit.",
+      "calendar": "Plan evenementen en beheer uw tijd efficiënt."
+    },
+    "coming_soon": "Binnenkort beschikbaar",
+    "performance_metrics": "Prestatiemetrics",
+    "task_completion": "Taakvoltooiing",
+    "active_modules": "Actieve modules", 
+    "productivity_score": "Productiviteitsscore",
+    "recent_activity": "Recente activiteit",
+    "view_all_activity": "Bekijk alle activiteiten",
+    "no_matching_categories": "Geen overeenkomende categorieën gevonden."
+  },
+  "tooltips": {
+    "user_clock": "Gebruikersklok",
+    "language": "Taal",
+    "notifications": "Notificaties",
+    "light_mode": "Lichte modus",
+    "dark_mode": "Donkere modus", 
+    "auto_mode": "Automatische modus"
+  },
+  "theme": {
+    "light_mode_description": "Heldere en schone interface",
+    "dark_mode_description": "'s Nachts makkelijk voor de ogen",
+    "auto_mode_description": "Past zich aan uw omgeving aan"
+  }
+}

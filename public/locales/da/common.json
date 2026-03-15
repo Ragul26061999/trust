@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Godmorgen",
+    "welcome": "Velkommen tilbage! Her er din arbejdsplads oversigt for i dag.",
+    "search_placeholder": "Søg arbejdsplads...",
+    "categories": {
+      "analytical": "Analytisk",
+      "professional": "Professionel", 
+      "personal": "Personlig",
+      "note_taking": "Noter",
+      "calendar": "Kalender"
+    },
+    "descriptions": {
+      "analytical": "Avancerede analyser og dataindsigter for dine projekter.",
+      "professional": "Administrer arbejdsprojekter, opgaver og professionelle mål.",
+      "personal": "Følg personlige mål, vaner og livsmilepæle.",
+      "note_taking": "Fang ideer, organiser tanker og boost kreativitet.",
+      "calendar": "Planlæg begivenheder og administrer din tid effektivt."
+    },
+    "coming_soon": "Kommer snart",
+    "performance_metrics": "Ydelsesmålinger",
+    "task_completion": "Opgavefuldførelse",
+    "active_modules": "Aktive moduler", 
+    "productivity_score": "Produktivitetsscore",
+    "recent_activity": "Seneste aktivitet",
+    "view_all_activity": "Vis al aktivitet",
+    "no_matching_categories": "Ingen matchende kategorier fundet."
+  },
+  "tooltips": {
+    "user_clock": "Brugerur",
+    "language": "Sprog",
+    "notifications": "Notifikationer",
+    "light_mode": "Lys tilstand",
+    "dark_mode": "Mørk tilstand", 
+    "auto_mode": "Automatisk tilstand"
+  },
+  "theme": {
+    "light_mode_description": "Lys og ren grænseflade",
+    "dark_mode_description": "Skånsomt for øjnene om natten",
+    "auto_mode_description": "Tilpasser sig dit miljø"
+  }
+}

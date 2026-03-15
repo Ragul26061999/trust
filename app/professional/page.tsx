@@ -3,6 +3,7 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { useTimeEngine } from '../../lib/time-engine';
+import { useThemeSync } from '../../lib/use-theme-sync';
 import ProtectedLayout from '../protected-layout';
 import {
   Box,
@@ -87,6 +88,7 @@ import { isSupabaseConfigured } from '../../lib/supabase';
 const ProfessionalPageContent = () => {
   const { user, logout } = useAuth();
   const { addAlarm } = useTimeEngine();
+  const { syncTheme } = useThemeSync(); // Add theme sync
   const router = useRouter();
   
   // State for user profile information

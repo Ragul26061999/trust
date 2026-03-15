@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "おはようございます",
+    "welcome": "おかえりなさい！今日のワークスペース概要です。",
+    "search_placeholder": "ワークスペースを検索...",
+    "categories": {
+      "analytical": "分析",
+      "professional": "プロフェッショナル", 
+      "personal": "個人",
+      "note_taking": "メモ作成",
+      "calendar": "カレンダー"
+    },
+    "descriptions": {
+      "analytical": "プロジェクト向けの高度な分析とデータインサイト。",
+      "professional": "仕事プロジェクト、タスク、専門目標を管理。",
+      "personal": "個人的目標、習慣、人生のマイルストーンを追跡。",
+      "note_taking": "アイデアを捉え、思考を整理し、創造性を高める。",
+      "calendar": "イベントをスケジュールし、時間を効率的に管理。"
+    },
+    "coming_soon": "近日公開",
+    "performance_metrics": "パフォーマンス指標",
+    "task_completion": "タスク完了",
+    "active_modules": "アクティブモジュール", 
+    "productivity_score": "生産性スコア",
+    "recent_activity": "最近の活動",
+    "view_all_activity": "すべての活動を表示",
+    "no_matching_categories": "一致するカテゴリが見つかりません。"
+  },
+  "tooltips": {
+    "user_clock": "ユーザークロック",
+    "language": "言語",
+    "notifications": "通知",
+    "light_mode": "ライトモード",
+    "dark_mode": "ダークモード", 
+    "auto_mode": "自動モード"
+  },
+  "theme": {
+    "light_mode_description": "明るくクリーンなインターフェース",
+    "dark_mode_description": "夜に目に優しい",
+    "auto_mode_description": "環境に適応"
+  }
+}

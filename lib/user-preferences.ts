@@ -108,3 +108,58 @@ export const detectAmbientBrightness = (): 'light' | 'dark' => {
   }
   return 'light';
 };
+
+// Ensure theme is applied to document
+export const ensureThemeApplied = () => {
+  if (typeof window !== 'undefined') {
+    const preferences = getUserPreferences();
+    applyTheme(preferences);
+    
+    // Force re-application if needed
+    setTimeout(() => {
+      const isDarkMode = document.documentElement.classList.contains('dark-mode');
+      if (!isDarkMode && preferences.themeMode === 'dark') {
+        document.documentElement.classList.add('dark-mode');
+        document.documentElement.classList.remove('light-mode');
+      } else if (isDarkMode && preferences.themeMode === 'light') {
+        document.documentElement.classList.add('light-mode');
+        document.documentElement.classList.remove('dark-mode');
+      }
+      
+      // Also apply to body for extra safety
+      if (preferences.themeMode === 'dark') {
+        document.body.classList.add('dark-mode');
+        document.body.classList.remove('light-mode');
+      } else {
+        document.body.classList.add('light-mode');
+        document.body.classList.remove('dark-mode');
+      }
+    }, 100);
+    
+    // Final check and force application
+    setTimeout(() => {
+      const root = document.documentElement;
+      const body = document.body;
+      
+      // Remove any conflicting classes first
+      root.classList.remove('light-mode', 'dark-mode');
+      body.classList.remove('light-mode', 'dark-mode');
+      
+      // Apply correct classes
+      if (preferences.themeMode === 'dark') {
+        root.classList.add('dark-mode');
+        body.classList.add('dark-mode');
+      } else {
+        root.classList.add('light-mode');
+        body.classList.add('light-mode');
+      }
+      
+      // Apply CSS variables
+      root.style.setProperty('--primary-color', preferences.primaryColor || DEFAULT_THEME.primaryColor);
+      root.style.setProperty('--secondary-color', preferences.secondaryColor || DEFAULT_THEME.secondaryColor);
+      root.style.setProperty('--background-color', preferences.backgroundColor || DEFAULT_THEME.backgroundColor);
+      root.style.setProperty('--text-color', preferences.textColor || DEFAULT_THEME.textColor);
+      root.style.setProperty('--accent-color', preferences.accentColor || DEFAULT_THEME.accentColor);
+    }, 200);
+  }
+};

@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "صبح بخیر",
+    "welcome": "خوش آمدید! اینجا نمای کلی فضای کاری شما برای امروز است.",
+    "search_placeholder": "جستجوی فضای کاری...",
+    "categories": {
+      "analytical": "تحلیلی",
+      "professional": "حرفه‌ای", 
+      "personal": "شخصی",
+      "note_taking": "یادداشت برداری",
+      "calendar": "تقویم"
+    },
+    "descriptions": {
+      "analytical": "تحلیل‌های پیشرفته و بینش داده برای پروژه‌های شما.",
+      "professional": "مدیریت پروژه‌های کاری، وظایف و اهداف حرفه‌ای.",
+      "personal": "پیگیری اهداف شخصی، عادات و نقاط عطف زندگی.",
+      "note_taking": "ایده‌ها را ثبت کنید، افکار را سازماندهی کنید و خلاقیت را افزایش دهید.",
+      "calendar": "رویدادها را برنامه‌ریزی کنید و زمان خود را به طور مؤثر مدیریت کنید."
+    },
+    "coming_soon": "به زودی",
+    "performance_metrics": "معیارهای عملکرد",
+    "task_completion": "تکمیل وظیفه",
+    "active_modules": "ماژول‌های فعال", 
+    "productivity_score": "امتیاز بهره‌وری",
+    "recent_activity": "فعالیت اخیر",
+    "view_all_activity": "مشاهده تمام فعالیت‌ها",
+    "no_matching_categories": "هیچ دسته‌بندی مطابقی یافت نشد."
+  },
+  "tooltips": {
+    "user_clock": "ساعت کاربر",
+    "language": "زبان",
+    "notifications": "اطلاع‌رسانی‌ها",
+    "light_mode": "حالت روشن",
+    "dark_mode": "حالت تاریک", 
+    "auto_mode": "حالت خودکار"
+  },
+  "theme": {
+    "light_mode_description": "رابط کاربری روشن و تمیز",
+    "dark_mode_description": "شب‌ها راحت برای چشم",
+    "auto_mode_description": "با محیط شما تطبیق می‌یابد"
+  }
+}

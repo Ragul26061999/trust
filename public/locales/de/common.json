@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Guten Morgen",
+    "welcome": "Willkommen zurück! Hier ist Ihre Arbeitsplatzübersicht für heute.",
+    "search_placeholder": "Arbeitsplatz durchsuchen...",
+    "categories": {
+      "analytical": "Analytisch",
+      "professional": "Professionell", 
+      "personal": "Persönlich",
+      "note_taking": "Notizen machen",
+      "calendar": "Kalender"
+    },
+    "descriptions": {
+      "analytical": "Erweiterte Analysen und Dateneinblicke für Ihre Projekte.",
+      "professional": "Verwalten Sie Arbeitsprojekte, Aufgaben und berufliche Ziele.",
+      "personal": "Verfolgen Sie persönliche Ziele, Gewohnheiten und Lebensmeilensteine.",
+      "note_taking": "Erfassen Sie Ideen, organisieren Sie Gedanken und fördern Sie die Kreativität.",
+      "calendar": "Planen Sie Ereignisse und verwalten Sie Ihre Zeit effizient."
+    },
+    "coming_soon": "Demnächst verfügbar",
+    "performance_metrics": "Leistungsmetriken",
+    "task_completion": "Aufgabenabschluss",
+    "active_modules": "Aktive Module", 
+    "productivity_score": "Produktivitäts-Score",
+    "recent_activity": "Letzte Aktivität",
+    "view_all_activity": "Alle Aktivitäten anzeigen",
+    "no_matching_categories": "Keine passenden Kategorien gefunden."
+  },
+  "tooltips": {
+    "user_clock": "Benutzeruhr",
+    "language": "Sprache",
+    "notifications": "Benachrichtigungen",
+    "light_mode": "Heller Modus",
+    "dark_mode": "Dunkler Modus", 
+    "auto_mode": "Automatischer Modus"
+  },
+  "theme": {
+    "light_mode_description": "Helle und saubere Benutzeroberfläche",
+    "dark_mode_description": "Nachts angenehm für die Augen",
+    "auto_mode_description": "Passt sich an Ihre Umgebung an"
+  }
+}

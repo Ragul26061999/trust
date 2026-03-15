@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "בוקר טוב",
+    "welcome": "ברוך שובך! הנה סקירת שטח העבודה שלך להיום.",
+    "search_placeholder": "חפש שטח עבודה...",
+    "categories": {
+      "analytical": "אנליטי",
+      "professional": "מקצועי", 
+      "personal": "אישי",
+      "note_taking": "רישום הערות",
+      "calendar": "לוח שנה"
+    },
+    "descriptions": {
+      "analytical": "ניתוחים מתקדמים ותובנות נתונים לפרויקטים שלך.",
+      "professional": "נהל פרויקטי עבודה, משימות ומטרות מקצועיות.",
+      "personal": "עקוב אחר מטרות אישיות, הרגלים ואבני דרך בחיים.",
+      "note_taking": "תפוס רעיונות, ארגן מחשבות והגבר יצירתיות.",
+      "calendar": "תזמן אירועים ונהל את הזמן שלך ביעילות."
+    },
+    "coming_soon": "בקרוב",
+    "performance_metrics": "מדדי ביצוע",
+    "task_completion": "השלמת משימה",
+    "active_modules": "מודולים פעילים", 
+    "productivity_score": "ציון פרודוקטיביות",
+    "recent_activity": "פעילות אחרונה",
+    "view_all_activity": "צפה בכל הפעילות",
+    "no_matching_categories": "לא נמצאו קטגוריות תואמות."
+  },
+  "tooltips": {
+    "user_clock": "שעון משתמש",
+    "language": "שפה",
+    "notifications": "התראות",
+    "light_mode": "מצב בהיר",
+    "dark_mode": "מצב כהה", 
+    "auto_mode": "מצב אוטומטי"
+  },
+  "theme": {
+    "light_mode_description": "ממשק בהיר ונקי",
+    "dark_mode_description": "נוח לעיניים בלילה",
+    "auto_mode_description": "מתאים לסביבה שלך"
+  }
+}

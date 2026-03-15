@@ -31,7 +31,7 @@ export default function ProtectedLayout({
   // Determine if sidebar should be shown based on current path
   // Pages that should not have sidebar: add-on, and any other pages as needed
   const pagesWithoutSidebar = ['/add-on']; // Add other paths that should not have sidebar
-  const showSidebar = !pagesWithoutSidebar.some(page => pathname === page || pathname.startsWith(page + '/') || pathname.startsWith(page + '?'));
+  const showSidebar = pathname && !pagesWithoutSidebar.some(page => pathname === page || pathname.startsWith(page + '/') || pathname.startsWith(page + '?'));
   
   // Fetch user preferences after user is loaded
   useEffect(() => {

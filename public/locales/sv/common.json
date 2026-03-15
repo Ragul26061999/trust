@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "God morgon",
+    "welcome": "Välkommen tillbaka! Här är din arbetsytaöversikt för idag.",
+    "search_placeholder": "Sök arbetsyta...",
+    "categories": {
+      "analytical": "Analytisk",
+      "professional": "Professionell", 
+      "personal": "Personlig",
+      "note_taking": "Anteckningar",
+      "calendar": "Kalender"
+    },
+    "descriptions": {
+      "analytical": "Avancerade analyser och datainsikter för dina projekt.",
+      "professional": "Hantera arbetsprojekt, uppgifter och professionella mål.",
+      "personal": "Följ personliga mål, vanor och livsmilstolpar.",
+      "note_taking": "Fånga idéer, organisera tankar och öka kreativiteten.",
+      "calendar": "Schemalägg händelser och hantera din tid effektivt."
+    },
+    "coming_soon": "Kommer snart",
+    "performance_metrics": "Prestandamått",
+    "task_completion": "Uppgiftslösning",
+    "active_modules": "Aktiva moduler", 
+    "productivity_score": "Produktivitetsscore",
+    "recent_activity": "Senaste aktivitet",
+    "view_all_activity": "Visa all aktivitet",
+    "no_matching_categories": "Inga matchande kategorier hittades."
+  },
+  "tooltips": {
+    "user_clock": "Användarklocka",
+    "language": "Språk",
+    "notifications": "Notifikationer",
+    "light_mode": "Ljust läge",
+    "dark_mode": "Mörkt läge", 
+    "auto_mode": "Automatiskt läge"
+  },
+  "theme": {
+    "light_mode_description": "Ljus och ren gränssnitt",
+    "dark_mode_description": "Skonsamt för ögonen på natten",
+    "auto_mode_description": "Anpassar sig till din miljö"
+  }
+}

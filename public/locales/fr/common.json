@@ -1,0 +1,54 @@
+{
+  "dashboard": {
+    "greeting": "Bonjour",
+    "welcome": "Bon retour ! Voici un aperçu de votre espace de travail pour aujourd'hui.",
+    "search_placeholder": "Rechercher dans l'espace de travail...",
+    "categories": {
+      "analytical": "Analytique",
+      "professional": "Professionnel", 
+      "personal": "Personnel",
+      "note_taking": "Prise de notes",
+      "calendar": "Calendrier"
+    },
+    "descriptions": {
+      "analytical": "Analyses avancées et aperçus de données pour vos projets.",
+      "professional": "Gérez les projets de travail, les tâches et les objectifs professionnels.",
+      "personal": "Suivez les objectifs personnels, les habitudes et les jalons de vie.",
+      "note_taking": "Capturez des idées, organisez des pensées et stimulez la créativité.",
+      "calendar": "Planifiez des événements et gérez votre temps efficacement."
+    },
+    "coming_soon": "Bientôt disponible",
+    "performance_metrics": "Métriques de performance",
+    "task_completion": "Achèvement des tâches",
+    "active_modules": "Modules actifs", 
+    "productivity_score": "Score de productivité",
+    "recent_activity": "Activité récente",
+    "view_all_activity": "Voir toute l'activité",
+    "no_matching_categories": "Aucune catégorie correspondante trouvée."
+  },
+  "analytical": {
+    "title": "Tableau de Bord Analytique",
+    "subtitle": "Suivez vos métriques de productivité et de performance",
+    "productivity_score": "Score de Productivité",
+    "total_tasks": "Total des Tâches",
+    "total_activities": "Total des Activités",
+    "balance_score": "Score d'Équilibre",
+    "task_usage_distribution": "Distribution de l'Utilisation des Tâches",
+    "weekly_activity_trend": "Tendance d'Activité Hebdomadaire",
+    "monthly_completion_trend": "Tendance d'Achèvement Mensuel",
+    "activity_distribution": "Distribution des Activités"
+  },
+  "tooltips": {
+    "user_clock": "Horloge utilisateur",
+    "language": "Langue",
+    "notifications": "Notifications",
+    "light_mode": "Mode clair",
+    "dark_mode": "Mode sombre", 
+    "auto_mode": "Mode automatique"
+  },
+  "theme": {
+    "light_mode_description": "Interface lumineuse et propre",
+    "dark_mode_description": "Facile pour les yeux la nuit",
+    "auto_mode_description": "S'adapte à votre environnement"
+  }
+}

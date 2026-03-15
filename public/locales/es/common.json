@@ -1,0 +1,54 @@
+{
+  "dashboard": {
+    "greeting": "Buenos días",
+    "welcome": "¡Bienvenido de nuevo! Aquí está tu resumen del espacio de trabajo para hoy.",
+    "search_placeholder": "Buscar espacio de trabajo...",
+    "categories": {
+      "analytical": "Analítico",
+      "professional": "Profesional", 
+      "personal": "Personal",
+      "note_taking": "Toma de notas",
+      "calendar": "Calendario"
+    },
+    "descriptions": {
+      "analytical": "Análisis avanzados e ideas de datos para tus proyectos.",
+      "professional": "Gestiona proyectos de trabajo, tareas y objetivos profesionales.",
+      "personal": "Seguimiento de metas personales, hábitos e hitos de vida.",
+      "note_taking": "Captura ideas, organiza pensamientos y potencia la creatividad.",
+      "calendar": "Programa eventos y gestiona tu tiempo eficientemente."
+    },
+    "coming_soon": "Próximamente",
+    "performance_metrics": "Métricas de rendimiento",
+    "task_completion": "Finalización de tareas",
+    "active_modules": "Módulos activos", 
+    "productivity_score": "Puntuación de productividad",
+    "recent_activity": "Actividad reciente",
+    "view_all_activity": "Ver toda la actividad",
+    "no_matching_categories": "No se encontraron categorías coincidentes."
+  },
+  "analytical": {
+    "title": "Panel Analítico",
+    "subtitle": "Rastrea tus métricas de productividad y rendimiento",
+    "productivity_score": "Puntuación de Productividad",
+    "total_tasks": "Total de Tareas",
+    "total_activities": "Total de Actividades",
+    "balance_score": "Puntuación de Equilibrio",
+    "task_usage_distribution": "Distribución de Uso de Tareas",
+    "weekly_activity_trend": "Tendencia de Actividad Semanal",
+    "monthly_completion_trend": "Tendencia de Finalización Mensual",
+    "activity_distribution": "Distribución de Actividades"
+  },
+  "tooltips": {
+    "user_clock": "Reloj de Usuario",
+    "language": "Idioma",
+    "notifications": "Notificaciones",
+    "light_mode": "Modo Claro",
+    "dark_mode": "Modo Oscuro", 
+    "auto_mode": "Modo Automático"
+  },
+  "theme": {
+    "light_mode_description": "Interfaz brillante y limpia",
+    "dark_mode_description": "Fácil para los ojos por la noche",
+    "auto_mode_description": "Se adapta a tu entorno"
+  }
+}

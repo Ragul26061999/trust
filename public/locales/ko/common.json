@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "좋은 아침입니다",
+    "welcome": "환영합니다! 오늘의 작업 공간 개요입니다.",
+    "search_placeholder": "작업 공간 검색...",
+    "categories": {
+      "analytical": "분석",
+      "professional": "전문", 
+      "personal": "개인",
+      "note_taking": "메모 작성",
+      "calendar": "캘린더"
+    },
+    "descriptions": {
+      "analytical": "프로젝트를 위한 고급 분석 및 데이터 인사이트.",
+      "professional": "업무 프로젝트, 작업, 전문 목표 관리.",
+      "personal": "개인 목표, 습관, 삶의 이정표 추적.",
+      "note_taking": "아이디어를 캡처하고, 생각을 정리하며, 창의력 향상.",
+      "calendar": "이벤트를 예약하고 시간을 효율적으로 관리."
+    },
+    "coming_soon": "곧 출시",
+    "performance_metrics": "성능 메트릭",
+    "task_completion": "작업 완료",
+    "active_modules": "활성 모듈", 
+    "productivity_score": "생산성 점수",
+    "recent_activity": "최근 활동",
+    "view_all_activity": "모든 활동 보기",
+    "no_matching_categories": "일치하는 카테고리를 찾을 수 없습니다."
+  },
+  "tooltips": {
+    "user_clock": "사용자 시계",
+    "language": "언어",
+    "notifications": "알림",
+    "light_mode": "라이트 모드",
+    "dark_mode": "다크 모드", 
+    "auto_mode": "자동 모드"
+  },
+  "theme": {
+    "light_mode_description": "밝고 깨끗한 인터페이스",
+    "dark_mode_description": "밤에 눈에 편안함",
+    "auto_mode_description": "환경에 적응"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "dashboard": {
+    "greeting": "Good morning",
+    "welcome": "Welcome back! Here's your workspace overview for today.",
+    "search_placeholder": "Search workspace...",
+    "categories": {
+      "analytical": "Analytical",
+      "professional": "Professional", 
+      "personal": "Personal",
+      "note_taking": "Note Taking",
+      "calendar": "Calendar"
+    },
+    "descriptions": {
+      "analytical": "Advanced analytics and data insights for your projects.",
+      "professional": "Manage work projects, tasks, and professional goals.",
+      "personal": "Track personal goals, habits, and life milestones.",
+      "note_taking": "Capture ideas, organize thoughts, and boost creativity.",
+      "calendar": "Schedule events and manage your time efficiently."
+    },
+    "coming_soon": "Coming Soon",
+    "performance_metrics": "Performance Metrics",
+    "task_completion": "Task Completion",
+    "active_modules": "Active Modules", 
+    "productivity_score": "Productivity Score",
+    "recent_activity": "Recent Activity",
+    "view_all_activity": "View All Activity",
+    "no_matching_categories": "No matching categories found."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "analytical": "Analytical",
+    "professional": "Professional",
+    "personal": "Personal",
+    "note_taking": "Note Taking",
+    "calendar": "Calendar",
+    "user_clock": "User Clock",
+    "edit_profile": "Edit Profile",
+    "logout": "Logout"
+  },
+  "analytical": {
+    "title": "Analytics Dashboard",
+    "subtitle": "Track your productivity and performance metrics",
+    "productivity_score": "Productivity Score",
+    "total_tasks": "Total Tasks",
+    "total_activities": "Total Activities",
+    "balance_score": "Balance Score",
+    "task_usage_distribution": "Task Usage Distribution",
+    "weekly_activity_trend": "Weekly Activity Trend",
+    "monthly_completion_trend": "Monthly Completion Trend",
+    "activity_distribution": "Activity Distribution"
+  },
+  "tooltips": {
+    "user_clock": "User Clock",
+    "language": "Language",
+    "notifications": "Notifications",
+    "light_mode": "Light Mode",
+    "dark_mode": "Dark Mode", 
+    "auto_mode": "Auto Mode"
+  },
+  "theme": {
+    "light_mode_description": "Bright and clean interface",
+    "dark_mode_description": "Easy on the eyes at night",
+    "auto_mode_description": "Adapts to your environment"
+  }
+}

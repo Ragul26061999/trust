@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "สวัสดีตอนเช้า",
+    "welcome": "ยินดีต้อนรับกลับ! นี่คือภาพรวมพื้นที่ทำงานของคุณสำหรับวันนี้",
+    "search_placeholder": "ค้นหาพื้นที่ทำงาน...",
+    "categories": {
+      "analytical": "วิเคราะห์",
+      "professional": "มืออาชีพ", 
+      "personal": "ส่วนตัว",
+      "note_taking": "จดบันทึก",
+      "calendar": "ปฏิทิน"
+    },
+    "descriptions": {
+      "analytical": "การวิเคราะห์ขั้นสูงและข้อมูลเชิงลึกสำหรับโปรเจกต์ของคุณ",
+      "professional": "จัดการโปรเจกต์งาน งาน และเป้าหมายระดับมืออาชีพ",
+      "personal": "ติดตามเป้าหมายส่วนตัว นิสัย และเป้าหมายชีวิต",
+      "note_taking": "จับแนวคิด จัดระเบียบความคิด และเพิ่มความคิดสร้างสรรค์",
+      "calendar": "จัดกำหนดการกิจกรรมและจัดการเวลาอย่างมีประสิทธิภาพ"
+    },
+    "coming_soon": "เร็วๆ นี้",
+    "performance_metrics": "ตัวชี้วัดประสิทธิภาพ",
+    "task_completion": "การทำงานเสร็จสิ้น",
+    "active_modules": "โมดูลที่ใช้งานอยู่", 
+    "productivity_score": "คะแนนประสิทธิภาพ",
+    "recent_activity": "กิจกรรมล่าสุด",
+    "view_all_activity": "ดูกิจกรรมทั้งหมด",
+    "no_matching_categories": "ไม่พบหมวดหมู่ที่ตรงกัน"
+  },
+  "tooltips": {
+    "user_clock": "นาฬิกาผู้ใช้",
+    "language": "ภาษา",
+    "notifications": "การแจ้งเตือน",
+    "light_mode": "โหมดสว่าง",
+    "dark_mode": "โหมดมืด", 
+    "auto_mode": "โหมดอัตโนมัติ"
+  },
+  "theme": {
+    "light_mode_description": "อินเทอร์เฟซที่สว่างและสะอาด",
+    "dark_mode_description": "สบายตาในเวลากลางคืน",
+    "auto_mode_description": "ปรับตามสภาพแวดล้อม"
+  }
+}

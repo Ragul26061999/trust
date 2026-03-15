@@ -1,9 +1,10 @@
-'use client';
+import Image from 'next/image';
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import useTranslations from '../lib/use-translations';
 import ProfileModal from './profile-modal';
 import {
   Box,
@@ -21,10 +22,8 @@ import {
   alpha,
   Tooltip,
   Avatar,
-  Badge,
   Menu,
   MenuItem,
-  ListItemAvatar,
 } from '@mui/material';
 import {
   LayoutDashboard as DashboardIcon,
@@ -39,7 +38,6 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   Lock as LockIcon,
-  Settings as SettingsIcon,
   UserCircle as ProfileIcon,
 } from 'lucide-react';
 
@@ -61,37 +59,43 @@ export const drawerWidth = 280;
 export const collapsedWidth = 88;
 
 // UserAvatar component to display profile photo
-const UserAvatar: React.FC<{ user: any; size: number }> = ({ user, size }) => {
-  const [profile, setProfile] = useState<any>(null);
+const UserAvatar: React.FC<{ user: any; size: number; profile?: any }> = ({ user, size, profile }) => {
+  const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadUserProfile = async () => {
-      if (!user) return;
+    // Use provided profile or load from database
+    if (profile) {
+      setProfileData(profile);
+      setLoading(false);
+    } else {
+      loadUserProfile();
+    }
+  }, [user, profile]);
 
-      try {
-        if (isSupabaseConfigured() && supabase) {
-          const { data, error } = await supabase
-            .from('user_profiles')
-            .select('avatar_url, full_name')
-            .eq('user_id', user.id)
-            .single();
+  const loadUserProfile = async () => {
+    if (!user) return;
 
-          if (error && error.code !== 'PGRST116') {
-            console.error('Error loading user profile:', error);
-          } else if (data) {
-            setProfile(data);
-          }
+    try {
+      if (isSupabaseConfigured() && supabase) {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('avatar_url, full_name, age')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error loading user profile:', error);
+        } else if (data) {
+          setProfileData(data);
         }
-      } catch (error) {
-        console.error('Error loading user profile:', error);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    loadUserProfile();
-  }, [user]);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -111,7 +115,7 @@ const UserAvatar: React.FC<{ user: any; size: number }> = ({ user, size }) => {
 
   return (
     <Avatar
-      src={profile?.avatar_url}
+      src={profileData?.avatar_url}
       sx={{ 
         width: size, 
         height: size, 
@@ -120,7 +124,7 @@ const UserAvatar: React.FC<{ user: any; size: number }> = ({ user, size }) => {
         fontWeight: 600,
       }}
     >
-      {profile?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+      {profileData?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
     </Avatar>
   );
 };
@@ -130,10 +134,60 @@ const Sidebar = () => {
   const pathname = usePathname();
   const theme = useTheme();
   const { logout, user } = useAuth();
+  const { t } = useTranslations('common');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const openProfileMenu = Boolean(anchorEl);
+
+  // Load user profile data
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+
+      try {
+        if (isSupabaseConfigured() && supabase) {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+
+          if (error && error.code !== 'PGRST116') {
+            console.error('Error loading user profile:', error);
+          } else if (data) {
+            setUserProfile(data);
+          }
+        }
+      } catch (err: any) {
+        console.error('Error loading user profile:', err);
+        // If the error is about date_of_birth column, try loading without it
+        if (err.message && err.message.includes('date_of_birth')) {
+          try {
+            if (isSupabaseConfigured() && supabase) {
+              const { data, error } = await supabase
+                .from('user_profiles')
+                .select('full_name, email, phone, age, bio, avatar_url, is_first_time_login')
+                .eq('user_id', user.id)
+                .single();
+
+              if (error && error.code !== 'PGRST116') {
+                console.error('Error loading user profile (fallback):', error);
+              } else if (data) {
+                setUserProfile(data);
+              }
+            }
+          } catch (fallbackErr) {
+            console.error('Error loading user profile (fallback):', fallbackErr);
+          }
+        }
+      }
+    };
+
+    loadProfile();
+  }, [user]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -151,34 +205,32 @@ const Sidebar = () => {
   const handleSignOut = () => {
     logout();
     router.push('/login');
-    setSettingsAnchorEl(null);
-  };
-
-  const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
-    setSettingsAnchorEl(event.currentTarget);
-  };
-
-  const handleSettingsClose = () => {
-    setSettingsAnchorEl(null);
   };
 
   const handleProfileClick = () => {
     setProfileModalOpen(true);
-    handleSettingsClose();
   };
 
   const handleProfileModalClose = () => {
     setProfileModalOpen(false);
   };
 
+  const handleUserAccountClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleProfileMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   const navItems = [
-    { text: 'Dashboard', icon: <LucideIcon icon={DashboardIcon} />, path: '/dashboard', color: '#667eea', locked: false },
-    { text: 'Analytical', icon: <LucideIcon icon={AnalyticsIcon} />, path: '/analytical', color: '#2196F3', locked: false },
-    { text: 'Professional', icon: <LucideIcon icon={ProfessionalIcon} />, path: '/professional', color: '#FF9800', locked: false },
-    { text: 'Personal', icon: <LucideIcon icon={PersonalIcon} />, path: '/personal', color: '#9C27B0', locked: false },
-    { text: 'Note Taking', icon: <LucideIcon icon={NoteIcon} />, path: '/note-taking', color: '#6750A4', locked: false },
-    { text: 'Calendar', icon: <LucideIcon icon={CalendarIcon} />, path: '/calendar', color: '#4CAF50', locked: true },
-    { text: 'User Clock', icon: <LucideIcon icon={ClockIcon} />, path: '/user-clock', color: '#E91E63', locked: false },
+    { text: t('sidebar.dashboard'), icon: <LucideIcon icon={DashboardIcon} />, path: '/dashboard', color: '#667eea', locked: false },
+    { text: t('sidebar.analytical'), icon: <LucideIcon icon={AnalyticsIcon} />, path: '/analytical', color: '#2196F3', locked: false },
+    { text: t('sidebar.professional'), icon: <LucideIcon icon={ProfessionalIcon} />, path: '/professional', color: '#FF9800', locked: false },
+    { text: t('sidebar.personal'), icon: <LucideIcon icon={PersonalIcon} />, path: '/personal', color: '#9C27B0', locked: false },
+    { text: t('sidebar.note_taking'), icon: <LucideIcon icon={NoteIcon} />, path: '/note-taking', color: '#6750A4', locked: false },
+    { text: t('sidebar.calendar'), icon: <LucideIcon icon={CalendarIcon} />, path: '/calendar', color: '#4CAF50', locked: true },
+    { text: t('sidebar.user_clock'), icon: <LucideIcon icon={ClockIcon} />, path: '/user-clock', color: '#E91E63', locked: false },
   ];
 
   const currentWidth = isCollapsed ? collapsedWidth : drawerWidth;
@@ -203,39 +255,15 @@ const Sidebar = () => {
         borderBottom: '1px solid',
         borderColor: 'divider'
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-          <Box sx={{
-            minWidth: 44,
-            height: 44,
-            borderRadius: 3,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)',
-            flexShrink: 0
-          }}>
-            <Typography variant="h6" sx={{ color: 'white', fontWeight: 900 }}>T</Typography>
-          </Box>
-          {!isCollapsed && (
-            <Box>
-              <Typography variant="h6" sx={{
-                fontWeight: 800,
-                letterSpacing: '-0.02em',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                whiteSpace: 'nowrap',
-                lineHeight: 1.2
-              }}>
-                Time OS
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                Productivity Suite
-              </Typography>
-            </Box>
-          )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, my: 1 }}>
+          <Image
+            src="/6-removebg-preview.png"
+            alt="Time OS Logo"
+            width={120}
+            height={20}
+            objectFit="contain"
+            priority={true}
+          />
         </Box>
 
         {!isCollapsed && (
@@ -318,22 +346,6 @@ const Sidebar = () => {
                   boxShadow: isActive ? `0 4px 12px ${item.color}30` : 'none'
                 }}>
                   {item.icon}
-                  {item.locked && (
-                    <Box sx={{
-                      position: 'absolute',
-                      top: -2,
-                      right: -2,
-                      width: 16,
-                      height: 16,
-                      borderRadius: '50%',
-                      bgcolor: 'error.main',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <LockIconWrapper size={10} sx={{ fontSize: 10, color: 'white' }} />
-                    </Box>
-                  )}
                 </Box>
               </ListItemIcon>
               {!isCollapsed && (
@@ -368,110 +380,160 @@ const Sidebar = () => {
         })}
       </List>
 
-      {/* Footer Area */}
+      {/* Footer Area with Unified Profile */}
       <Box sx={{ p: 2.5, mt: 'auto', borderTop: '1px solid', borderColor: 'divider' }}>
-        <Tooltip title={isCollapsed ? "Settings" : ""} placement="right">
-          <Button
-            variant="text"
-            color="inherit"
-            startIcon={<LucideIcon icon={SettingsIcon} />}
-            onClick={handleSettingsClick}
-            fullWidth
-            sx={{
-              py: 2,
-              borderRadius: 3,
-              justifyContent: isCollapsed ? 'center' : 'flex-start',
-              px: isCollapsed ? 0 : 2.5,
-              color: 'text.secondary',
-              fontWeight: 600,
-              minWidth: 0,
-              transition: 'all 0.3s ease',
-              '& .MuiButton-startIcon': {
-                margin: isCollapsed ? 0 : '',
-              },
-              '&:hover': {
-                bgcolor: 'primary.light',
-                color: 'primary.main',
-                transform: 'translateX(4px)'
-              }
-            }}
-          >
-            {!isCollapsed && "Settings"}
-          </Button>
-        </Tooltip>
-
-        {/* Settings Dropdown Menu */}
-        <Menu
-          anchorEl={settingsAnchorEl}
-          open={Boolean(settingsAnchorEl)}
-          onClose={handleSettingsClose}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'right',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
-          PaperProps={{
-            sx: {
-              mt: -8, // Position above the button
-              minWidth: 280, // Increased width
-              borderRadius: 3,
-              boxShadow: '0 12px 48px rgba(0,0,0,0.15)',
-              overflow: 'visible',
-            }
-          }}
-        >
-          {/* User Profile Section */}
-          {user && (
-            <Box sx={{ px: 3, py: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <UserAvatar user={user} size={40} />
-                <Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
-                    {user.email?.split('@')[0]}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
-                    {user.email}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 500 }}>
-                    User Account
+        {/* Unified Profile Section */}
+        {user && (
+          <Box sx={{ mb: 2 }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 2, 
+                mb: 2, 
+                cursor: 'pointer',
+                borderRadius: 2,
+                padding: 1,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                }
+              }}
+              onClick={handleUserAccountClick}
+            >
+              <UserAvatar user={user} size={48} profile={userProfile} />
+              {!isCollapsed && (
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {userProfile?.full_name || user.email?.split('@')[0]}
                   </Typography>
                 </Box>
-              </Box>
+              )}
             </Box>
-          )}
+            
+            {/* Profile Popup Menu */}
+            <Menu
+              anchorEl={anchorEl}
+              open={openProfileMenu}
+              onClose={handleProfileMenuClose}
+              anchorOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              transformOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              PaperProps={{
+                sx: {
+                  minWidth: 280,
+                  borderRadius: 2,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                  mt: 1,
+                }
+              }}
+            >
+              <MenuItem onClick={() => { handleProfileClick(); handleProfileMenuClose(); }}>
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <LucideIcon icon={ProfileIcon} size={20} />
+                </ListItemIcon>
+                <ListItemText 
+                  primary={t('sidebar.edit_profile')} 
+                  primaryTypographyProps={{ 
+                    fontSize: '0.9rem',
+                    fontWeight: 500 
+                  }} 
+                />
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={() => { handleSignOut(); handleProfileMenuClose(); }}>
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <LucideIcon icon={LogoutIcon} size={20} sx={{ color: 'error.main' }} />
+                </ListItemIcon>
+                <ListItemText 
+                  primary={t('sidebar.logout')} 
+                  primaryTypographyProps={{ 
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                    color: 'error.main'
+                  }} 
+                />
+              </MenuItem>
+            </Menu>
+          </Box>
+        )}
 
-          {/* Profile Menu Item */}
-          <MenuItem onClick={handleProfileClick} sx={{ py: 2, px: 3 }}>
-            <ListItemIcon sx={{ minWidth: 48 }}>
-              <LucideIcon icon={ProfileIcon} size={24} />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Profile" 
-              primaryTypographyProps={{ 
-                fontSize: '0.9rem',
-                fontWeight: 600 
-              }} 
-            />
-          </MenuItem>
-
-          {/* Logout Menu Item */}
-          <MenuItem onClick={handleSignOut} sx={{ py: 2, px: 3, color: 'error.main' }}>
-            <ListItemIcon sx={{ minWidth: 48 }}>
-              <LucideIcon icon={LogoutIcon} size={20} sx={{ color: 'error.main' }} />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Logout" 
-              primaryTypographyProps={{ 
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                color: 'error.main'
-              }} 
-            />
-          </MenuItem>
-        </Menu>
+        {/* Collapsed State - Quick Actions */}
+        {isCollapsed && user && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
+            <Tooltip title="User Account" placement="right">
+              <IconButton
+                onClick={handleUserAccountClick}
+                size="small"
+                sx={{ 
+                  color: 'primary.main',
+                  bgcolor: 'primary.light',
+                  '&:hover': {
+                    bgcolor: 'primary.dark',
+                  }
+                }}
+              >
+                {/* Remove UserAvatar from collapsed state to avoid duplicate */}
+              </IconButton>
+            </Tooltip>
+            
+            {/* Profile Popup Menu for Collapsed State */}
+            <Menu
+              anchorEl={anchorEl}
+              open={openProfileMenu}
+              onClose={handleProfileMenuClose}
+              anchorOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              transformOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              PaperProps={{
+                sx: {
+                  minWidth: 280,
+                  minHeight: 200,
+                  borderRadius: 2,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                  mt: 1,
+                }
+              }}
+            >
+              <MenuItem onClick={() => { handleProfileClick(); handleProfileMenuClose(); }}>
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <LucideIcon icon={ProfileIcon} size={20} />
+                </ListItemIcon>
+                <ListItemText 
+                  primary={t('sidebar.edit_profile')} 
+                  primaryTypographyProps={{ 
+                    fontSize: '0.9rem',
+                    fontWeight: 500 
+                  }} 
+                />
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={() => { handleSignOut(); handleProfileMenuClose(); }}>
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <LucideIcon icon={LogoutIcon} size={20} sx={{ color: 'error.main' }} />
+                </ListItemIcon>
+                <ListItemText 
+                  primary={t('sidebar.logout')} 
+                  primaryTypographyProps={{ 
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                    color: 'error.main'
+                  }} 
+                />
+              </MenuItem>
+            </Menu>
+          </Box>
+        )}
       </Box>
     </Box>
   );

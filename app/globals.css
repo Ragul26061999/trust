@@ -426,3 +426,241 @@ button {
   background-color: var(--header-bg) !important;
   border-color: var(--header-border) !important;
 }
+
+/* Modal and Dialog specific dark mode styles */
+.dark-mode .MuiDialog-container .MuiPaper-root {
+  background-color: var(--mui-background-paper) !important;
+  color: var(--mui-text-primary) !important;
+  border: 1px solid var(--mui-divider) !important;
+}
+
+.dark-mode .MuiModal-root .MuiPaper-root {
+  background-color: var(--mui-background-paper) !important;
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiPopover-root .MuiPaper-root {
+  background-color: var(--mui-background-paper) !important;
+  color: var(--mui-text-primary) !important;
+  border: 1px solid var(--mui-divider) !important;
+}
+
+/* Menu specific dark mode styles */
+.dark-mode .MuiMenu-root .MuiPaper-root {
+  background-color: var(--mui-background-paper) !important;
+  color: var(--mui-text-primary) !important;
+  border: 1px solid var(--mui-divider) !important;
+}
+
+.dark-mode .MuiMenuItem-root {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiMenuItem-root:hover {
+  background-color: var(--mui-hover) !important;
+}
+
+.dark-mode .MuiMenuItem-root.Mui-selected {
+  background-color: var(--mui-selected) !important;
+}
+
+/* Form controls dark mode */
+.dark-mode .MuiFormControl-root .MuiInputLabel-root {
+  color: var(--mui-text-secondary) !important;
+}
+
+.dark-mode .MuiFormControl-root .MuiInputBase-root {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiFormControl-root .MuiOutlinedInput-root {
+  background-color: var(--mui-background-paper) !important;
+}
+
+.dark-mode .MuiFormControl-root .MuiFilledInput-root {
+  background-color: var(--mui-background-paper) !important;
+}
+
+/* Select dropdown dark mode */
+.dark-mode .MuiSelect-root {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiSelect-select {
+  color: var(--mui-text-primary) !important;
+  background-color: var(--mui-background-paper) !important;
+}
+
+/* Tabs dark mode */
+.dark-mode .MuiTabs-root {
+  background-color: var(--mui-background-paper) !important;
+}
+
+.dark-mode .MuiTab-root {
+  color: var(--mui-text-secondary) !important;
+}
+
+.dark-mode .MuiTab-root.Mui-selected {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiTab-root:hover {
+  color: var(--mui-text-primary) !important;
+  background-color: var(--mui-hover) !important;
+}
+
+/* Table dark mode */
+.dark-mode .MuiTable-root {
+  background-color: var(--mui-background-paper) !important;
+}
+
+.dark-mode .MuiTableCell-root {
+  border-color: var(--mui-divider) !important;
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiTableHead-root .MuiTableCell-root {
+  color: var(--mui-text-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Chip dark mode */
+.dark-mode .MuiChip-root {
+  background-color: var(--mui-selected) !important;
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiChip-root.MuiChip-colorPrimary {
+  background-color: rgba(102, 126, 234, 0.2) !important;
+  color: #667eea !important;
+}
+
+/* Alert dark mode */
+.dark-mode .MuiAlert-root {
+  background-color: var(--mui-background-paper) !important;
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiAlert-standardError {
+  background-color: rgba(244, 67, 54, 0.1) !important;
+  color: #f44336 !important;
+}
+
+.dark-mode .MuiAlert-standardWarning {
+  background-color: rgba(255, 152, 0, 0.1) !important;
+  color: #ff9800 !important;
+}
+
+.dark-mode .MuiAlert-standardInfo {
+  background-color: rgba(33, 150, 243, 0.1) !important;
+  color: #2196f3 !important;
+}
+
+.dark-mode .MuiAlert-standardSuccess {
+  background-color: rgba(76, 175, 80, 0.1) !important;
+  color: #4caf50 !important;
+}
+
+/* Progress indicators dark mode */
+.dark-mode .MuiLinearProgress-root {
+  background-color: var(--mui-hover) !important;
+}
+
+.dark-mode .MuiCircularProgress-root {
+  color: var(--mui-text-primary) !important;
+}
+
+/* Tooltip dark mode */
+.dark-mode .MuiTooltip-root .MuiTooltip-tooltip {
+  background-color: var(--mui-background-paper) !important;
+  color: var(--mui-text-primary) !important;
+  border: 1px solid var(--mui-divider) !important;
+}
+
+/* Ensure all popups and overlays use dark theme */
+.dark-mode .MuiBackdrop-root {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Additional global dark mode fixes */
+.dark-mode * {
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent !important;
+}
+
+.dark-mode input,
+.dark-mode textarea,
+.dark-mode select {
+  background-color: var(--mui-background-paper) !important;
+  color: var(--mui-text-primary) !important;
+  border-color: var(--mui-border) !important;
+}
+
+.dark-mode button {
+  color: var(--mui-text-primary) !important;
+}
+
+/* Force theme application on all elements */
+html.dark-mode,
+html.dark-mode body,
+html.dark-mode *,
+html.light-mode,
+html.light-mode body,
+html.light-mode * {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}
+
+/* Ensure background colors are applied */
+html.dark-mode {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+}
+
+html.light-mode {
+  background-color: #ffffff !important;
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+/* Force all major containers to respect theme */
+.dark-mode .MuiBox-root,
+.dark-mode .MuiContainer-root,
+.dark-mode .MuiGrid-root,
+.dark-mode .MuiPaper-root,
+.dark-mode .MuiCard-root {
+  background-color: var(--mui-background-paper) !important;
+  color: var(--mui-text-primary) !important;
+}
+
+/* Ensure all text respects theme */
+.dark-mode,
+.dark-mode * {
+  color: var(--mui-text-primary) !important;
+}
+
+.dark-mode .MuiTypography-colorSecondary,
+.dark-mode .MuiTypography-colorTextSecondary {
+  color: var(--mui-text-secondary) !important;
+}
+
+/* Ensure all borders respect theme */
+.dark-mode *,
+.dark-mode .MuiOutlinedInput-root,
+.dark-mode .MuiCard-root,
+.dark-mode .MuiPaper-root {
+  border-color: var(--mui-border) !important;
+}
+
+/* Override any inline styles that might conflict */
+.dark-mode [style*="background"],
+.dark-mode [style*="color"] {
+  /* Let CSS variables take precedence */
+}
+
+/* Ensure theme is applied to dynamically created elements */
+@keyframes applyTheme {
+  0% { opacity: 0.9; }
+  100% { opacity: 1; }
+}
+
+.dark-mode * {
+  animation: applyTheme 0.1s ease-in-out;
+}

@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "早上好",
+    "welcome": "欢迎回来！这是您今天的工作空间概览。",
+    "search_placeholder": "搜索工作空间...",
+    "categories": {
+      "analytical": "分析",
+      "professional": "专业", 
+      "personal": "个人",
+      "note_taking": "笔记",
+      "calendar": "日历"
+    },
+    "descriptions": {
+      "analytical": "为您的项目提供高级分析和数据洞察。",
+      "professional": "管理工作项目、任务和专业目标。",
+      "personal": "跟踪个人目标、习惯和人生里程碑。",
+      "note_taking": "捕捉想法、整理思维、提升创造力。",
+      "calendar": "安排事件并高效管理您的时间。"
+    },
+    "coming_soon": "即将推出",
+    "performance_metrics": "性能指标",
+    "task_completion": "任务完成",
+    "active_modules": "活跃模块", 
+    "productivity_score": "生产力分数",
+    "recent_activity": "最近活动",
+    "view_all_activity": "查看所有活动",
+    "no_matching_categories": "未找到匹配的类别。"
+  },
+  "tooltips": {
+    "user_clock": "用户时钟",
+    "language": "语言",
+    "notifications": "通知",
+    "light_mode": "浅色模式",
+    "dark_mode": "深色模式", 
+    "auto_mode": "自动模式"
+  },
+  "theme": {
+    "light_mode_description": "明亮干净的界面",
+    "dark_mode_description": "夜间护眼",
+    "auto_mode_description": "适应您的环境"
+  }
+}

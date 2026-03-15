@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Bună dimineață",
+    "welcome": "Bine ați revenit! Iată o privire de ansamblu asupra spațiului de lucru pentru astăzi.",
+    "search_placeholder": "Căutați spațiu de lucru...",
+    "categories": {
+      "analytical": "Analitic",
+      "professional": "Profesional", 
+      "personal": "Personal",
+      "note_taking": "Luare notițe",
+      "calendar": "Calendar"
+    },
+    "descriptions": {
+      "analytical": "Analize avansate și perspective de date pentru proiectele tale.",
+      "professional": "Gestionați proiecte de muncă, sarcini și obiective profesionale.",
+      "personal": "Urmăriți obiective personale, obiceiuri și repere de viață.",
+      "note_taking": "Capturați idei, organizați gânduri și stimulați creativitatea.",
+      "calendar": "Planificați evenimente și gestionați timpul eficient."
+    },
+    "coming_soon": "În curând",
+    "performance_metrics": "Metrici de performanță",
+    "task_completion": "Finalizarea sarcinilor",
+    "active_modules": "Module active", 
+    "productivity_score": "Scor de productivitate",
+    "recent_activity": "Activitate recentă",
+    "view_all_activity": "Vizualizați toată activitatea",
+    "no_matching_categories": "Nu s-au găsit categorii potrivite."
+  },
+  "tooltips": {
+    "user_clock": "Ceas utilizator",
+    "language": "Limba",
+    "notifications": "Notificări",
+    "light_mode": "Mod luminos",
+    "dark_mode": "Mod întunecat", 
+    "auto_mode": "Mod automat"
+  },
+  "theme": {
+    "light_mode_description": "Interfață luminoasă și curată",
+    "dark_mode_description": "Ușor pentru ochi noaptea",
+    "auto_mode_description": "Se adaptează la mediul tău"
+  }
+}

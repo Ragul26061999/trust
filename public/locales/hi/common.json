@@ -1,0 +1,65 @@
+{
+  "dashboard": {
+    "greeting": "सुप्रभात",
+    "welcome": "वापस स्वागत है! आज के लिए आपका कार्यस्थान अवलोकन यहाँ है।",
+    "search_placeholder": "कार्यस्थान खोजें...",
+    "categories": {
+      "analytical": "विश्लेषणात्मक",
+      "professional": "पेशेवर", 
+      "personal": "व्यक्तिगत",
+      "note_taking": "नोट लेना",
+      "calendar": "कैलेंडर"
+    },
+    "descriptions": {
+      "analytical": "आपके प्रोजेक्ट्स के लिए उन्नत विश्लेषण और डेटा अंतर्दृष्टि।",
+      "professional": "कार्य परियोजनाएं, कार्य और पेशेवर लक्ष्य प्रबंधित करें।",
+      "personal": "व्यक्तिगत लक्ष्य, आदतों और जीवन के मील के पत्थरों का ट्रैक रखें।",
+      "note_taking": "विचारों को कैप्चर करें, विचारों को व्यवस्थित करें और रचनात्मकता बढ़ाएं।",
+      "calendar": "इवेंट्स को शेड्यूल करें और अपने समय को कुशलता से प्रबंधित करें।"
+    },
+    "coming_soon": "जल्द आ रहा है",
+    "performance_metrics": "प्रदर्शन मेट्रिक्स",
+    "task_completion": "कार्य पूर्ति",
+    "active_modules": "सक्रिय मॉड्यूल", 
+    "productivity_score": "उत्पादकता स्कोर",
+    "recent_activity": "हाल की गतिविधि",
+    "view_all_activity": "सभी गतिविधि देखें",
+    "no_matching_categories": "कोई मेल खाने वाली श्रेणियां नहीं मिलीं।"
+  },
+  "sidebar": {
+    "dashboard": "डैशबोर्ड",
+    "analytical": "विश्लेषणात्मक",
+    "professional": "पेशेवर",
+    "personal": "व्यक्तिगत",
+    "note_taking": "नोट लेना",
+    "calendar": "कैलेंडर",
+    "user_clock": "उपयोगकर्ता घड़ी",
+    "edit_profile": "प्रोफ़ाइल संपादित करें",
+    "logout": "लॉगआउट"
+  },
+  "analytical": {
+    "title": "विश्लेषणात्मक डैशबोर्ड",
+    "subtitle": "अपनी उत्पादकता और प्रदर्शन मेट्रिक्स ट्रैक करें",
+    "productivity_score": "उत्पादकता स्कोर",
+    "total_tasks": "कुल कार्य",
+    "total_activities": "कुल गतिविधियां",
+    "balance_score": "संतुलन स्कोर",
+    "task_usage_distribution": "कार्य उपयोग वितरण",
+    "weekly_activity_trend": "साप्ताहिक गतिविधि प्रवृत्ति",
+    "monthly_completion_trend": "मासिक पूर्ति प्रवृत्ति",
+    "activity_distribution": "गतिविधि वितरण"
+  },
+  "tooltips": {
+    "user_clock": "उपयोगकर्ता घड़ी",
+    "language": "भाषा",
+    "notifications": "सूचनाएं",
+    "light_mode": "लाइट मोड",
+    "dark_mode": "डार्क मोड", 
+    "auto_mode": "ऑटो मोड"
+  },
+  "theme": {
+    "light_mode_description": "उज्ज्वल और साफ इंटरफेस",
+    "dark_mode_description": "रात में आंखों के लिए आसान",
+    "auto_mode_description": "अपने वातावरण के अनुकूल होता है"
+  }
+}

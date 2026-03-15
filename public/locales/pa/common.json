@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "ਸਤ ਸ੍ਰੀ ਅਕਾਲ",
+    "welcome": "ਜੀ ਆਇਆਂ ਨੂੰ! ਇਹ ਅੱਜ ਲਈ ਤੁਹਾਡੇ ਕੰਮ-ਖੇਤਰ ਦਾ ਸੰਖੇਪ ਹੈ।",
+    "search_placeholder": "ਕੰਮ-ਖੇਤਰ ਖੋਜੋ...",
+    "categories": {
+      "analytical": "ਵਿਸ਼ਲੇਸ਼ਣਾਤਮਕ",
+      "professional": "ਪੇਸ਼ੇਵਰ", 
+      "personal": "ਨਿੱਜੀ",
+      "note_taking": "ਨੋਟ ਲੈਣਾ",
+      "calendar": "ਕੈਲੰਡਰ"
+    },
+    "descriptions": {
+      "analytical": "ਤੁਹਾਡੇ ਪ੍ਰੋਜੈਕਟਾਂ ਲਈ ਉੱਨਤ ਵਿਸ਼ਲੇਸ਼ਣ ਅਤੇ ਡਾਟਾ ਅੰਤਰ-ਦ੍ਰਿਸ਼ਟੀ।",
+      "professional": "ਕੰਮ ਦੇ ਪ੍ਰੋਜੈਕਟ, ਕੰਮ ਅਤੇ ਪੇਸ਼ੇਵਰ ਟੀਚਾਂ ਦਾ ਪ੍ਰਬੰਧ ਕਰੋ।",
+      "personal": "ਨਿੱਜੀ ਟੀਚਾਂ, ਆਦਤਾਂ ਅਤੇ ਜੀਵਨ ਦੇ ਮੀਲ-ਪੱਥਰਾਂ ਦੀ ਜਾਣਕਾਰੀ ਰੱਖੋ।",
+      "note_taking": "ਵਿਚਾਰਾਂ ਨੂੰ ਫੜੋ, ਵਿਚਾਰਾਂ ਨੂੰ ਸੰਗਠਿਤ ਕਰੋ ਅਤੇ ਰਚਨਾਤਮਕਤਾ ਵਧਾਓ।",
+      "calendar": "ਸਮਾਗਮੀਆਂ ਨੂੰ ਤਹਿ ਕਰੋ ਅਤੇ ਆਪਣਾ ਸਮਾਂ ਪ੍ਰਭਾਵਸ਼ਾਲੀ ਢੰਗ ਨਾਲ ਪ੍ਰਬੰਧ ਕਰੋ।"
+    },
+    "coming_soon": "ਜਲਦੀ ਆ ਰਿਹਾ ਹੈ",
+    "performance_metrics": "ਪ੍ਰਦਰਸ਼ਨ ਮੈਟ੍ਰਿਕਸ",
+    "task_completion": "ਕੰਮ ਪੂਰਤੀ",
+    "active_modules": "ਸਰਗਰਮ ਮਾਡਿਊਲ", 
+    "productivity_score": "ਪ੍ਰੋਡਕਟਿਵਿਟੀ ਸਕੋਰ",
+    "recent_activity": "ਹਾਲੀਆ ਗਤੀਵਿਧੀ",
+    "view_all_activity": "ਸਾਰੀਆਂ ਗਤੀਵਿਧੀਆਂ ਵੇਖੋ",
+    "no_matching_categories": "ਕੋਈ ਮੇਲ ਖਾਂਦੀਆਂ ਸ਼੍ਰੇਣੀਆਂ ਨਹੀਂ ਲੱਭੀਆਂ।"
+  },
+  "tooltips": {
+    "user_clock": "ਵਰਤੋਂਕਾਰ ਘੜੀ",
+    "language": "ਭਾਸ਼ਾ",
+    "notifications": "ਸੂਚਨਾਵਾਂ",
+    "light_mode": "ਹਲਕਾ ਮੋਡ",
+    "dark_mode": "ਹਨੇਰਾ ਮੋਡ", 
+    "auto_mode": "ਆਟੋ ਮੋਡ"
+  },
+  "theme": {
+    "light_mode_description": "ਚਮਕਦਾਰ ਅਤੇ ਸਾਫ਼ ਇੰਟਰਫੇਸ",
+    "dark_mode_description": "ਰਾਤ ਨੂੰ ਅੱਖਾਂ ਲਈ ਸੌਖ",
+    "auto_mode_description": "ਤੁਹਾਡੇ ਮਾਹੌਲ ਨਾਲ ਅਨੁਕੂਲ ਹੁੰਦਾ ਹੈ"
+  }
+}

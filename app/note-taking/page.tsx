@@ -3,9 +3,11 @@
 import { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { alpha } from '@mui/material/styles';
+import { createTheme } from '@mui/material/styles';
 import { useAuth } from '../../lib/auth-context';
 import { useTimeEngine } from '../../lib/time-engine';
-import { ThemeProvider as AppThemeProvider, useTheme as useCustomTheme } from '../../lib/theme-context';
+import { useTheme as useCustomTheme } from '../../lib/theme-context';
+import useTranslations from '../../lib/use-translations';
 import ProtectedRoute from '../../lib/protected-route';
 import ProtectedLayout from '../protected-layout';
 import {
@@ -48,7 +50,6 @@ import {
   Switch,
   FormControlLabel
 } from '@mui/material';
-import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import {
   ArrowLeft as ArrowBackIcon,
   Plus as AddIcon,
@@ -122,6 +123,7 @@ const NoteTakingPageContent = () => {
   const { theme } = useCustomTheme();
   const { user, logout } = useAuth();
   const { addAlarm } = useTimeEngine();
+  const { t } = useTranslations('common');
   const router = useRouter();
 
   const [notes, setNotes] = useState<Note[]>([]);
@@ -696,7 +698,7 @@ const NoteTakingPageContent = () => {
             <LucideIcon icon={ArrowBackIcon} size={20} />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700, color: 'text.primary' }}>
-            Note Taking
+            {t('note_taking.title')}
           </Typography>
 
           {/* Time Range Selector in Header */}
@@ -825,7 +827,7 @@ const NoteTakingPageContent = () => {
                       <LucideIcon icon={TaskIcon} size={20} />
                     </Box>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                      Total Notes
+                      {t('note_taking.total_notes')}
                     </Typography>
                   </Box>
                   <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #6750A4 0%, #625B71 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>

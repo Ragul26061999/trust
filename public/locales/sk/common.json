@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "greeting": "Dobré ráno",
+    "welcome": "Vitajte späť! Tu je prehľad vášho pracovného priestoru na dnešok.",
+    "search_placeholder": "Hľadať pracovný priestor...",
+    "categories": {
+      "analytical": "Analytický",
+      "professional": "Profesionálny", 
+      "personal": "Osobný",
+      "note_taking": "Poznámky",
+      "calendar": "Kalendár"
+    },
+    "descriptions": {
+      "analytical": "Pokročilé analýzy a prehľady údajov pre vaše projekty.",
+      "professional": "Spravujte pracovné projekty, úlohy a profesionálne ciele.",
+      "personal": "Sledujte osobné ciele, návyky a životné míľniky.",
+      "note_taking": "Zachyťte nápady, organizujte myšlienky a podporujte kreativitu.",
+      "calendar": "Plánujte udalosti a efektívne spravujte svoj čas."
+    },
+    "coming_soon": "Čoskoro",
+    "performance_metrics": "Metriky výkonu",
+    "task_completion": "Dokončenie úlohy",
+    "active_modules": "Aktívne moduly", 
+    "productivity_score": "Skóre produktivity",
+    "recent_activity": "Nedávna aktivita",
+    "view_all_activity": "Zobraziť všetku aktivitu",
+    "no_matching_categories": "Neboli nájdené žiadne zodpovedajúce kategórie."
+  },
+  "tooltips": {
+    "user_clock": "Používateľské hodiny",
+    "language": "Jazyk",
+    "notifications": "Oznámenia",
+    "light_mode": "Svetlý režim",
+    "dark_mode": "Tmavý režim", 
+    "auto_mode": "Automatický režim"
+  },
+  "theme": {
+    "light_mode_description": "Jasný a čistý rozhranie",
+    "dark_mode_description": "Šetrný k očiam v noci",
+    "auto_mode_description": "Prispôsobí sa vašemu prostrediu"
+  }
+}
