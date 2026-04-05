@@ -227,7 +227,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, isFirstTime 
       setTimeout(() => {
         onClose();
         setSuccess(null);
-      }, 1500);
+      }, 500);
 
     } catch (err: any) {
       console.error('Error saving profile:', err);

@@ -420,7 +420,7 @@ const AnalyticalPageContent = () => {
       setTimeout(() => {
         setLoading(false);
         setIsLoading(false);
-      }, 1000);
+      }, 300);
     }
   };
   

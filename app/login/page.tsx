@@ -163,18 +163,16 @@ export default function LoginPage() {
 
         <button
           onClick={async () => {
-            setIsLoading(true);
-            setGlobalLoading(true);
             setError('');
             try {
+              // signInWithGoogle will redirect the page
               await signInWithGoogle();
             } catch (err: any) {
               console.error('Google sign in error:', err);
               setError(err?.message || 'Failed to sign in with Google');
-              setIsLoading(false);
-              setGlobalLoading(false);
             }
           }}
+
           className="w-full flex items-center justify-center py-3 px-4 border border-blue-200 rounded-lg bg-white hover:bg-blue-50 text-blue-700 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg"
         >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">

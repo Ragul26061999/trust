@@ -386,16 +386,15 @@ const Sidebar = () => {
       </List>
 
       {/* Footer Area with Unified Profile */}
-      <Box sx={{ p: 2.5, mt: 'auto', borderTop: '1px solid', borderColor: 'divider' }}>
+      <Box sx={{ p: 2, mt: 'auto', borderTop: '1px solid', borderColor: 'divider' }}>
         {/* Unified Profile Section */}
         {user && (
-          <Box sx={{ mb: 2 }}>
+          <Box>
             <Box 
               sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: 2, 
-                mb: 2, 
                 cursor: 'pointer',
                 borderRadius: 2,
                 padding: 1,
@@ -431,34 +430,37 @@ const Sidebar = () => {
               }}
               PaperProps={{
                 sx: {
-                  minWidth: 280,
+                  minWidth: 180,
                   borderRadius: 2,
                   boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
                   mt: 1,
+                  '& .MuiList-root': {
+                    py: 0.5,
+                  }
                 }
               }}
             >
-              <MenuItem onClick={() => { handleProfileClick(); handleProfileMenuClose(); }}>
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <LucideIcon icon={ProfileIcon} size={20} />
+              <MenuItem dense onClick={() => { handleProfileClick(); handleProfileMenuClose(); }}>
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  <LucideIcon icon={ProfileIcon} size={18} />
                 </ListItemIcon>
                 <ListItemText 
                   primary={t('sidebar.edit_profile')} 
                   primaryTypographyProps={{ 
-                    fontSize: '0.9rem',
+                    fontSize: '0.85rem',
                     fontWeight: 500 
                   }} 
                 />
               </MenuItem>
-              <Divider />
-              <MenuItem onClick={() => { handleSignOut(); handleProfileMenuClose(); }}>
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <LucideIcon icon={LogoutIcon} size={20} sx={{ color: 'error.main' }} />
+              <Divider sx={{ my: 0.5 }} />
+              <MenuItem dense onClick={() => { handleSignOut(); handleProfileMenuClose(); }}>
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  <LucideIcon icon={LogoutIcon} size={18} sx={{ color: 'error.main' }} />
                 </ListItemIcon>
                 <ListItemText 
                   primary={t('sidebar.logout')} 
                   primaryTypographyProps={{ 
-                    fontSize: '0.9rem',
+                    fontSize: '0.85rem',
                     fontWeight: 500,
                     color: 'error.main'
                   }} 
@@ -468,77 +470,6 @@ const Sidebar = () => {
           </Box>
         )}
 
-        {/* Collapsed State - Quick Actions */}
-        {isCollapsed && user && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
-            <Tooltip title="User Account" placement="right">
-              <IconButton
-                onClick={handleUserAccountClick}
-                size="small"
-                sx={{ 
-                  color: 'primary.main',
-                  bgcolor: 'primary.light',
-                  '&:hover': {
-                    bgcolor: 'primary.dark',
-                  }
-                }}
-              >
-                {/* Remove UserAvatar from collapsed state to avoid duplicate */}
-              </IconButton>
-            </Tooltip>
-            
-            {/* Profile Popup Menu for Collapsed State */}
-            <Menu
-              anchorEl={anchorEl}
-              open={openProfileMenu}
-              onClose={handleProfileMenuClose}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              transformOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
-              }}
-              PaperProps={{
-                sx: {
-                  minWidth: 280,
-                  minHeight: 200,
-                  borderRadius: 2,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-                  mt: 1,
-                }
-              }}
-            >
-              <MenuItem onClick={() => { handleProfileClick(); handleProfileMenuClose(); }}>
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <LucideIcon icon={ProfileIcon} size={20} />
-                </ListItemIcon>
-                <ListItemText 
-                  primary={t('sidebar.edit_profile')} 
-                  primaryTypographyProps={{ 
-                    fontSize: '0.9rem',
-                    fontWeight: 500 
-                  }} 
-                />
-              </MenuItem>
-              <Divider />
-              <MenuItem onClick={() => { handleSignOut(); handleProfileMenuClose(); }}>
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <LucideIcon icon={LogoutIcon} size={20} sx={{ color: 'error.main' }} />
-                </ListItemIcon>
-                <ListItemText 
-                  primary={t('sidebar.logout')} 
-                  primaryTypographyProps={{ 
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                    color: 'error.main'
-                  }} 
-                />
-              </MenuItem>
-            </Menu>
-          </Box>
-        )}
       </Box>
     </Box>
   );

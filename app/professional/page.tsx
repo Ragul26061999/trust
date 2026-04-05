@@ -228,6 +228,7 @@ const ProfessionalPageContent = () => {
       alert('An error occurred while saving your profile. Please check the console for details.');
     } finally {
       setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -260,6 +261,7 @@ const ProfessionalPageContent = () => {
       setShowSetupForm(true);
     } finally {
       setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -320,6 +322,7 @@ const ProfessionalPageContent = () => {
       console.error('Error creating task:', error);
     } finally {
       setLoading(false);
+      setIsLoading(false);
     }
   };
   

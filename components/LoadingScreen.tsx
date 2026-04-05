@@ -24,14 +24,14 @@ const LoadingScreen: React.FC = () => {
         background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)} 0%, ${alpha(theme.palette.background.default, 0.98)} 100%)`,
         backdropFilter: 'blur(10px)',
         zIndex: 9999,
-        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.8, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ 
-          duration: 0.6,
+          duration: 0.3,
           ease: "easeOut"
         }}
         style={{
@@ -49,7 +49,7 @@ const LoadingScreen: React.FC = () => {
               opacity: [0.8, 1, 0.8]
             }}
             transition={{ 
-              duration: 2.5,
+              duration: 1.5,
               repeat: Infinity,
               ease: "easeInOut"
             }}
@@ -133,7 +133,7 @@ const LoadingScreen: React.FC = () => {
               left: ["-100%", "100%"]
             }}
             transition={{
-              duration: 2,
+              duration: 1,
               repeat: Infinity,
               ease: "easeInOut"
             }}
