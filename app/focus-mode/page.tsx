@@ -29,6 +29,7 @@ import TimerIcon from '@mui/icons-material/Timer';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
+import TranslatedText from '../../components/translated-text';
 
 interface Task {
   id: string;
@@ -201,12 +202,14 @@ function FocusModeContent() {
 
                 {selectedTask ? (
                   <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6" sx={{ color: 'primary.main' }}>
-                      {selectedTask.title}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {selectedTask.description}
-                    </Typography>
+                    <TranslatedText 
+                      text={selectedTask.title} 
+                      sx={{ color: 'primary.main', fontWeight: 600, fontSize: '1.25rem', display: 'block' }} 
+                    />
+                    <TranslatedText 
+                      text={selectedTask.description} 
+                      sx={{ color: 'text.secondary', fontSize: '0.9rem' }} 
+                    />
                     <Button onClick={() => setShowTaskSelector(true)} variant="outlined" sx={{ mt: 1 }}>
                       Change Task
                     </Button>
@@ -317,13 +320,14 @@ function FocusModeContent() {
               </Box>
             </Box>
 
-            <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-              {selectedTask?.title}
-            </Typography>
-
-            <Typography variant="body1" sx={{ mb: 4, opacity: 0.9 }}>
-              {selectedTask?.description || 'Stay focused on this task'}
-            </Typography>
+            <TranslatedText 
+              text={selectedTask?.title || ''} 
+              sx={{ fontWeight: 700, fontSize: '1.5rem', mb: 1, display: 'block' }} 
+            />
+            <TranslatedText 
+              text={selectedTask?.description || 'Stay focused on this task'} 
+              sx={{ opacity: 0.9, fontSize: '1.1rem' }} 
+            />
 
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
               <Fab

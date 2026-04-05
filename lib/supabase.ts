@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
 
-const supabaseUrl = 'https://zkezubbjstrixkpqjias.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZXp1YmJqc3RyaXhrcHFqaWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3OTUzMTYsImV4cCI6MjA4MzM3MTMxNn0.MgNnEbpZ-WM_W7ehpQtlBEnKYYMbFMhhvPDOTUo8jR4'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Check if environment variables are properly set
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -11,9 +11,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   if (!supabaseUrl) console.error('   - NEXT_PUBLIC_SUPABASE_URL');
   if (!supabaseAnonKey) console.error('   - NEXT_PUBLIC_SUPABASE_ANON_KEY');
   console.error('🔧 Please check your environment variables in .env.local (local) or deployment platform (production)');
-} else {
-  console.log('✅ Supabase environment variables configured successfully');
-}
+} 
 
 // Create client for client-side usage
 export const supabase = typeof window !== 'undefined' ? (

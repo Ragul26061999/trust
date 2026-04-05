@@ -2,6 +2,7 @@
 
 import { useAuth } from '../lib/auth-context';
 import Link from 'next/link';
+import TranslatedText from './translated-text';
 
 export default function UserNav() {
   const { user, logout } = useAuth();
@@ -10,7 +11,8 @@ export default function UserNav() {
     <div className="flex items-center space-x-4">
       {user ? (
         <>
-          <span className="text-sm text-gray-300">Welcome, {user.email}</span>
+          <TranslatedText text="Welcome," sx={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)' }} />
+          <span className="text-sm text-gray-300">{user.email}</span>
           <button 
             onClick={logout}
             className="text-sm bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md transition-colors duration-200"

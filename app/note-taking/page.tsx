@@ -10,6 +10,7 @@ import { useTheme as useCustomTheme } from '../../lib/theme-context';
 import useTranslations from '../../lib/use-translations';
 import ProtectedRoute from '../../lib/protected-route';
 import ProtectedLayout from '../protected-layout';
+import TranslatedText from '../../components/translated-text';
 import {
   Box,
   Container,
@@ -1177,13 +1178,15 @@ const NoteTakingPageContent = () => {
                         <CardContent sx={{ flexGrow: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                             <LucideIcon icon={TaskIcon} size={20} sx={{ mr: 1, color: 'success.main' }} />
-                            <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
-                              {task.title}
-                            </Typography>
+                            <TranslatedText 
+                              text={task.title} 
+                              sx={{ fontWeight: 600, fontSize: '1.25rem', color: 'text.primary', display: 'block' }} 
+                            />
                           </Box>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            {task.content}
-                          </Typography>
+                          <TranslatedText 
+                            text={task.content} 
+                            sx={{ mb: 2, color: 'text.secondary', fontSize: '0.9rem' }} 
+                          />
                           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                             <Chip
                               label={task.priority}
@@ -1243,18 +1246,20 @@ const NoteTakingPageContent = () => {
                                 <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
                                   {formatDate(note.created_at)}
                                 </Typography>
-                                <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary' }}>
-                                  {note.title}
-                                </Typography>
+                                <TranslatedText 
+                                  text={note.title} 
+                                  sx={{ fontWeight: 800, color: 'text.primary', fontSize: '1.25rem', display: 'block' }} 
+                                />
                               </Box>
                               <IconButton size="small" onClick={(e) => handleNoteMenuOpen(e, note)}>
                                 <MoreVertIcon fontSize="small" />
                               </IconButton>
                             </Box>
 
-                            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                              {note.content.length > 140 ? `${note.content.substring(0, 140)}...` : note.content}
-                            </Typography>
+                            <TranslatedText 
+                              text={note.content.length > 140 ? `${note.content.substring(0, 140)}...` : note.content} 
+                              sx={{ lineHeight: 1.6, color: 'text.secondary', fontSize: '0.9rem' }} 
+                            />
 
                             <NoteMediaDisplay
                               attachments={attachmentsForNote}

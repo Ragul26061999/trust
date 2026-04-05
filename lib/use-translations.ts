@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLanguage } from './language-context';
+import { translationService } from './translation-service';
 
 interface TranslationData {
   [key: string]: any;
@@ -67,7 +68,21 @@ const useTranslations = (namespace: string = 'common') => {
     return typeof value === 'string' ? value : fallback || key;
   };
 
-  return { t, isLoading, currentLanguage };
+  const ut = async (text: string): Promise<string> => {
+    // If it's a key in the translation file, use it
+    const translated = t(text);
+    if (translated !== text) return translated;
+
+    // Otherwise, try to auto-translate the text itself
+    try {
+      const result = await translationService.translate(text, currentLanguage);
+      return result;
+    } catch (error) {
+      return text;
+    }
+  };
+
+  return { t, ut, isLoading, currentLanguage };
 };
 
 export default useTranslations;

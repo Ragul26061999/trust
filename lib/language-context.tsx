@@ -3,12 +3,14 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Language, languages, getLanguageByCode } from './languages';
+import { translationService } from './translation-service';
 
 interface LanguageContextType {
   currentLanguage: string;
   setLanguage: (languageCode: string) => void;
   availableLanguages: Language[];
   isLoading: boolean;
+  autoTranslate: (text: string) => Promise<string>;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -65,11 +67,16 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
   };
 
+  const autoTranslate = async (text: string): Promise<string> => {
+    return await translationService.translate(text, currentLanguage);
+  };
+
   const value: LanguageContextType = {
     currentLanguage,
     setLanguage,
     availableLanguages: languages,
     isLoading,
+    autoTranslate,
   };
 
   return (

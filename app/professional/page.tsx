@@ -84,6 +84,7 @@ import {
 } from '../../lib/professional-db';
 
 import { isSupabaseConfigured } from '../../lib/supabase';
+import TranslatedText from '../../components/translated-text';
 
 const ProfessionalPageContent = () => {
   const { user, logout } = useAuth();
@@ -1443,25 +1444,35 @@ ${index + 1}. ${task.title}
                               >
                                 {task.status === 'completed' ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
                               </IconButton>
-                              <Typography
-                                variant="h6"
+                              <TranslatedText
+                                text={task.title}
+                                component={Typography}
                                 sx={{
                                   fontWeight: 700,
                                   textDecoration: task.status === 'completed' ? 'line-through' : 'none',
                                   color: task.status === 'completed' ? 'text.secondary' : 'text.primary',
-                                  lineHeight: 1.3
+                                  lineHeight: 1.3,
+                                  fontSize: '1.25rem'
                                 }}
-                              >
-                                {task.title}
-                              </Typography>
+                              />
                             </Box>
                           }
                           secondary={
                             <Box sx={{ mt: 1.5, ml: 5 }}>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.6 }}>
-                                {task.description}
-                              </Typography>
+                              <TranslatedText 
+                                text={task.description} 
+                                component={Typography}
+                                sx={{ mb: 1.5, lineHeight: 1.6, fontSize: '0.875rem', color: 'text.secondary' }} 
+                              />
                               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 1.5 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Chip 
+                                    size="small" 
+                                    label={<TranslatedText text={task.priority} />}
+                                    color={task.priority === 'High' ? 'error' : task.priority === 'Medium' ? 'warning' : 'info'}
+                                    sx={{ fontWeight: 600, height: 24 }}
+                                  />
+                                </Box>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                   <CalendarIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
                                   <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 600 }}>

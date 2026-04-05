@@ -1,16 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { useTheme } from '../../lib/theme-context';
 import { useThemeSync } from '../../lib/use-theme-sync';
 import { useLanguage } from '../../lib/language-context';
 import useTranslations from '../../lib/use-translations';
-import { getTimeBasedGreeting, ThemeMode } from '../../lib/user-preferences';
 import { getTimeBasedGreetingByLanguage } from '../../lib/language-greetings';
 import { useRouter } from 'next/navigation';
 import ProtectedLayout from '../protected-layout';
 import FirstTimeLoginChecker from '../../components/first-time-login-checker';
+import TranslatedText from '../../components/translated-text';
+import { ThemeMode } from '../../lib/user-preferences';
+import { getProfessionalTasks } from '../../lib/professional-db';
+import { getCalendarEntries } from '../../lib/personal-calendar-db';
+import { getNotes } from '../../lib/notes-db';
 import {
   Box,
   Typography,
@@ -19,10 +23,6 @@ import {
   IconButton,
   Avatar,
   LinearProgress,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
   Divider,
   Button,
   TextField,
@@ -31,17 +31,14 @@ import {
   Tooltip,
   Menu,
   MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
   Fade,
   Grow,
-  Paper,
   Container,
+  alpha,
+  Chip,
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  Bell as NotificationsIcon,
   FileText as NoteIcon,
   Clock as ClockIcon,
   BarChart3 as AnalyticsIcon,
@@ -49,36 +46,32 @@ import {
   Briefcase as ProfessionalIcon,
   User as PersonalIcon,
   ArrowRight as ArrowForwardIcon,
-  LayoutDashboard as DashboardIcon,
   Lock as LockIconMui,
-  Moon as DarkModeIcon,
-  Sun as LightModeIcon,
-  Monitor as AutoModeIcon,
-  Sun as SunIcon,
   Moon as MoonIcon,
+  Sun as SunIcon,
   TrendingUp,
   Activity,
   Target,
   Zap,
   Sparkles,
   ChevronRight,
-  BarChart3,
-  Briefcase,
-  User,
-  FileText,
-  Calendar,
-  Clock,
-  Bell,
   Monitor,
+  Bell,
   Languages as LanguageIcon,
+  PieChart as PieIcon,
 } from 'lucide-react';
-
-// Create icon wrapper components for Lucide icons to work with MUI
-const LucideIcon = ({ icon: Icon, size, sx, ...props }: any) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', ...sx }} {...props}>
-    <Icon size={size} />
-  </Box>
-);
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as ChartTooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 
 // Lock icon wrapper
 const LockIcon = ({ size }: any) => (
@@ -90,7 +83,7 @@ const LockIcon = ({ size }: any) => (
 const DashboardContent = () => {
   const { user } = useAuth();
   const { theme, setThemeMode } = useTheme();
-  const { syncTheme } = useThemeSync(); // Add theme sync
+  const { syncTheme } = useThemeSync();
   const { currentLanguage, setLanguage, availableLanguages } = useLanguage();
   const { t } = useTranslations('common');
   const router = useRouter();
@@ -98,167 +91,153 @@ const DashboardContent = () => {
   const [greeting, setGreeting] = useState(getTimeBasedGreetingByLanguage(currentLanguage));
   const [themeMenuAnchor, setThemeMenuAnchor] = useState<null | HTMLElement>(null);
   const [languageMenuAnchor, setLanguageMenuAnchor] = useState<null | HTMLElement>(null);
-  const [realTimeData, setRealTimeData] = useState({
-    totalTasks: 0,
-    completedTasks: 0,
-    totalNotes: 0,
-    totalEvents: 0,
-    recentActivities: [] as Array<{
-      id: number;
-      user: string;
-      action: string;
-      time: string;
-      icon: string;
-      color: string;
-    }>
-  });
+  
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [personalEntries, setPersonalEntries] = useState<any[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Update greeting based on time and language
   useEffect(() => {
-    const updateGreeting = () => {
-      setGreeting(getTimeBasedGreetingByLanguage(currentLanguage));
-    };
-
-    // Update greeting immediately
+    const updateGreeting = () => setGreeting(getTimeBasedGreetingByLanguage(currentLanguage));
     updateGreeting();
-
-    // Set up interval to check time changes (every minute)
     const interval = setInterval(updateGreeting, 60000);
-
     return () => clearInterval(interval);
   }, [currentLanguage]);
 
-  // Fetch real-time data
   useEffect(() => {
-    const fetchRealTimeData = async () => {
+    const fetchDashboardData = async () => {
+      if (!user?.id) return;
+      setLoading(true);
       try {
-        // This would fetch actual data from your database
-        // For now, I'll simulate with realistic data based on the unlocked cards
-        const data = {
-          totalTasks: 8, // From Professional card
-          completedTasks: 5, // Simulated completion
-          totalNotes: 0, // Note Taking is locked
-          totalEvents: 0, // Calendar is locked
-          recentActivities: [
-            { id: 1, user: 'Professional', action: 'Task "Project Review" completed', time: '2m ago', icon: '✓', color: '#FF9800' },
-            { id: 2, user: 'Analytical', action: 'New analytics report generated', time: '15m ago', icon: '📊', color: '#2196F3' },
-            { id: 3, user: 'Personal', action: 'New goal added to personal tracker', time: '1h ago', icon: '🎯', color: '#9C27B0' },
-          ]
-        };
-        setRealTimeData(data);
+        const [profTasks, calendarEntries, userNotes] = await Promise.all([
+          getProfessionalTasks(user.id),
+          getCalendarEntries(user.id),
+          getNotes(user.id)
+        ]);
+
+        setTasks(profTasks || []);
+        setPersonalEntries(calendarEntries || []);
+        setNotes(userNotes || []);
       } catch (error) {
-        console.error('Error fetching real-time data:', error);
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
       }
     };
+    fetchDashboardData();
+  }, [user?.id]);
 
-    fetchRealTimeData();
-    // Set up interval for real-time updates
-    const interval = setInterval(fetchRealTimeData, 30000); // Update every 30 seconds
-    
-    return () => clearInterval(interval);
-  }, []);
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return {
+      activeTasks: tasks.filter(t => t.status !== 'completed').length,
+      todayEvents: personalEntries.filter(e => e.entry_date?.startsWith(today)).length,
+      totalNotes: notes.length,
+      completionRate: tasks.length ? Math.round((tasks.filter(t => t.status === 'completed').length / tasks.length) * 100) : 0
+    };
+  }, [tasks, personalEntries, notes]);
 
-  const handleThemeMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setThemeMenuAnchor(event.currentTarget);
-  };
+  const chartData = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return { 
+        day: days[d.getDay()], 
+        date: d.toISOString().split('T')[0], 
+        prof: 0, 
+        pers: 0, 
+        notes: 0 
+      };
+    });
 
-  const handleThemeMenuClose = () => {
-    setThemeMenuAnchor(null);
-  };
+    tasks.forEach(task => {
+      const dayData = last7Days.find(d => d.date === task.task_date);
+      if (dayData) dayData.prof += 1;
+    });
 
-  const handleThemeChange = (mode: ThemeMode) => {
-    setThemeMode(mode);
-    syncTheme(); // Sync theme immediately after change
-    handleThemeMenuClose();
-  };
+    personalEntries.forEach(entry => {
+      const dayData = last7Days.find(d => d.date === entry.entry_date?.split('T')[0]);
+      if (dayData) dayData.pers += 1;
+    });
 
-  const handleLanguageMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setLanguageMenuAnchor(event.currentTarget);
-  };
+    notes.forEach(note => {
+      const dayData = last7Days.find(d => d.date === note.created_at?.split('T')[0]);
+      if (dayData) dayData.notes += 1;
+    });
 
-  const handleLanguageMenuClose = () => {
-    setLanguageMenuAnchor(null);
-  };
+    return last7Days;
+  }, [tasks, personalEntries, notes]);
 
-  const handleLanguageChange = (languageCode: string) => {
-    setLanguage(languageCode);
-    handleLanguageMenuClose();
-  };
-
-  const getThemeIcon = () => {
-    switch (theme.themeMode) {
-      case 'dark':
-        return <DarkModeIcon />;
-      case 'auto':
-        return <AutoModeIcon />;
-      default:
-        return <LightModeIcon />;
-    }
-  };
-
-  const getThemeTooltip = () => {
-    switch (theme.themeMode) {
-      case 'dark':
-        return 'Dark Mode';
-      case 'auto':
-        return 'Auto Mode';
-      default:
-        return 'Light Mode';
-    }
-  };
-
-  if (!user) return null;
+  const distributionData = useMemo(() => {
+    const total = tasks.length + personalEntries.length + notes.length || 1;
+    const data = [
+      { name: 'Professional', value: tasks.length || 1, color: '#FF9800' },
+      { name: 'Personal', value: personalEntries.length || 1, color: '#9C27B0' },
+      { name: 'Notes', value: notes.length || 1, color: '#6750A4' },
+    ];
+    return { 
+      data, 
+      score: stats.completionRate,
+      efficiency: Math.round((stats.completionRate * 0.95)) || 0
+    };
+  }, [tasks, personalEntries, notes, stats]);
 
   const categories = [
     {
       text: t('dashboard.categories.analytical'),
-      icon: <BarChart3 size={32} />,
+      icon: <AnalyticsIcon size={28} />,
       path: '/analytical',
-      color: '#2196F3',
+      color: '#00D2FF',
       desc: t('dashboard.descriptions.analytical'),
       count: '3 Reports',
       locked: false,
-      gradient: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)'
+      bgImage: '/images/dashboard/analytical.png',
+      gradient: 'linear-gradient(180deg, rgba(0, 210, 255, 0.1) 0%, rgba(0, 210, 255, 0.95) 100%)'
     },
     {
       text: t('dashboard.categories.professional'),
-      icon: <Briefcase size={32} />,
+      icon: <ProfessionalIcon size={28} />,
       path: '/professional',
       color: '#FF9800',
       desc: t('dashboard.descriptions.professional'),
-      count: '8 Tasks',
+      count: `${tasks.length} Tasks`,
       locked: false,
-      gradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
+      bgImage: '/images/dashboard/professional.png',
+      gradient: 'linear-gradient(180deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.95) 100%)'
     },
     {
       text: t('dashboard.categories.personal'),
-      icon: <User size={32} />,
+      icon: <PersonalIcon size={28} />,
       path: '/personal',
       color: '#9C27B0',
       desc: t('dashboard.descriptions.personal'),
       count: '4 Goals',
       locked: false,
-      gradient: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)'
+      bgImage: '/images/dashboard/personal.png',
+      gradient: 'linear-gradient(180deg, rgba(156, 39, 176, 0.1) 0%, rgba(156, 39, 176, 0.95) 100%)'
     },
     {
       text: t('dashboard.categories.note_taking'),
-      icon: <FileText size={32} />,
+      icon: <NoteIcon size={28} />,
       path: '/note-taking',
       color: '#6750A4',
       desc: t('dashboard.descriptions.note_taking'),
-      count: '0 Notes',
+      count: '12 Notes',
       locked: false,
-      gradient: 'linear-gradient(135deg, #6750A4 0%, #512DA8 100%)'
+      bgImage: '/images/dashboard/notes.png',
+      gradient: 'linear-gradient(180deg, rgba(103, 80, 164, 0.1) 0%, rgba(103, 80, 164, 0.95) 100%)'
     },
     {
       text: t('dashboard.categories.calendar'),
-      icon: <Calendar size={32} />,
+      icon: <CalendarIcon size={28} />,
       path: '/calendar',
       color: '#4CAF50',
       desc: t('dashboard.descriptions.calendar'),
       count: '2 Events',
       locked: true,
-      gradient: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
+      bgImage: '/images/dashboard/calendar.png',
+      gradient: 'linear-gradient(180deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.95) 100%)'
     },
   ];
 
@@ -267,717 +246,251 @@ const DashboardContent = () => {
     cat.desc.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const progressData = [
-    { 
-      label: t('dashboard.task_completion'), 
-      value: realTimeData.completedTasks, 
-      total: realTimeData.totalTasks || 1, 
-      color: '#FF9800' 
-    },
-    { 
-      label: t('dashboard.active_modules'), 
-      value: 3, // Analytical, Professional, Personal are unlocked
-      total: 5, 
-      color: '#2196F3' 
-    },
-    { 
-      label: t('dashboard.productivity_score'), 
-      value: realTimeData.totalTasks > 0 ? Math.round((realTimeData.completedTasks / realTimeData.totalTasks) * 10) : 0, 
-      total: 10, 
-      color: '#4CAF50' 
-    },
-  ];
+  const handleThemeMenuOpen = (e: React.MouseEvent<HTMLElement>) => setThemeMenuAnchor(e.currentTarget);
+  const handleThemeMenuClose = () => setThemeMenuAnchor(null);
+  const handleThemeChange = (mode: ThemeMode) => { setThemeMode(mode); syncTheme(); handleThemeMenuClose(); };
+  const handleLanguageMenuOpen = (e: React.MouseEvent<HTMLElement>) => setLanguageMenuAnchor(e.currentTarget);
+  const handleLanguageMenuClose = () => setLanguageMenuAnchor(null);
+  const handleLanguageChange = (code: string) => { setLanguage(code); handleLanguageMenuClose(); };
 
-  const activities = realTimeData.recentActivities;
+  if (!user) return null;
 
   return (
     <>
       <FirstTimeLoginChecker />
-      <Fade in timeout={600}>
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          {/* Modern Header */}
-          <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box>
-              <Typography 
-                variant="h3" 
-                sx={{ 
-                  fontWeight: 800, 
-                  color: 'text.primary', 
-                  letterSpacing: '-0.02em', 
-                  mb: 1,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  fontSize: { xs: '2rem', md: '2.5rem' }
-                }}
-              >
-                {greeting}, {user.email?.split('@')[0]}
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.8 }}>
-                {t('dashboard.welcome')}
-              </Typography>
+      <Fade in timeout={800}>
+        <Container maxWidth="xl" sx={{ 
+          py: { xs: 2, md: 5 }, 
+          position: 'relative',
+          minHeight: '100vh',
+          background: theme.themeMode === 'dark' 
+            ? 'radial-gradient(circle at 0% 0%, rgba(103, 80, 164, 0.05) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(0, 210, 255, 0.05) 0%, transparent 50%)'
+            : 'radial-gradient(circle at 0% 0%, rgba(103, 80, 164, 0.02) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(0, 210, 255, 0.02) 0%, transparent 50%)'
+        }}>
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
+            {/* Header Section */}
+            <Box sx={{ mb: 6, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
+              <Box>
+                <Typography variant="h3" sx={{ 
+                  fontWeight: 900, mb: 1, letterSpacing: '-0.05em',
+                  background: 'linear-gradient(135deg, #fff 0%, #777 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  display: theme.themeMode === 'dark' ? 'block' : 'none',
+                  fontSize: { xs: '2.5rem', md: '3.5rem' }
+                }}>
+                  {greeting}, {user.email?.split('@')[0]}
+                </Typography>
+                <Typography variant="h3" sx={{ 
+                  fontWeight: 900, mb: 1, letterSpacing: '-0.05em',
+                  color: 'text.primary',
+                  display: theme.themeMode === 'dark' ? 'none' : 'block',
+                  fontSize: { xs: '2.5rem', md: '3.5rem' }
+                }}>
+                  {greeting}, {user.email?.split('@')[0]}
+                </Typography>
+                <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.6 }}>
+                  {t('dashboard.welcome')}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 1.5, p: 1, borderRadius: 4, bgcolor: alpha(theme.themeMode === 'dark' ? '#fff' : '#000', 0.05), border: '1px solid', borderColor: 'divider' }}>
+                <IconButton onClick={() => router.push('/user-clock')} sx={{ color: 'text.primary' }}><ClockIcon size={20} /></IconButton>
+                <IconButton onClick={handleThemeMenuOpen} sx={{ color: 'text.primary' }}>{theme.themeMode === 'dark' ? <MoonIcon size={20} /> : <SunIcon size={20} />}</IconButton>
+                <IconButton onClick={handleLanguageMenuOpen} sx={{ color: 'text.primary' }}><LanguageIcon size={20} /></IconButton>
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton sx={{ color: 'text.primary' }}><Bell size={20} /></IconButton>
+                  <Box sx={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, bgcolor: 'error.main', borderRadius: '50%', border: '2px solid', borderColor: 'background.paper' }} />
+                </Box>
+              </Box>
             </Box>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField
-                size="medium"
-                placeholder={t('dashboard.search_placeholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <SearchIcon size={20} />
-                      </Box>
-                    </InputAdornment>
-                  ),
-                  sx: {
-                    borderRadius: 3,
-                    bgcolor: 'background.paper',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    '& fieldset': { border: 'none' },
-                    '&:hover': { 
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                      borderColor: 'primary.main'
-                    },
-                    '&:focus-within': {
-                      boxShadow: '0 8px 30px rgba(102, 126, 234, 0.15)',
-                      borderColor: 'primary.main'
-                    }
-                  }
-                }}
-                sx={{ width: { xs: 200, md: 320 } }}
-              />
-              <Tooltip title="User Clock">
-                <IconButton 
-                  onClick={() => router.push('/user-clock')}
-                  sx={{ 
-                    bgcolor: 'background.paper', 
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
-                    border: '1px solid', 
-                    borderColor: 'divider',
-                    borderRadius: '50%',
-                    width: 48,
-                    height: 48,
-                    position: 'relative',
-                    '&:hover': {
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                      bgcolor: '#E91E63',
-                      color: 'white',
-                      transform: 'scale(1.05)'
-                    },
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Clock size={20} />
-                  </Box>
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={getThemeTooltip()}>
-                <IconButton 
-                  onClick={handleThemeMenuOpen}
-                  sx={{ 
-                    bgcolor: 'background.paper', 
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
-                    border: '1px solid', 
-                    borderColor: 'divider',
-                    borderRadius: '50%',
-                    width: 48,
-                    height: 48,
-                    '&:hover': {
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                      bgcolor: 'primary.main',
-                      color: 'white',
-                      transform: 'scale(1.05)'
-                    },
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
-                >
-                  {getThemeIcon()}
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={t('tooltips.language')}>
-                <IconButton 
-                  onClick={handleLanguageMenuOpen}
-                  sx={{ 
-                    bgcolor: 'background.paper', 
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
-                    border: '1px solid', 
-                    borderColor: 'divider',
-                    borderRadius: '50%',
-                    width: 48,
-                    height: 48,
-                    '&:hover': {
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                      bgcolor: '#4CAF50',
-                      color: 'white',
-                      transform: 'scale(1.05)'
-                    },
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <LanguageIcon size={20} />
-                  </Box>
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Notifications">
-                <IconButton 
-                  sx={{ 
-                    bgcolor: 'background.paper', 
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
-                    border: '1px solid', 
-                    borderColor: 'divider',
-                    borderRadius: '50%',
-                    width: 48,
-                    height: 48,
-                    position: 'relative',
-                    '&:hover': {
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                      bgcolor: 'primary.main',
-                      color: 'white',
-                      transform: 'scale(1.05)'
-                    },
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Bell size={20} />
-                  </Box>
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      bgcolor: 'error.main',
-                      border: '2px solid',
-                      borderColor: 'background.paper'
-                    }}
-                  />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
 
-          <Grid container spacing={4}>
-            {/* Dynamic Navigation Cards */}
-            <Grid size={{ xs: 12, lg: 9 }}>
-              {filteredCategories.length > 0 ? (
-                <Grid container spacing={3}>
-                  {filteredCategories.map((category, index) => (
-                    <Grid key={category.text} size={{ xs: 12, sm: 6, md: 4 }}>
-                      <Grow in timeout={index * 100}>
-                        <Card
-                          onClick={() => !category.locked && router.push(category.path)}
-                          sx={{
-                            borderRadius: 4,
-                            cursor: category.locked ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            height: '100%',
-                            bgcolor: 'background.paper',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            '&:hover': !category.locked ? {
-                              transform: 'translateY(-12px) scale(1.02)',
-                              boxShadow: `0 25px 50px ${category.color}25`,
-                              borderColor: category.color,
-                              '& .card-icon': {
-                                transform: 'scale(1.1) rotate(5deg)',
-                                background: category.gradient,
-                                color: 'white'
-                              },
-                              '& .card-arrow': {
-                                transform: 'translateX(4px)',
-                                color: category.color
-                              },
-                              '&::before': {
-                                content: '""',
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                height: 4,
-                                background: category.gradient,
-                                transform: 'scaleX(1)',
-                                transition: 'transform 0.3s ease'
-                              }
-                            } : {
-                              transform: 'none',
-                              boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-                            },
-                            '&::before': {
-                              content: '""',
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: 4,
-                              background: category.gradient,
-                              transform: 'scaleX(0)',
-                              transition: 'transform 0.3s ease'
-                            }
-                          }}
-                        >
-                          {category.locked && (
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                top: 16,
-                                right: 16,
-                                width: 36,
-                                height: 36,
-                                borderRadius: '50%',
-                                bgcolor: 'action.disabled',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                zIndex: 2,
-                                backdropFilter: 'blur(10px)'
-                              }}
-                            >
-                              <LockIcon size={18} />
-                            </Box>
-                          )}
-                          <CardContent sx={{ p: 4 }}>
-                            <Box 
-                              className="card-icon"
-                              sx={{
-                                width: 64,
-                                height: 64,
-                                borderRadius: 4,
-                                bgcolor: `${category.color}10`,
-                                color: category.color,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                mb: 3,
-                                position: 'relative',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: `0 8px 20px ${category.color}20`
-                              }}
-                            >
-                              {category.icon}
-                              {category.locked && (
-                                <Box
-                                  sx={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    bottom: 0,
-                                    bgcolor: 'rgba(255,255,255,0.9)',
-                                    borderRadius: 4,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backdropFilter: 'blur(5px)'
-                                  }}
-                                >
-                                  <LockIcon size={24} />
-                                </Box>
-                              )}
-                            </Box>
-                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5, color: 'text.primary', fontSize: '1.1rem' }}>
-                              {category.text}
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, lineHeight: 1.6, minHeight: 44, opacity: 0.9 }}>
-                              {category.desc}
-                            </Typography>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="caption" sx={{
-                                fontWeight: 700,
-                                color: category.locked ? 'text.secondary' : category.color,
-                                bgcolor: category.locked ? 'action.disabled' : `${category.color}10`,
-                                px: 2,
-                                py: 1,
-                                borderRadius: 2,
-                                fontSize: '0.75rem',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em'
-                              }}>
-                                {category.locked ? t('dashboard.coming_soon') : category.count}
-                              </Typography>
-                              {!category.locked && (
-                                <Box 
-                                  className="card-arrow"
-                                  sx={{ 
-                                    color: 'divider',
-                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                                  }}
-                                >
-                                  <ChevronRight size={20} />
-                                </Box>
-                              )}
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grow>
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : (
-                <Box sx={{ textAlign: 'center', py: 10 }}>
-                  <Typography variant="h6" color="text.secondary">{t('dashboard.no_matching_categories')}</Typography>
-                </Box>
-              )}
-            </Grid>
-
-        {/* Info Sidebar */}
-            <Grid size={{ xs: 12, lg: 3 }}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {/* Real-time Metrics */}
-                <Grow in timeout={800}>
-                  <Card sx={{ 
-                    borderRadius: 4, 
-                    position: 'relative', 
-                    overflow: 'hidden',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    '&:hover': {
-                      boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
-                      transform: 'translateY(-4px)'
-                    }
-                  }}>
-                    <Box sx={{ 
-                      position: 'absolute', 
-                      top: 0, 
-                      left: 0, 
-                      right: 0, 
-                      height: 4, 
-                      background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)' 
-                    }} />
-                    <CardContent sx={{ p: 4 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                          <TrendingUp size={24} />
-                        </Box>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>{t('dashboard.performance_metrics')}</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        {progressData.map((item, index) => (
-                          <Grow in timeout={900 + index * 100} key={item.label}>
-                            <Box>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'center' }}>
-                                <Typography variant="body2" sx={{ 
-                                  fontWeight: 700, 
-                                  color: 'text.secondary', 
-                                  fontSize: '0.75rem', 
-                                  textTransform: 'uppercase', 
-                                  letterSpacing: '0.05em',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 1
-                                }}>
-                                  {item.label === 'Task Completion' && <Target size={14} />}
-                                  {item.label === 'Active Modules' && <Activity size={14} />}
-                                  {item.label === 'Productivity Score' && <Zap size={14} />}
-                                  {item.label}
-                                </Typography>
-                                <Typography variant="body2" sx={{ 
-                                  fontWeight: 800, 
-                                  color: item.color,
-                                  fontSize: '0.875rem'
-                                }}>
-                                  {Math.round((item.value / item.total) * 100)}%
-                                </Typography>
-                              </Box>
-                              <LinearProgress
-                                variant="determinate"
-                                value={(item.value / item.total) * 100}
-                                sx={{
-                                  height: 10,
-                                  borderRadius: 5,
-                                  bgcolor: 'action.hover',
-                                  '& .MuiLinearProgress-bar': {
-                                    borderRadius: 5,
-                                    backgroundImage: `linear-gradient(90deg, ${item.color} 0%, ${item.color}CC 100%)`,
-                                    boxShadow: `0 2px 8px ${item.color}40`,
-                                    transition: 'all 0.3s ease'
-                                  }
-                                }}
-                              />
-                            </Box>
-                          </Grow>
-                        ))}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grow>
-
-                {/* Recent Activity */}
-                <Grow in timeout={1000}>
-                  <Card sx={{ 
-                    borderRadius: 4, 
-                    border: '1px solid', 
-                    borderColor: 'divider', 
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    '&:hover': {
-                      boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
-                      transform: 'translateY(-4px)'
-                    }
-                  }}>
-                    <CardContent sx={{ p: 4 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                          <Activity size={24} />
-                        </Box>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>{t('dashboard.recent_activity')}</Typography>
-                      </Box>
-                      <List disablePadding>
-                        {activities.map((activity, idx) => (
-                          <Grow in timeout={1100 + idx * 100} key={activity.id}>
-                            <Box>
-                              <ListItem alignItems="flex-start" sx={{ px: 0, py: 2.5, transition: 'all 0.2s ease', '&:hover': { bgcolor: 'action.hover', borderRadius: 2 } }}>
-                                <ListItemAvatar sx={{ minWidth: 52 }}>
-                                  <Avatar sx={{
-                                    bgcolor: `${activity.color}10`,
-                                    color: activity.color,
-                                    borderRadius: 3,
-                                    width: 40,
-                                    height: 40,
-                                    fontSize: '1.2rem',
-                                    fontWeight: 600,
-                                    boxShadow: `0 4px 12px ${activity.color}20`
-                                  }}>
-                                    {activity.icon}
-                                  </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText
-                                  primary={
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.875rem' }}>
-                                      <span style={{ color: activity.color, fontWeight: 700 }}>{activity.user}</span>
-                                      <span style={{ fontWeight: 500, color: 'text.secondary', marginLeft: 4 }}>{activity.action}</span>
-                                    </Typography>
-                                  }
-                                  secondary={
-                                    <Typography variant="caption" sx={{ 
-                                      display: 'block', 
-                                      mt: 0.5, 
-                                      fontWeight: 600, 
-                                      color: 'text.disabled', 
-                                      textTransform: 'uppercase', 
-                                      letterSpacing: 0.5,
-                                      fontSize: '0.7rem'
-                                    }}>
-                                      {activity.time}
-                                    </Typography>
-                                  }
-                                />
-                              </ListItem>
-                              {idx < activities.length - 1 && <Divider component="li" sx={{ my: 0.5, opacity: 0.2 }} />}
-                            </Box>
-                          </Grow>
-                        ))}
-                      </List>
-                      <Button 
-                        fullWidth 
-                        variant="text" 
-                        sx={{ 
-                          mt: 2, 
-                          fontWeight: 700, 
-                          color: 'primary.main', 
-                          py: 1.5, 
-                          borderRadius: 3,
-                          textTransform: 'none',
-                          '&:hover': {
-                            bgcolor: 'primary.main',
-                            color: 'white',
-                            transform: 'translateY(-2px)',
-                            boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)'
-                          },
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}
-                      >
-                        {t('dashboard.view_all_activity')}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grow>
-              </Box>
-            </Grid>
-          </Grid>
-
-          {/* Theme Selection Menu */}
-          <Menu
-            anchorEl={themeMenuAnchor}
-            open={Boolean(themeMenuAnchor)}
-            onClose={handleThemeMenuClose}
-            PaperProps={{
-              elevation: 8,
-              sx: {
-                borderRadius: 3,
-                mt: 1,
-                minWidth: 220,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
-                border: '1px solid',
-                borderColor: 'divider'
-              }
-            }}
-          >
-            <MenuItem 
-              onClick={() => handleThemeChange('light')}
-              selected={theme.themeMode === 'light'}
-              sx={{ transition: 'all 0.2s ease' }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    color: theme.themeMode === 'light' ? 'primary.main' : 'text.secondary'
-                  }}>
-                    <SunIcon size={20} />
-                  </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'light' ? 600 : 400 }}>
-                    Light Mode
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Bright and clean interface
-                  </Typography>
-                </Box>
-              </Box>
-            </MenuItem>
-            <MenuItem 
-              onClick={() => handleThemeChange('dark')}
-              selected={theme.themeMode === 'dark'}
-              sx={{ transition: 'all 0.2s ease' }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    color: theme.themeMode === 'dark' ? 'primary.main' : 'text.secondary'
-                  }}>
-                    <MoonIcon size={20} />
-                  </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'dark' ? 600 : 400 }}>
-                    Dark Mode
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Easy on the eyes at night
-                  </Typography>
-                </Box>
-              </Box>
-            </MenuItem>
-            <MenuItem 
-              onClick={() => handleThemeChange('auto')}
-              selected={theme.themeMode === 'auto'}
-              sx={{ transition: 'all 0.2s ease' }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    color: theme.themeMode === 'auto' ? 'primary.main' : 'text.secondary'
-                  }}>
-                    <Monitor size={20} />
-                  </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: theme.themeMode === 'auto' ? 600 : 400 }}>
-                    Auto Mode
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Adapts to your environment
-                  </Typography>
-                </Box>
-              </Box>
-            </MenuItem>
-          </Menu>
-
-          {/* Language Selection Menu */}
-          <Menu
-            anchorEl={languageMenuAnchor}
-            open={Boolean(languageMenuAnchor)}
-            onClose={handleLanguageMenuClose}
-            PaperProps={{
-              elevation: 8,
-              sx: {
-                borderRadius: 3,
-                mt: 1,
-                minWidth: 280,
-                maxWidth: 400,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
-                border: '1px solid',
-                borderColor: 'divider',
-                maxHeight: 400,
-                overflow: 'auto'
-              }
-            }}
-          >
-            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
-                Select Language
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Choose your preferred language
-              </Typography>
-            </Box>
-            {availableLanguages.map((language) => (
-              <MenuItem
-                key={language.code}
-                onClick={() => handleLanguageChange(language.code)}
-                selected={currentLanguage === language.code}
-                sx={{ 
-                  transition: 'all 0.2s ease',
-                  py: 1.5,
-                  '&:hover': {
-                    bgcolor: 'action.hover'
-                  }
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    fontSize: '1.5rem',
-                    color: currentLanguage === language.code ? 'primary.main' : 'text.secondary'
-                  }}>
-                    {language.flag}
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontWeight: currentLanguage === language.code ? 600 : 400,
-                        color: 'text.primary'
-                      }}
-                    >
-                      {language.nativeName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {language.name}
-                    </Typography>
-                  </Box>
-                  {currentLanguage === language.code && (
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      color: 'primary.main' 
+            <Grid container spacing={3}>
+              {/* Stats Row */}
+              {[
+                { label: 'Pending Tasks', value: stats.activeTasks, icon: <ProfessionalIcon />, color: '#FF9800', trend: '+2 today' },
+                { label: 'Today Events', value: stats.todayEvents, icon: <CalendarIcon />, color: '#4CAF50', trend: 'Next: 2pm' },
+                { label: 'Total Notes', value: stats.totalNotes, icon: <NoteIcon />, color: '#6750A4', trend: 'Latest: 1h ago' },
+                { label: 'Efficiency', value: `${stats.completionRate}%`, icon: <Zap />, color: '#00D2FF', trend: 'Target: 80%' }
+              ].map((stat, i) => (
+                <Grid key={i} size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Grow in timeout={i * 100}>
+                    <Card sx={{ 
+                      borderRadius: 5, 
+                      bgcolor: alpha(theme.themeMode === 'dark' ? '#1a1a1a' : '#fff', 0.65),
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      boxShadow: 'none'
                     }}>
-                      <ChevronRight size={16} />
-                    </Box>
-                  )}
+                      <CardContent sx={{ p: 2.5 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                          <Box sx={{ p: 1.2, borderRadius: 3, bgcolor: alpha(stat.color, 0.1), color: stat.color, display: 'flex' }}>
+                            {stat.icon}
+                          </Box>
+                          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>{stat.trend}</Typography>
+                        </Box>
+                        <Typography variant="h4" sx={{ fontWeight: 900, mb: 0.5 }}>{stat.value}</Typography>
+                        <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Grow>
+                </Grid>
+              ))}
+
+              {/* Main Content Area */}
+              <Grid size={{ xs: 12, lg: 8 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* Professional Tracker */}
+                  <Card sx={{ borderRadius: 6, bgcolor: alpha(theme.themeMode === 'dark' ? '#222' : '#fff', 0.5), backdropFilter: 'blur(20px)', border: '1px solid', borderColor: 'divider' }}>
+                    <CardContent sx={{ p: 4 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                        <Typography variant="h5" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <ProfessionalIcon size={24} color="#FF9800" /> Analytical & Professional
+                        </Typography>
+                        <Button endIcon={<ChevronRight />} onClick={() => router.push('/professional')} sx={{ fontWeight: 700 }}>View All</Button>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {tasks.slice(0, 3).map((task, i) => (
+                          <Box key={i} sx={{ 
+                            p: 2.5, borderRadius: 4, 
+                            bgcolor: alpha(theme.themeMode === 'dark' ? '#fff' : '#000', 0.03),
+                            border: '1px solid', borderColor: 'divider',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                          }}>
+                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                              <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: task.status === 'completed' ? '#4CAF50' : '#FF9800' }} />
+                              <Box>
+                                <Typography sx={{ fontWeight: 700 }}>{task.title}</Typography>
+                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{task.task_date}</Typography>
+                              </Box>
+                            </Box>
+                            <Chip label={task.priority || 'Medium'} size="small" variant="outlined" sx={{ fontWeight: 700, borderRadius: 2 }} />
+                          </Box>
+                        ))}
+                        {tasks.length === 0 && (
+                          <Typography align="center" sx={{ py: 4, opacity: 0.5 }}>No active tasks found</Typography>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+
+                  {/* Personal & Notes Hub */}
+                  <Grid container spacing={3}>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Card sx={{ height: '100%', borderRadius: 6, bgcolor: alpha(theme.themeMode === 'dark' ? '#222' : '#fff', 0.5), backdropFilter: 'blur(20px)', border: '1px solid', borderColor: 'divider' }}>
+                        <CardContent sx={{ p: 4 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <PersonalIcon size={20} color="#9C27B0" /> Personal Life
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {personalEntries.slice(0, 4).map((entry, i) => (
+                              <Box key={i} sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{ width: 4, height: 32, bgcolor: '#9C27B0', borderRadius: 2 }} />
+                                <Box>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{entry.title}</Typography>
+                                  <Typography variant="caption" sx={{ opacity: 0.5 }}>{entry.category}</Typography>
+                                </Box>
+                              </Box>
+                            ))}
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Card sx={{ height: '100%', borderRadius: 6, bgcolor: alpha(theme.themeMode === 'dark' ? '#222' : '#fff', 0.5), backdropFilter: 'blur(20px)', border: '1px solid', borderColor: 'divider' }}>
+                        <CardContent sx={{ p: 4 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <NoteIcon size={20} color="#6750A4" /> Note Taking
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {notes.slice(0, 2).map((note, i) => (
+                              <Box key={i} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: alpha('#6750A4', 0.05) }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>{note.title}</Typography>
+                                <Typography variant="caption" sx={{ opacity: 0.6, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{note.content}</Typography>
+                              </Box>
+                            ))}
+                            <Button variant="outlined" fullWidth onClick={() => router.push('/note-taking')} sx={{ borderRadius: 3, mt: 1 }}>All Notes</Button>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
                 </Box>
-              </MenuItem>
-            ))}
-          </Menu>
-        </Box>
-      </Container>
-    </Fade>
+              </Grid>
+
+              {/* Sidebar Analytics */}
+              <Grid size={{ xs: 12, lg: 4 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <Card sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: alpha(theme.themeMode === 'dark' ? '#1a1a1a' : '#fff', 0.8), backdropFilter: 'blur(20px)' }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Activity size={20} color="#00D2FF" /> Weekly Activity
+                      </Typography>
+                      <Box sx={{ height: 250 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData}>
+                            <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: alpha(theme.themeMode === 'dark' ? '#fff' : '#000', 0.5) }} />
+                            <ChartTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }} />
+                            <Bar dataKey="prof" stackId="a" fill="#FF9800" radius={[0, 0, 0, 0]} barSize={20} />
+                            <Bar dataKey="pers" stackId="a" fill="#9C27B0" radius={[0, 0, 0, 0]} barSize={20} />
+                            <Bar dataKey="notes" stackId="a" fill="#6750A4" radius={[6, 6, 0, 0]} barSize={20} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </Box>
+                    </CardContent>
+                  </Card>
+
+                  <Card sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: alpha(theme.themeMode === 'dark' ? '#1a1a1a' : '#fff', 0.8), backdropFilter: 'blur(20px)' }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Target size={20} color="#FFD700" /> Success Metrics
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700 }}>Task Completion</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 700 }}>{stats.completionRate}%</Typography>
+                          </Box>
+                          <LinearProgress variant="determinate" value={stats.completionRate} sx={{ height: 10, borderRadius: 5, bgcolor: alpha('#00D2FF', 0.1), '& .MuiLinearProgress-bar': { bgcolor: '#00D2FF', borderRadius: 5 } }} />
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                          <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                            <ResponsiveContainer width={160} height={160}>
+                              <PieChart>
+                                <Pie data={distributionData.data} innerRadius={55} outerRadius={75} paddingAngle={8} dataKey="value">
+                                  {distributionData.data.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                                </Pie>
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                              <Typography variant="h5" sx={{ fontWeight: 900 }}>{stats.completionRate}%</Typography>
+                              <Typography variant="caption" sx={{ opacity: 0.5, textTransform: 'uppercase', fontSize: '0.6rem' }}>Score</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Grid>
+            </Grid>
+          </Box>
+        </Container>
+      </Fade>
+
+      {/* Menus */}
+      <Menu anchorEl={themeMenuAnchor} open={Boolean(themeMenuAnchor)} onClose={handleThemeMenuClose} PaperProps={{ sx: { borderRadius: 3, mt: 1, minWidth: 160 } }}>
+        <MenuItem onClick={() => handleThemeChange('light')} sx={{ gap: 2 }}><SunIcon size={18} color="#FFD700" /> Light</MenuItem>
+        <MenuItem onClick={() => handleThemeChange('dark')} sx={{ gap: 2 }}><MoonIcon size={18} color="#9C27B0" /> Dark</MenuItem>
+        <MenuItem onClick={() => handleThemeChange('auto')} sx={{ gap: 2 }}><Monitor size={18} color="#2196F3" /> Auto</MenuItem>
+      </Menu>
+
+      <Menu anchorEl={languageMenuAnchor} open={Boolean(languageMenuAnchor)} onClose={handleLanguageMenuClose} PaperProps={{ sx: { borderRadius: 3, mt: 1, minWidth: 180 } }}>
+        {availableLanguages.map(lang => (
+          <MenuItem key={lang.code} onClick={() => handleLanguageChange(lang.code)} selected={currentLanguage === lang.code} sx={{ fontWeight: 600 }}>{lang.name}</MenuItem>
+        ))}
+      </Menu>
     </>
   );
 };

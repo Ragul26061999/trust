@@ -90,9 +90,11 @@ import {
     VisibilityOff as VisibilityOffIcon
 } from '@mui/icons-material';
 import ProtectedLayout from '../protected-layout';
+import TranslatedText from '../../components/translated-text';
 import { useTimeEngine, TimeEngineProvider } from '../../lib/time-engine';
 import { useAuth } from '../../lib/auth-context';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
 import { getCalendarEntries, addCalendarEntry, updateCalendarEntry, deleteCalendarEntry, getCustomCalendars, addCustomCalendar } from '../../lib/personal-calendar-db';
 import { 
     getTimezonePreference, 
@@ -115,12 +117,14 @@ import {
     toggleCalendarSync,
     syncCalendarIntegration,
     updateSyncFrequency,
+    updateCalendarIntegration,
     CALENDAR_PROVIDERS,
     SYNC_FREQUENCIES,
     type CalendarProvider,
     type SyncFrequency
 } from '../../lib/calendar-integration-service';
 import { convertFromUTC } from '../../lib/timezone-utils';
+import { fetchGoogleCalendarEvents } from '../../lib/google-calendar-service';
 
 // Category Definitions
 const CATEGORIES = [
@@ -243,8 +247,18 @@ const PersonalCalendarPage = () => {
         try {
             // Load timezone preference
             const tz = await getTimezonePreference(user.id);
-            if (tz) {
+            if (tz && tz !== 'UTC') {
                 setTimezone(tz);
+            } else {
+                // If not set or UTC (default), detect the user's actual timezone
+                const detected = detectUserTimezone();
+                if (detected && detected !== timezone) {
+                    setTimezone(detected);
+                    // Inform the user we're setting their timezone
+                    console.log('Automatically detected and setting timezone:', detected);
+                    // We don't necessarily need to save it immediately to the DB to avoid unnecessary writes,
+                    // but it's good to have it in the UI
+                }
             }
             
             // Load notification settings
@@ -276,71 +290,84 @@ const PersonalCalendarPage = () => {
         }
     };
 
-    // Fetch external calendar events from connected integrations
+    // Fetch actual external calendar events from connected integrations
+    const fetchExternalCalendarEventsFromAPI = async (integration: any): Promise<any[]> => {
+        if (!user || integration.provider !== 'google' || !integration.access_token) {
+            return [];
+        }
+
+        try {
+            const timeMin = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString();
+            const timeMax = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString();
+            
+            const googleEvents = await fetchGoogleCalendarEvents(
+                integration.access_token,
+                timeMin,
+                timeMax
+            );
+            
+            return googleEvents;
+        } catch (error: any) {
+            console.error(`Error fetching Google events for ${integration.display_name}:`, error);
+            
+            // If unauthorized, update sync status to error
+            if (error.message === 'UNAUTHORIZED' || error.message?.includes('invalid_grant')) {
+                updateCalendarIntegration(integration.id, user.id, { 
+                    sync_status: 'error',
+                    error_message: 'Authentication expired. Please reconnect your calendar.'
+                });
+            }
+            
+            return [];
+        }
+    };
+
+    // Main function to fetch external calendar events from connected integrations
     const fetchExternalCalendarEvents = async (integrations: any[]) => {
         if (!user) return;
         
         try {
             // Filter for connected and enabled integrations
             const activeIntegrations = integrations.filter(
-                (integration: any) => integration.sync_enabled && integration.sync_status === 'connected'
+                (integration: any) => integration.sync_enabled && 
+                                    (integration.sync_status === 'connected' || integration.sync_status === 'syncing')
             );
             
-            // For each active integration, fetch events (simulated here)
             for (const integration of activeIntegrations) {
-                // In a real implementation, this would call the external calendar API
-                // For now, we'll simulate with mock data
-                const externalEvents = await simulateFetchExternalEvents(integration);
+                const externalEvents = await fetchExternalCalendarEventsFromAPI(integration);
                 
                 // Convert external events to our calendar entry format
                 const externalEntries = externalEvents.map((event: any) => {
+                    const startDateTime = event.start.dateTime || event.start.date;
                     return {
                         id: `external_${integration.id}_${event.id}`,
-                        title: event.summary || event.title,
-                        date: convertFromUTC(new Date(event.start.dateTime || event.start.date), timezone),
-                        category: 'event', // Default to event category for external events
+                        title: event.summary || 'No Title',
+                        date: convertFromUTC(new Date(startDateTime), timezone),
+                        category: 'event',
                         priority: 'Medium',
                         status: 'pending',
                         description: event.description || '',
-                        source: 'external', // Mark as external source
+                        source: 'external',
                         integrationId: integration.id
                     };
                 });
                 
                 // Add external events to the entries state
                 setEntries(prevEntries => {
-                    // Remove old external events from this integration
                     const filteredEntries = prevEntries.filter(entry => 
                         entry.source !== 'external' || entry.integrationId !== integration.id
                     );
-                    
-                    // Add new external events
                     return [...filteredEntries, ...externalEntries];
                 });
+
+                // Update last sync time in DB silently
+                if (integration.sync_frequency === 'realtime') {
+                   updateCalendarIntegration(integration.id, user.id, { last_sync_at: new Date().toISOString() });
+                }
             }
         } catch (error) {
-            console.error('Error fetching external calendar events:', error);
+            console.error('Error in fetchExternalCalendarEvents:', error);
         }
-    };
-
-    // Simulate fetching external calendar events (in real implementation, this would call actual APIs)
-    const simulateFetchExternalEvents = async (integration: any): Promise<any[]> => {
-        // This is a simulation - in real implementation, this would call Google Calendar API, etc.
-        // depending on the integration provider
-        
-        // Return mock events for demonstration
-        if (integration.sync_enabled) {
-            return [
-                {
-                    id: 'mock_event_1',
-                    summary: `Mock ${integration.provider} Event`,
-                    description: `This is a simulated event from ${integration.provider}`,
-                    start: { dateTime: new Date(Date.now() + 86400000).toISOString() }, // Tomorrow
-                    end: { dateTime: new Date(Date.now() + 86400000 + 3600000).toISOString() } // Tomorrow + 1 hour
-                }
-            ];
-        }
-        return [];
     };
 
     const fetchEntries = async () => {
@@ -398,6 +425,26 @@ const PersonalCalendarPage = () => {
     const miniStartDate = startOfWeek(miniMonthStart);
     const miniEndDate = endOfWeek(miniMonthEnd);
     const miniDays = eachDayOfInterval({ start: miniStartDate, end: miniEndDate });
+    
+    // Real-time Sync Polling
+    useEffect(() => {
+        if (!user || calendarIntegrations.length === 0) return;
+        
+        const realtimeIntegrations = calendarIntegrations.filter(
+            int => int.sync_enabled && int.sync_frequency === 'realtime'
+        );
+        
+        if (realtimeIntegrations.length === 0) return;
+        
+        // Initial fetch is already handled on load
+        
+        const intervalId = setInterval(() => {
+            console.log('Real-time sync polling triggered...');
+            fetchExternalCalendarEvents(calendarIntegrations);
+        }, 5 * 60 * 1000); // Poll every 5 minutes
+        
+        return () => clearInterval(intervalId);
+    }, [user, calendarIntegrations]);
 
     const nextPeriod = () => {
         if (view === 'month') {
@@ -864,6 +911,33 @@ const PersonalCalendarPage = () => {
         
         setSettingsLoading(true);
         try {
+            if (selectedProvider === 'google') {
+                // For Google, we use OAuth to get the proper tokens
+                // We'll first create the record in the DB (or it will be up-sorted in the callback)
+                // then redirect to Google OAuth
+                if (!supabase) {
+                    showSnackbar('Authentication service is not configured. Please check your system settings.', 'error');
+                    setSettingsLoading(false);
+                    return;
+                }
+                
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: `${window.location.origin}/auth/callback?next=/personal&sync=google`,
+                        scopes: 'https://www.googleapis.com/auth/calendar.readonly',
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent',
+                        },
+                    },
+                });
+                
+                if (error) throw error;
+                // Redirect will happen, so no need to continue here
+                return;
+            }
+
             const result = await createCalendarIntegration(
                 user.id,
                 selectedProvider,
@@ -882,9 +956,9 @@ const PersonalCalendarPage = () => {
             } else {
                 showSnackbar(result.error || 'Failed to connect calendar', 'error');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error connecting calendar:', error);
-            showSnackbar('Failed to connect calendar', 'error');
+            showSnackbar(`Failed to connect calendar: ${error.message || 'Unknown error'}`, 'error');
         } finally {
             setSettingsLoading(false);
         }
@@ -1628,9 +1702,7 @@ const PersonalCalendarPage = () => {
                                                         >
                                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden', minWidth: 0 }}>
                                                                 {entry.status === 'completed' ? <CheckCircleIcon sx={{ fontSize: '0.8rem' }} /> : cat?.icon}
-                                                                <Typography variant="inherit" noWrap sx={{ opacity: entry.status === 'completed' ? 0.7 : 1 }}>
-                                                                    {entry.title} ({format(entry.date, 'HH:mm')})
-                                                                </Typography>
+                                                                <TranslatedText text={`${entry.title} (${format(entry.date, 'HH:mm')})`} variant="inherit" noWrap sx={{ opacity: entry.status === 'completed' ? 0.7 : 1 }} />
                                                             </Box>
                                                             <IconButton
                                                                 className="edit-btn"
@@ -1824,9 +1896,7 @@ const PersonalCalendarPage = () => {
                                                         >
                                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden', minWidth: 0 }}>
                                                                 {entry.status === 'completed' ? <CheckCircleIcon sx={{ fontSize: '0.8rem' }} /> : cat?.icon}
-                                                                <Typography variant="inherit" noWrap sx={{ opacity: entry.status === 'completed' ? 0.7 : 1 }}>
-                                                                    {entry.title} ({format(entry.date, 'HH:mm')})
-                                                                </Typography>
+                                                                <TranslatedText text={`${entry.title} (${format(entry.date, 'HH:mm')})`} variant="inherit" noWrap sx={{ opacity: entry.status === 'completed' ? 0.7 : 1 }} />
                                                             </Box>
                                                             <IconButton
                                                                 className="edit-btn"
@@ -1982,19 +2052,18 @@ const PersonalCalendarPage = () => {
                                                             {cat?.icon && React.cloneElement(cat.icon as any, { sx: { fontSize: '1.4rem' } })}
                                                         </Box>
                                                         <Box sx={{ flex: 1 }}>
-                                                            <Typography
+                                                            <TranslatedText 
+                                                                text={entry.title} 
                                                                 variant="subtitle1"
-                                                                sx={{
-                                                                    fontWeight: 700,
+                                                                sx={{ 
+                                                                    fontWeight: 700, 
                                                                     color: entry.status === 'completed' ? 'text.disabled' : 'text.primary',
                                                                     fontSize: '1rem',
                                                                     textDecoration: entry.status === 'completed' ? 'line-through' : 'none'
-                                                                }}
-                                                            >
-                                                                {entry.title}
-                                                            </Typography>
+                                                                }} 
+                                                            />
                                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '0.85rem', color: 'text.secondary' }}>
-                                                                <span>{cat?.label} • {format(entry.date, 'HH:mm')}</span>
+                                                                <TranslatedText text={`${cat?.label} • ${format(entry.date, 'HH:mm')}`} component="span" />
                                                                 {entry.priority && (
                                                                     <Chip
                                                                         label={entry.priority}

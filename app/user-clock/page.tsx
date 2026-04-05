@@ -65,6 +65,7 @@ import ProtectedLayout from "../protected-layout";
 import { useAuth } from "../../lib/auth-context";
 import { TimeEngineProvider, useTimeEngine } from "../../lib/time-engine";
 import { formatInUserTimezone, getCurrentUserTimezone } from "../../lib/timezone-utils";
+import TranslatedText from "../../components/translated-text";
 
 type TabKey = "timezone" | "stopwatch" | "bedtime" | "alarm";
 type AlarmSource = "Personal Task" | "Professional Task" | "Note" | "Custom";
@@ -531,10 +532,10 @@ const UserClockPageContent = () => {
                           Architecture
                         </Typography>
                       </Box>
-                      <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.7 }}>
-                        Global Time Engine → Stored in context + local storage → Persists to DB (user preferences) → Consumed by
-                        Dashboard, Tasks, Notes, Alarms, Stopwatch, Bedtime.
-                      </Typography>
+                      <TranslatedText 
+                        text="Global Time Engine → Stored in context + local storage → Persists to DB (user preferences) → Consumed by Dashboard, Tasks, Notes, Alarms, Stopwatch, Bedtime." 
+                        sx={{ lineHeight: 1.7, color: 'text.secondary' }} 
+                      />
                     </CardContent>
                   </Card>
                 </Grid>
@@ -735,12 +736,14 @@ const UserClockPageContent = () => {
                           >
                             <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
                               <Box>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                                  {entry.heading}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  {entry.purpose}
-                                </Typography>
+                                <TranslatedText 
+                                  text={entry.heading} 
+                                  sx={{ fontWeight: 700, color: 'text.primary', fontSize: '1.1rem', display: 'block' }} 
+                                />
+                                <TranslatedText 
+                                  text={entry.purpose} 
+                                  sx={{ color: 'text.secondary', fontSize: '0.9rem' }} 
+                                />
                               </Box>
                               <Chip 
                                 label={formatDuration(entry.durationMs)} 
@@ -1206,9 +1209,10 @@ const UserClockPageContent = () => {
                           >
                             <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
                               <Box>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
-                                  {alarm.title}
-                                </Typography>
+                                <TranslatedText 
+                                  text={alarm.title} 
+                                  sx={{ fontWeight: 700, color: 'text.primary', mb: 1, display: 'block' }} 
+                                />
                                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                                   <Chip 
                                     size="small" 

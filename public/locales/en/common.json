@@ -26,7 +26,23 @@
     "view_all_activity": "View All Activity",
     "no_matching_categories": "No matching categories found."
   },
+  "home": {
+    "title": "Home",
+    "search_placeholder": "Search tasks, people, or posts...",
+    "today_tasks": "Today's Tasks",
+    "pending": "pending",
+    "no_tasks": "You're all clear! No tasks assigned for today.",
+    "recent_activities": "Recent Activities",
+    "my_schedule": "My Schedule",
+    "connections": "Connections",
+    "share_thoughts": "Share your thoughts or tasks for today...",
+    "share_post": "Share Post",
+    "setup_profile": "Setup Profile",
+    "trending": "Trending Now",
+    "view_suggestions": "View suggestions"
+  },
   "sidebar": {
+    "home": "Home",
     "dashboard": "Dashboard",
     "analytical": "Analytical",
     "professional": "Professional",

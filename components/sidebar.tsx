@@ -35,6 +35,7 @@ import {
   User as PersonalIcon,
   LogOut as LogoutIcon,
   Menu as MenuIcon,
+  Home as HomeIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   Lock as LockIcon,
@@ -224,6 +225,7 @@ const Sidebar = () => {
   };
 
   const navItems = [
+    { text: t('sidebar.home'), icon: <LucideIcon icon={HomeIcon} />, path: '/home', color: '#4F46E5', locked: false },
     { text: t('sidebar.dashboard'), icon: <LucideIcon icon={DashboardIcon} />, path: '/dashboard', color: '#667eea', locked: false },
     { text: t('sidebar.analytical'), icon: <LucideIcon icon={AnalyticsIcon} />, path: '/analytical', color: '#2196F3', locked: false },
     { text: t('sidebar.professional'), icon: <LucideIcon icon={ProfessionalIcon} />, path: '/professional', color: '#FF9800', locked: false },

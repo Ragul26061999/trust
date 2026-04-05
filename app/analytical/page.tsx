@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth-context';
 import { useThemeSync } from '../../lib/use-theme-sync';
 import useTranslations from '../../lib/use-translations';
 import ProtectedLayout from '../protected-layout';
+import TranslatedText from '../../components/translated-text';
 import {
   Box,
   Container,
@@ -1718,11 +1719,9 @@ const AnalyticalPageContent = () => {
                           }
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                          <LucideIcon icon={Sparkles} size={16} sx={{ color: '#667eea', mr: 2, mt: 1, flexShrink: 0 }} />
-                          <Typography variant="body1" sx={{ fontWeight: 500, color: 'text.primary', lineHeight: 1.6 }}>
-                            {rec}
-                          </Typography>
+                        <Box key={index} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main' }} />
+                          <TranslatedText text={rec} sx={{ fontWeight: 500, color: 'text.primary' }} />
                         </Box>
                       </Box>
                     ))}

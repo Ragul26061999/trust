@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import TranslatedText from '../../components/translated-text';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -102,8 +103,14 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-pink-500 bg-clip-text text-transparent mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Please sign in to continue to your account</p>
+          <TranslatedText 
+            text="Welcome Back" 
+            sx={{ fontWeight: 800, fontSize: '2.25rem', mb: 2, background: 'linear-gradient(135deg, #3b82f6 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'block' }} 
+          />
+          <TranslatedText 
+            text="Please sign in to continue to your account" 
+            sx={{ color: 'text.secondary', fontSize: '1rem' }} 
+          />
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">

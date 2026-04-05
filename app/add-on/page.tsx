@@ -31,6 +31,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { format } from 'date-fns';
 
 import TimetableAnalytics from '../../components/timetable-analytics';
+import TranslatedText from '../../components/translated-text';
 
 // Define types for our timetable entries
 interface TimetableEntry {
@@ -385,7 +386,12 @@ const AddOnPageContent = () => {
 
   // Define columns for the data grid
   const columns: GridColDef[] = [
-    { field: 'title', headerName: 'Title', flex: 1 },
+    { 
+      field: 'title', 
+      headerName: 'Title', 
+      flex: 1,
+      renderCell: (params) => <TranslatedText text={params.value} />
+    },
     { 
       field: 'startTime', 
       headerName: 'Start Time', 

@@ -30,16 +30,45 @@ export async function GET(request: Request) {
         
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
         
-        if (!error) {
-            // Validate that the user's email is a real Gmail account
-            const userEmail = data.session?.user.email;
+        if (!error && data.session) {
+            const user = data.session.user;
+            const userEmail = user.email;
             
+            // Validate that the user's email is a real Gmail account
             if (userEmail) {
                 // Check if the email ends with @gmail.com
                 if (!userEmail.endsWith('@gmail.com')) {
                     // If not a Gmail account, sign out the user and redirect with error
                     await supabase.auth.signOut();
                     return NextResponse.redirect(`${origin}/login?error=invalid_email_domain&email=${encodeURIComponent(userEmail)}`);
+                }
+            }
+
+            // Handle Calendar Sync Token Capturing
+            const syncProvider = searchParams.get('sync');
+            if (syncProvider === 'google') {
+                const providerToken = data.session.provider_token;
+                const providerRefreshToken = data.session.provider_refresh_token;
+                const expiresAt = data.session.expires_at;
+
+                if (providerToken) {
+                    // Update the calendar_integration table
+                    // We use the service role client if we want to bypass RLS or just use the user client if RLS allows
+                    // The user-client we just created should have the session, so it should work with RLS
+                    await supabase
+                        .from('calendar_integration')
+                        .upsert({
+                            user_id: user.id,
+                            provider: 'google',
+                            display_name: 'Google Calendar', // Default name
+                            email: userEmail,
+                            access_token: providerToken,
+                            refresh_token: providerRefreshToken,
+                            token_expires_at: expiresAt ? new Date(expiresAt * 1000).toISOString() : null,
+                            sync_status: 'connected',
+                            sync_enabled: true,
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: 'user_id, provider' });
                 }
             }
             
