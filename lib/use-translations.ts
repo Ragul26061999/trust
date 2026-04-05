@@ -53,19 +53,27 @@ const useTranslations = (namespace: string = 'common') => {
   const t = (key: string, fallback?: string): string => {
     if (isLoading) return fallback || key;
     
-    // Split key by dots to access nested properties
+    // 1. Try JSON translations first
     const keys = key.split('.');
     let value = translations;
+    let found = true;
     
     for (const k of keys) {
       if (value && typeof value === 'object' && k in value) {
         value = value[k];
       } else {
-        return fallback || key;
+        found = false;
+        break;
       }
     }
     
-    return typeof value === 'string' ? value : fallback || key;
+    if (found && typeof value === 'string') return value;
+
+    // 2. If not in JSON, check the global persistent auto-translation cache
+    const cached = translationService.getCached(fallback || key, currentLanguage);
+    if (cached) return cached;
+    
+    return fallback || key;
   };
 
   const ut = async (text: string): Promise<string> => {

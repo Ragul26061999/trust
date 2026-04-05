@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../lib/language-context';
 import { Skeleton, Typography, TypographyProps } from '@mui/material';
+import { translationService } from '../lib/translation-service';
 
 interface TranslatedTextProps extends Omit<TypographyProps, 'children'> {
   text: string;
@@ -22,8 +23,15 @@ export const TranslatedText: React.FC<TranslatedTextProps> = ({
   ...rest
 }) => {
   const { currentLanguage, autoTranslate } = useLanguage();
-  const [translatedText, setTranslatedText] = useState(text);
-  const [isTranslating, setIsTranslating] = useState(false);
+  const [translatedText, setTranslatedText] = useState(() => {
+    // Synchronous initial check to avoid flickering
+    const cached = translationService.getCached(text, currentLanguage);
+    return cached || text;
+  });
+  const [isTranslating, setIsTranslating] = useState(() => {
+    const cached = translationService.getCached(text, currentLanguage);
+    return !cached && text && text.trim() !== '' && currentLanguage !== 'en';
+  });
 
   useEffect(() => {
     let isMounted = true;

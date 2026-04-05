@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { useTheme } from '../../lib/theme-context';
 import { useThemeSync } from '../../lib/use-theme-sync';
@@ -271,66 +271,97 @@ const DashboardContent = () => {
             {/* Header Section */}
             <Box sx={{ mb: 6, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
               <Box>
-                <Typography variant="h3" sx={{ 
-                  fontWeight: 900, mb: 1, letterSpacing: '-0.05em',
-                  background: 'linear-gradient(135deg, #fff 0%, #777 100%)',
-                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                  display: theme.themeMode === 'dark' ? 'block' : 'none',
-                  fontSize: { xs: '2.5rem', md: '3.5rem' }
-                }}>
-                  {greeting}, {user.email?.split('@')[0]}
-                </Typography>
-                <Typography variant="h3" sx={{ 
-                  fontWeight: 900, mb: 1, letterSpacing: '-0.05em',
-                  color: 'text.primary',
-                  display: theme.themeMode === 'dark' ? 'none' : 'block',
-                  fontSize: { xs: '2.5rem', md: '3.5rem' }
-                }}>
-                  {greeting}, {user.email?.split('@')[0]}
-                </Typography>
-                <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.6 }}>
-                  {t('dashboard.welcome')}
-                </Typography>
+                <TranslatedText 
+                  text={`${greeting}, ${user.email?.split('@')[0]}`}
+                  variant="h3"
+                  sx={{ 
+                    fontWeight: 900, mb: 1, letterSpacing: '-0.05em',
+                    background: 'linear-gradient(135deg, #fff 0%, #aaa 100%)',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                    display: theme.themeMode === 'dark' ? 'block' : 'none',
+                    fontSize: { xs: '2.5rem', md: '3.8rem' },
+                    lineHeight: 1
+                  }}
+                />
+                <TranslatedText 
+                  text={`${greeting}, ${user.email?.split('@')[0]}`}
+                  variant="h3"
+                  sx={{ 
+                    fontWeight: 900, mb: 1, letterSpacing: '-0.05em',
+                    color: 'text.primary',
+                    display: theme.themeMode === 'dark' ? 'none' : 'block',
+                    fontSize: { xs: '2.5rem', md: '3.8rem' },
+                    lineHeight: 1
+                  }}
+                />
+                <TranslatedText 
+                  text="Welcome back! Here's your workspace overview for today."
+                  variant="h6"
+                  sx={{ color: 'text.secondary', fontWeight: 500, opacity: 0.7, ml: 0.8, fontSize: { xs: '1rem', md: '1.25rem' } }}
+                />
               </Box>
               
-              <Box sx={{ display: 'flex', gap: 1.5, p: 1, borderRadius: 4, bgcolor: alpha(theme.themeMode === 'dark' ? '#fff' : '#000', 0.05), border: '1px solid', borderColor: 'divider' }}>
-                <IconButton onClick={() => router.push('/user-clock')} sx={{ color: 'text.primary' }}><ClockIcon size={20} /></IconButton>
-                <IconButton onClick={handleThemeMenuOpen} sx={{ color: 'text.primary' }}>{theme.themeMode === 'dark' ? <MoonIcon size={20} /> : <SunIcon size={20} />}</IconButton>
-                <IconButton onClick={handleLanguageMenuOpen} sx={{ color: 'text.primary' }}><LanguageIcon size={20} /></IconButton>
+              <Box sx={{ display: 'flex', gap: 1.5, p: 1.5, borderRadius: 5, bgcolor: alpha(theme.themeMode === 'dark' ? '#fff' : '#000', 0.05), border: '1px solid', borderColor: 'divider', backdropFilter: 'blur(20px)' }}>
+                <IconButton onClick={() => router.push('/user-clock')} sx={{ color: 'text.primary' }}><ClockIcon size={22} /></IconButton>
+                <IconButton onClick={handleThemeMenuOpen} sx={{ color: 'text.primary' }}>{theme.themeMode === 'dark' ? <MoonIcon size={22} /> : <SunIcon size={22} />}</IconButton>
+                <IconButton onClick={handleLanguageMenuOpen} sx={{ color: 'text.primary' }}><LanguageIcon size={22} /></IconButton>
                 <Box sx={{ position: 'relative' }}>
-                  <IconButton sx={{ color: 'text.primary' }}><Bell size={20} /></IconButton>
+                  <IconButton sx={{ color: 'text.primary' }}><Bell size={22} /></IconButton>
                   <Box sx={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, bgcolor: 'error.main', borderRadius: '50%', border: '2px solid', borderColor: 'background.paper' }} />
                 </Box>
               </Box>
             </Box>
 
-            <Grid container spacing={3}>
+            <Grid container spacing={2.5}>
               {/* Stats Row */}
               {[
-                { label: 'Pending Tasks', value: stats.activeTasks, icon: <ProfessionalIcon />, color: '#FF9800', trend: '+2 today' },
-                { label: 'Today Events', value: stats.todayEvents, icon: <CalendarIcon />, color: '#4CAF50', trend: 'Next: 2pm' },
-                { label: 'Total Notes', value: stats.totalNotes, icon: <NoteIcon />, color: '#6750A4', trend: 'Latest: 1h ago' },
-                { label: 'Efficiency', value: `${stats.completionRate}%`, icon: <Zap />, color: '#00D2FF', trend: 'Target: 80%' }
+                { label: 'Pending Tasks', value: stats.activeTasks, icon: <ProfessionalIcon />, color: '#FF9800', trend: 'tasks' },
+                { label: 'Today Events', value: stats.todayEvents, icon: <CalendarIcon />, color: '#4CAF50', trend: 'events' },
+                { label: 'Total Notes', value: stats.totalNotes, icon: <NoteIcon />, color: '#6750A4', trend: 'notes' },
+                { label: 'Efficiency', value: `${stats.completionRate}%`, icon: <Zap />, color: '#00D2FF', trend: 'score' }
               ].map((stat, i) => (
-                <Grid key={i} size={{ xs: 12, sm: 6, md: 3 }}>
+                <Grid key={i} size={{ xs: 12, sm: 12, md: 3 }}>
                   <Grow in timeout={i * 100}>
                     <Card sx={{ 
-                      borderRadius: 5, 
-                      bgcolor: alpha(theme.themeMode === 'dark' ? '#1a1a1a' : '#fff', 0.65),
+                      borderRadius: 4, 
+                      bgcolor: alpha(stat.color, theme.themeMode === 'dark' ? 0.08 : 0.04),
                       backdropFilter: 'blur(10px)',
                       border: '1px solid',
-                      borderColor: 'divider',
-                      boxShadow: 'none'
+                      borderColor: alpha(stat.color, 0.2),
+                      boxShadow: 'none',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'translateY(-5px)',
+                        bgcolor: alpha(stat.color, theme.themeMode === 'dark' ? 0.12 : 0.08),
+                        borderColor: alpha(stat.color, 0.4),
+                      }
                     }}>
-                      <CardContent sx={{ p: 2.5 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                          <Box sx={{ p: 1.2, borderRadius: 3, bgcolor: alpha(stat.color, 0.1), color: stat.color, display: 'flex' }}>
-                            {stat.icon}
+                      <CardContent sx={{ p: '20px !important' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+                            <Box sx={{ 
+                              p: 1.5, 
+                              borderRadius: 3.5, 
+                              bgcolor: alpha(stat.color, 0.15), 
+                              color: stat.color, 
+                              display: 'flex',
+                              boxShadow: `0 8px 20px ${alpha(stat.color, 0.1)}`
+                            }}>
+                              {React.cloneElement(stat.icon as any, { size: 28 })}
+                            </Box>
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 0.2 }}>
+                                <TranslatedText text={stat.label} />
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: stat.color, fontWeight: 700, fontSize: '0.65rem' }}>
+                                <TranslatedText text={stat.trend} />
+                              </Typography>
+                            </Box>
                           </Box>
-                          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>{stat.trend}</Typography>
+                          <Typography variant="h3" sx={{ fontWeight: 900, color: 'text.primary', fontSize: '1.8rem', letterSpacing: '-0.02em' }}>
+                            {stat.value}
+                          </Typography>
                         </Box>
-                        <Typography variant="h4" sx={{ fontWeight: 900, mb: 0.5 }}>{stat.value}</Typography>
-                        <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</Typography>
                       </CardContent>
                     </Card>
                   </Grow>
@@ -345,9 +376,11 @@ const DashboardContent = () => {
                     <CardContent sx={{ p: 4 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
                         <Typography variant="h5" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <ProfessionalIcon size={24} color="#FF9800" /> Analytical & Professional
+                          <ProfessionalIcon size={24} color="#FF9800" /> <TranslatedText text="Analytical & Professional" />
                         </Typography>
-                        <Button endIcon={<ChevronRight />} onClick={() => router.push('/professional')} sx={{ fontWeight: 700 }}>View All</Button>
+                        <Button endIcon={<ChevronRight />} onClick={() => router.push('/professional')} sx={{ fontWeight: 700 }}>
+                          <TranslatedText text="View All" />
+                        </Button>
                       </Box>
                       
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
