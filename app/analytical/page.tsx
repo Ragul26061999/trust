@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { useThemeSync } from '../../lib/use-theme-sync';
 import useTranslations from '../../lib/use-translations';
+import { useLoading } from '../../lib/loading-context';
 import ProtectedLayout from '../protected-layout';
 import TranslatedText from '../../components/translated-text';
 import {
@@ -137,6 +138,7 @@ const AnalyticalPageContent = () => {
   const { user, logout } = useAuth();
   const { syncTheme } = useThemeSync(); // Add theme sync
   const { t } = useTranslations('common');
+  const { setIsLoading } = useLoading();
   const router = useRouter();
   const theme = useTheme();
   
@@ -164,6 +166,7 @@ const AnalyticalPageContent = () => {
     const fetchAnalyticsData = async () => {
       if (!user) return;
       
+      setIsLoading(true);
       setLoading(true);
       try {
         // Fetch personal calendar data
@@ -190,6 +193,7 @@ const AnalyticalPageContent = () => {
         console.error('Error fetching analytics data:', error);
       } finally {
         setLoading(false);
+        setIsLoading(false);
       }
     };
     
@@ -411,19 +415,17 @@ const AnalyticalPageContent = () => {
   const handleRefresh = () => {
     // Trigger data refresh
     if (user) {
+      setIsLoading(true);
       setLoading(true);
       setTimeout(() => {
         setLoading(false);
+        setIsLoading(false);
       }, 1000);
     }
   };
   
   if (loading || !analyticsData) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return null; // Global loading screen will be shown
   }
 
   return (

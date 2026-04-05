@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
+import { useLoading } from '../lib/loading-context';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import useTranslations from '../lib/use-translations';
 import ProfileModal from './profile-modal';
@@ -135,6 +136,7 @@ const Sidebar = () => {
   const pathname = usePathname();
   const theme = useTheme();
   const { logout, user } = useAuth();
+  const { setIsLoading } = useLoading();
   const { t } = useTranslations('common');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -199,11 +201,13 @@ const Sidebar = () => {
   };
 
   const handleNavigation = (path: string) => {
+    setIsLoading(true);
     router.push(path);
     setMobileOpen(false);
   };
 
   const handleSignOut = () => {
+    setIsLoading(true);
     logout();
     router.push('/login');
   };
@@ -232,7 +236,6 @@ const Sidebar = () => {
     { text: t('sidebar.personal'), icon: <LucideIcon icon={PersonalIcon} />, path: '/personal', color: '#9C27B0', locked: false },
     { text: t('sidebar.note_taking'), icon: <LucideIcon icon={NoteIcon} />, path: '/note-taking', color: '#6750A4', locked: false },
     { text: t('sidebar.calendar'), icon: <LucideIcon icon={CalendarIcon} />, path: '/calendar', color: '#4CAF50', locked: true },
-    { text: t('sidebar.user_clock'), icon: <LucideIcon icon={ClockIcon} />, path: '/user-clock', color: '#E91E63', locked: false },
   ];
 
   const currentWidth = isCollapsed ? collapsedWidth : drawerWidth;
@@ -313,7 +316,7 @@ const Sidebar = () => {
               onClick={() => !item.locked && handleNavigation(item.path)}
               sx={{
                 borderRadius: 3,
-                py: 2,
+                py: 1.2,
                 px: isCollapsed ? 0 : 2.5,
                 justifyContent: isCollapsed ? 'center' : 'flex-start',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

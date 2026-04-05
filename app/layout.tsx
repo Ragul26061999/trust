@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "../lib/auth-context";
 import { ThemeProvider } from "../lib/theme-context";
 import { LanguageProvider } from "../lib/language-context";
+import { LoadingProvider } from "../lib/loading-context";
 import { ThemeProvider as MuiThemeProvider } from "../components/mui-theme-provider";
 import UserNav from "../components/user-nav";
 import ThemeInitializer from "../components/theme-initializer";
@@ -31,10 +32,12 @@ export default function RootLayout({
           <ThemeProvider>
             <LanguageProvider>
               <MuiThemeProvider>
-                <div className="min-h-screen">
-                  <ThemeInitializer />
-                  {children}
-                </div>
+                <LoadingProvider>
+                  <div className="min-h-screen">
+                    <ThemeInitializer />
+                    {children}
+                  </div>
+                </LoadingProvider>
               </MuiThemeProvider>
             </LanguageProvider>
           </ThemeProvider>

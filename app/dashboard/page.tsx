@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth-context';
 import { useTheme } from '../../lib/theme-context';
 import { useThemeSync } from '../../lib/use-theme-sync';
 import { useLanguage } from '../../lib/language-context';
+import { useLoading } from '../../lib/loading-context';
 import useTranslations from '../../lib/use-translations';
 import { getTimeBasedGreetingByLanguage } from '../../lib/language-greetings';
 import { useRouter } from 'next/navigation';
@@ -85,6 +86,7 @@ const DashboardContent = () => {
   const { theme, setThemeMode } = useTheme();
   const { syncTheme } = useThemeSync();
   const { currentLanguage, setLanguage, availableLanguages } = useLanguage();
+  const { setIsLoading } = useLoading();
   const { t } = useTranslations('common');
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -107,6 +109,7 @@ const DashboardContent = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       if (!user?.id) return;
+      setIsLoading(true);
       setLoading(true);
       try {
         const [profTasks, calendarEntries, userNotes] = await Promise.all([
@@ -122,6 +125,7 @@ const DashboardContent = () => {
         console.error('Error fetching dashboard data:', error);
       } finally {
         setLoading(false);
+        setIsLoading(false);
       }
     };
     fetchDashboardData();

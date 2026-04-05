@@ -4,6 +4,7 @@ import React, { useState, useEffect, ChangeEvent } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { useTimeEngine } from '../../lib/time-engine';
 import { useThemeSync } from '../../lib/use-theme-sync';
+import { useLoading } from '../../lib/loading-context';
 import ProtectedLayout from '../protected-layout';
 import {
   Box,
@@ -90,6 +91,7 @@ const ProfessionalPageContent = () => {
   const { user, logout } = useAuth();
   const { addAlarm } = useTimeEngine();
   const { syncTheme } = useThemeSync(); // Add theme sync
+  const { setIsLoading } = useLoading();
   const router = useRouter();
   
   // State for user profile information
@@ -139,54 +141,12 @@ const ProfessionalPageContent = () => {
   
   const theme = useTheme();
   
-  // Check if user has completed profile setup
   useEffect(() => {
-    if (!user) return;
-    
-    console.log('User object:', user);
-    console.log('User ID:', user.id);
-    console.log('User ID type:', typeof user.id);
-    
-    // Validate user ID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(user.id)) {
-      console.error('Invalid user ID format detected:', user.id);
-      console.error('Expected UUID format but got:', typeof user.id);
-      // Still proceed but with warning
+    if (user) {
+      setIsLoading(true);
+      checkProfileSetup();
     }
-    
-    const checkProfileSetup = async () => {
-      try {
-        // Ensure the professional_tasks table exists
-        const tableExists = await ensureProfessionalTasksTable();
-        
-        if (!tableExists) {
-          console.warn('Professional tasks table does not exist. Showing setup form.');
-          setShowSetupForm(true);
-          return;
-        }
-        
-        const info = await getProfessionalInfo(user.id);
-        if (!info) {
-          setShowSetupForm(true);
-        } else {
-          setProfileInfo({
-            department: info.department || '',
-            role: info.role || '',
-            responsibilities: info.responsibilities || '',
-            experience: info.experience || '',
-          });
-          fetchTasks();
-        }
-      } catch (error) {
-        console.error('Error in profile setup check:', error);
-        // If there's an error, show setup form to ensure data gets initialized
-        setShowSetupForm(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-  }, [user]);
+  }, [user, setIsLoading]);
 
   const handleGoBack = () => {
     router.back();
@@ -306,15 +266,17 @@ const ProfessionalPageContent = () => {
   // Load profile info on component mount
   useEffect(() => {
     if (user) {
+      setIsLoading(true);
       checkProfileSetup();
     }
-  }, [user]);
+  }, [user, setIsLoading]);
 
   // Handle task creation
   const handleCreateTask = async () => {
     if (!user || !newTask.title) return;
     
     setLoading(true);
+    setIsLoading(true);
     
     const taskData = {
       user_id: user.id,
@@ -566,11 +528,7 @@ ${index + 1}. ${task.title}
   };
   
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return null; // The global loading screen will be shown by LoadingProvider
   }
   
   if (showSetupForm) {
@@ -1460,7 +1418,7 @@ ${index + 1}. ${task.title}
                           secondary={
                             <Box sx={{ mt: 1.5, ml: 5 }}>
                               <TranslatedText 
-                                text={task.description} 
+                                text={task.description || ''} 
                                 component={Typography}
                                 sx={{ mb: 1.5, lineHeight: 1.6, fontSize: '0.875rem', color: 'text.secondary' }} 
                               />
@@ -1468,7 +1426,7 @@ ${index + 1}. ${task.title}
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <Chip 
                                     size="small" 
-                                    label={<TranslatedText text={task.priority} />}
+                                    label={<TranslatedText text={task.priority || 'Medium'} />}
                                     color={task.priority === 'High' ? 'error' : task.priority === 'Medium' ? 'warning' : 'info'}
                                     sx={{ fontWeight: 600, height: 24 }}
                                   />

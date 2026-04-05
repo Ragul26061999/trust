@@ -93,6 +93,7 @@ import ProtectedLayout from '../protected-layout';
 import TranslatedText from '../../components/translated-text';
 import { useTimeEngine, TimeEngineProvider } from '../../lib/time-engine';
 import { useAuth } from '../../lib/auth-context';
+import { useLoading } from '../../lib/loading-context';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { getCalendarEntries, addCalendarEntry, updateCalendarEntry, deleteCalendarEntry, getCustomCalendars, addCustomCalendar } from '../../lib/personal-calendar-db';
@@ -161,6 +162,7 @@ interface CustomCalendar {
 
 const PersonalCalendarPage = () => {
     const { user } = useAuth();
+    const { setIsLoading } = useLoading();
     const router = useRouter();
     const [view, setView] = useState<'month' | 'week' | 'day'>('month');
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -231,12 +233,13 @@ const PersonalCalendarPage = () => {
     // Fetch entries and custom calendars from DB
     useEffect(() => {
         if (user) {
+            setIsLoading(true);
             fetchEntries();
             fetchCustomCalendars();
             loadUserSettings();
             loadCalendarIntegrations();
         }
-    }, [user]);
+    }, [user, setIsLoading]);
 
     // Load user settings
     const loadUserSettings = async () => {
@@ -392,6 +395,7 @@ const PersonalCalendarPage = () => {
 
         setEntries(mappedEntries);
         setLoading(false);
+        setIsLoading(false);
     };
 
     const fetchCustomCalendars = async () => {
@@ -481,6 +485,7 @@ const PersonalCalendarPage = () => {
 
     const handleAddEntry = async () => {
         if (!user) return;
+        setIsLoading(true);
 
         let entriesToAdd: any[] = [];
 
@@ -545,6 +550,7 @@ const PersonalCalendarPage = () => {
             setEntries([...entries, ...mappedAddedEntries]);
             setNewEntryTitle('');
             setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]);
+            setIsLoading(false);
             setOpenDialog(false);
         }
     };
@@ -720,6 +726,7 @@ const PersonalCalendarPage = () => {
 
     const handleUpdateEntry = async () => {
         if (!editingEntry || !user) return;
+        setIsLoading(true);
 
         let updates;
 
@@ -776,6 +783,7 @@ const PersonalCalendarPage = () => {
             setEditingEntry(null);
             setNewEntryTitle('');
             setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]); // Reset multiple entries
+            setIsLoading(false);
             setOpenDialog(false);
         }
     };

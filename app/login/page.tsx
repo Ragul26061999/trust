@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import { useLoading } from '../../lib/loading-context';
 import TranslatedText from '../../components/translated-text';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading, login, signInWithGoogle } = useAuth();
+  const { setIsLoading: setGlobalLoading } = useLoading();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,6 +38,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setGlobalLoading(true);
     setError('');
 
     try {
@@ -51,36 +54,12 @@ export default function LoginPage() {
       console.error('Login error:', err);
     } finally {
       setIsLoading(false);
+      setGlobalLoading(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
-        {/* Animated background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-100 via-purple-100 to-indigo-100">
-          <div 
-            className="absolute inset-0 animate-pulse" 
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C7B8EA' fill-opacity='0.1'%3E%3Ccircle cx='7' cy='7' r='7'/%3E%3Ccircle cx='53' cy='7' r='7'/%3E%3Ccircle cx='30' cy='30' r='7'/%3E%3Ccircle cx='7' cy='53' r='7'/%3E%3Ccircle cx='53' cy='53' r='7'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }}
-          ></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-200/20 via-transparent to-pink-200/20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        </div>
-        
-        <div className="relative z-10 max-w-md w-full space-y-8 bg-white/90 backdrop-blur-md p-8 rounded-3xl shadow-2xl border border-blue-200/50">
-          <div className="text-center">
-            <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-300 to-pink-300 rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-            <p className="text-gray-600 font-medium">Loading your workspace...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return null; // Global loading screen will be shown
   }
 
   return (
@@ -185,6 +164,7 @@ export default function LoginPage() {
         <button
           onClick={async () => {
             setIsLoading(true);
+            setGlobalLoading(true);
             setError('');
             try {
               await signInWithGoogle();
@@ -192,6 +172,7 @@ export default function LoginPage() {
               console.error('Google sign in error:', err);
               setError(err?.message || 'Failed to sign in with Google');
               setIsLoading(false);
+              setGlobalLoading(false);
             }
           }}
           className="w-full flex items-center justify-center py-3 px-4 border border-blue-200 rounded-lg bg-white hover:bg-blue-50 text-blue-700 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg"
