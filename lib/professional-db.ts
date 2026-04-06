@@ -24,6 +24,8 @@ export interface ProfessionalTask {
     scheduled_for?: string; // ISO date string
     priority?: string;
     status?: string; // pending, completed, rescheduled
+    completion_feedback?: string;
+    duration_minutes?: number;
     rescheduled_from?: string;
     created_at?: string;
     updated_at?: string;
@@ -364,7 +366,7 @@ export const saveProfessionalInfo = async (info: {
     }
 };
 
-export const getProfessionalTasks = async (userId: string, dateFilter?: string) => {
+export const getProfessionalTasks = async (userId: string, options?: { dateFilter?: string, startDate?: string, endDate?: string, limit?: number }) => {
     if (!isSupabaseConfigured() || !supabase) {
         console.warn('Supabase is not configured. Returning empty tasks for development.');
         return [];
@@ -377,8 +379,20 @@ export const getProfessionalTasks = async (userId: string, dateFilter?: string) 
             .eq('user_id', userId)
             .order('task_date', { ascending: true });
 
-        if (dateFilter) {
-            query = query.eq('task_date', dateFilter);
+        if (options?.dateFilter) {
+            query = query.eq('task_date', options.dateFilter);
+        }
+        
+        if (options?.startDate) {
+            query = query.gte('task_date', options.startDate);
+        }
+        
+        if (options?.endDate) {
+            query = query.lte('task_date', options.endDate);
+        }
+        
+        if (options?.limit) {
+            query = query.limit(options.limit);
         }
 
         const { data, error } = await query;
@@ -478,6 +492,10 @@ export const updateProfessionalTask = async (taskId: string, updates: Partial<Om
         console.error('Unexpected error updating professional task:', error);
         return false;
     }
+};
+
+export const updateProfessionalTaskFeedback = async (taskId: string, feedback: string) => {
+    return updateProfessionalTask(taskId, { completion_feedback: feedback } as any);
 };
 
 export const rescheduleProfessionalTask = async (taskId: string, newDate: string) => {

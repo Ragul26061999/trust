@@ -3,7 +3,6 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
-import { useLoading } from '../lib/loading-context';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import useTranslations from '../lib/use-translations';
 import ProfileModal from './profile-modal';
@@ -136,7 +135,6 @@ const Sidebar = () => {
   const pathname = usePathname();
   const theme = useTheme();
   const { logout, user } = useAuth();
-  const { setIsLoading } = useLoading();
   const { t } = useTranslations('common');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -201,13 +199,11 @@ const Sidebar = () => {
   };
 
   const handleNavigation = (path: string) => {
-    setIsLoading(true);
     router.push(path);
     setMobileOpen(false);
   };
 
   const handleSignOut = () => {
-    setIsLoading(true);
     logout();
     router.push('/login');
   };

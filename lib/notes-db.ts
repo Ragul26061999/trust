@@ -301,7 +301,7 @@ export const deleteNoteWithAttachments = async (noteId: string) => {
     }
 };
 
-export const getNotes = async (userId: string) => {
+export const getNotes = async (userId: string, limit?: number) => {
     // Check if Supabase is configured
     if (!isSupabaseConfigured() || !supabase) {
         console.warn('Supabase is not configured. Returning empty notes for development.');
@@ -309,12 +309,18 @@ export const getNotes = async (userId: string) => {
     }
 
     try {
-        const { data, error } = await supabase
+        let query = supabase
             .from('notes')
             .select('*')
             .eq('user_id', userId)
-            .is('converted_to_task', null) // Only get notes that haven't been converted
+            .is('converted_to_task', null)
             .order('created_at', { ascending: false });
+
+        if (limit) {
+            query = query.limit(limit);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error('Error fetching notes:', error);

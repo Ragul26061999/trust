@@ -19,18 +19,6 @@ export default function Home() {
   }, [user, loading, router]);
 
   // Show a loading state while authentication is being checked
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // If user is authenticated, don't render anything as redirect is happening
   if (user) {

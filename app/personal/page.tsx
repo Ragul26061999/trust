@@ -93,7 +93,6 @@ import ProtectedLayout from '../protected-layout';
 import TranslatedText from '../../components/translated-text';
 import { useTimeEngine, TimeEngineProvider } from '../../lib/time-engine';
 import { useAuth } from '../../lib/auth-context';
-import { useLoading } from '../../lib/loading-context';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { getCalendarEntries, addCalendarEntry, updateCalendarEntry, deleteCalendarEntry, getCustomCalendars, addCustomCalendar } from '../../lib/personal-calendar-db';
@@ -140,6 +139,8 @@ const CATEGORIES = [
     { id: 'household', label: 'Household', color: '#f43f5e', icon: <HouseholdIcon sx={{ fontSize: '0.8rem' }} /> },
 ];
 
+import { checkConflicts, UnifiedTask } from '../../lib/task-logic-service';
+
 interface CalendarEntry {
     id: string;
     title: string;
@@ -149,6 +150,7 @@ interface CalendarEntry {
     priority?: string;
     status?: string;
     description?: string;
+    completion_feedback?: string;
     source?: string;
     integrationId?: string;
 }
@@ -162,7 +164,7 @@ interface CustomCalendar {
 
 const PersonalCalendarPage = () => {
     const { user } = useAuth();
-    const { setIsLoading } = useLoading();
+    const { addAlarm } = useTimeEngine();
     const router = useRouter();
     const [view, setView] = useState<'month' | 'week' | 'day'>('month');
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -233,13 +235,12 @@ const PersonalCalendarPage = () => {
     // Fetch entries and custom calendars from DB
     useEffect(() => {
         if (user) {
-            setIsLoading(true);
             fetchEntries();
             fetchCustomCalendars();
             loadUserSettings();
             loadCalendarIntegrations();
         }
-    }, [user, setIsLoading]);
+    }, [user]);
 
     // Load user settings
     const loadUserSettings = async () => {
@@ -395,7 +396,6 @@ const PersonalCalendarPage = () => {
 
         setEntries(mappedEntries);
         setLoading(false);
-        setIsLoading(false);
     };
 
     const fetchCustomCalendars = async () => {
@@ -485,7 +485,19 @@ const PersonalCalendarPage = () => {
 
     const handleAddEntry = async () => {
         if (!user) return;
-        setIsLoading(true);
+        
+        const entryDateTime = new Date(`${newEntryDate}T${newEntryTime}`);
+        
+        // 1. Logic Check: Conflict Detection (Senior logically thinking)
+        const conflicts = await checkConflicts(user.id, entryDateTime.toISOString());
+        if (conflicts.length > 0) {
+            const confirmConflict = window.confirm(
+                `Logic Alert: You have ${conflicts.length} existing task(s) overlapping with this time. \n\n` +
+                conflicts.map(c => `- ${c.title} (${format(parseISO(c.start_time), 'HH:mm')})`).join('\n') +
+                `\n\nDo you want to proceed anyway?`
+            );
+            if (!confirmConflict) return;
+        }
 
         let entriesToAdd: any[] = [];
 
@@ -493,12 +505,12 @@ const PersonalCalendarPage = () => {
             entriesToAdd = multipleEntries
                 .filter(entry => entry.title.trim() !== '')
                 .map(entry => {
-                    const entryDateTime = new Date(`${entry.date}T${newEntryTime}`);
+                    const taskDateTime = new Date(`${entry.date}T${newEntryTime}`);
                     return {
                         user_id: user.id,
                         title: entry.title,
                         category: selectedCategory,
-                        entry_date: entryDateTime.toISOString(),
+                        entry_date: taskDateTime.toISOString(),
                         category_data: categoryData || {},
                         priority: selectedPriority,
                         status: 'pending',
@@ -506,7 +518,6 @@ const PersonalCalendarPage = () => {
                     };
                 });
         } else if (selectedCategory === 'goal') {
-            const entryDateTime = new Date(`${newEntryDate}T${newEntryTime}`);
             const goalEntries = createGoalEntry(entryDateTime);
             entriesToAdd = Array.isArray(goalEntries) ? goalEntries : [goalEntries];
 
@@ -515,7 +526,6 @@ const PersonalCalendarPage = () => {
                 entriesToAdd = [...entriesToAdd, ...additionalEntries];
             }
         } else {
-            const entryDateTime = new Date(`${newEntryDate}T${newEntryTime}`);
             entriesToAdd = [{
                 user_id: user.id,
                 title: newEntryTitle,
@@ -533,6 +543,16 @@ const PersonalCalendarPage = () => {
             const addedEntry = await addCalendarEntry(entry);
             if (addedEntry) {
                 addedEntries.push(addedEntry);
+                
+                // 2. Automated Alarm Creation for Web Application Notifications
+                if (entry.category === 'task' || entry.category === 'event') {
+                    await addAlarm({
+                        title: entry.title,
+                        source: 'Personal Task',
+                        triggerLocalIso: entry.entry_date,
+                        link: '/personal'
+                    });
+                }
             }
         }
 
@@ -550,8 +570,8 @@ const PersonalCalendarPage = () => {
             setEntries([...entries, ...mappedAddedEntries]);
             setNewEntryTitle('');
             setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]);
-            setIsLoading(false);
             setOpenDialog(false);
+            showSnackbar('Task scheduled and notification set!', 'success');
         }
     };
 
@@ -726,7 +746,6 @@ const PersonalCalendarPage = () => {
 
     const handleUpdateEntry = async () => {
         if (!editingEntry || !user) return;
-        setIsLoading(true);
 
         let updates;
 
@@ -783,7 +802,6 @@ const PersonalCalendarPage = () => {
             setEditingEntry(null);
             setNewEntryTitle('');
             setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]); // Reset multiple entries
-            setIsLoading(false);
             setOpenDialog(false);
         }
     };
@@ -2107,6 +2125,25 @@ const PersonalCalendarPage = () => {
                                                                     }}
                                                                 />
                                                             </Box>
+                                                            {entry.completion_feedback && (
+                                                                <Box sx={{ 
+                                                                    mt: 1.5, 
+                                                                    p: 1.5, 
+                                                                    borderRadius: 3, 
+                                                                    bgcolor: 'rgba(16, 185, 129, 0.05)', 
+                                                                    borderLeft: '4px solid #10b981',
+                                                                    display: 'flex',
+                                                                    flexDirection: 'column',
+                                                                    gap: 0.5
+                                                                }}>
+                                                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                                                        Task Reflection
+                                                                    </Typography>
+                                                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                                                                        "{entry.completion_feedback}"
+                                                                    </Typography>
+                                                                </Box>
+                                                            )}
                                                             {entry.category_data && Object.entries(entry.category_data as Record<string, any>).some(([_, v]) => v) && (
                                                                 <Box sx={{ mt: 1 }}>
                                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>

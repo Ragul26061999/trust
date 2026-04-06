@@ -4,7 +4,6 @@ import React, { useState, useEffect, ChangeEvent } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { useTimeEngine } from '../../lib/time-engine';
 import { useThemeSync } from '../../lib/use-theme-sync';
-import { useLoading } from '../../lib/loading-context';
 import ProtectedLayout from '../protected-layout';
 import {
   Box,
@@ -86,12 +85,12 @@ import {
 
 import { isSupabaseConfigured } from '../../lib/supabase';
 import TranslatedText from '../../components/translated-text';
+import { checkConflicts } from '../../lib/task-logic-service';
 
 const ProfessionalPageContent = () => {
   const { user, logout } = useAuth();
   const { addAlarm } = useTimeEngine();
   const { syncTheme } = useThemeSync(); // Add theme sync
-  const { setIsLoading } = useLoading();
   const router = useRouter();
   
   // State for user profile information
@@ -143,10 +142,9 @@ const ProfessionalPageContent = () => {
   
   useEffect(() => {
     if (user) {
-      setIsLoading(true);
       checkProfileSetup();
     }
-  }, [user, setIsLoading]);
+  }, [user]);
 
   const handleGoBack = () => {
     router.back();
@@ -228,7 +226,6 @@ const ProfessionalPageContent = () => {
       alert('An error occurred while saving your profile. Please check the console for details.');
     } finally {
       setLoading(false);
-      setIsLoading(false);
     }
   };
 
@@ -261,24 +258,33 @@ const ProfessionalPageContent = () => {
       setShowSetupForm(true);
     } finally {
       setLoading(false);
-      setIsLoading(false);
     }
   };
 
   // Load profile info on component mount
   useEffect(() => {
     if (user) {
-      setIsLoading(true);
       checkProfileSetup();
     }
-  }, [user, setIsLoading]);
+  }, [user]);
 
   // Handle task creation
   const handleCreateTask = async () => {
     if (!user || !newTask.title) return;
     
+    // 1. Logic Check: Conflict Detection (Senior logically thinking)
+    const taskDateTime = new Date(`${newTask.task_date}T09:00:00`); // Default to 9 AM if no time provided, or use current time
+    const conflicts = await checkConflicts(user.id, taskDateTime.toISOString());
+    if (conflicts.length > 0) {
+      const confirmConflict = window.confirm(
+        `Logic Alert: You have ${conflicts.length} existing task(s) overlapping with this time. \n\n` +
+        conflicts.map(c => `- ${c.title} (${format(parseISO(c.start_time), 'HH:mm')})`).join('\n') +
+        `\n\nDo you want to proceed anyway?`
+      );
+      if (!confirmConflict) return;
+    }
+
     setLoading(true);
-    setIsLoading(true);
     
     const taskData = {
       user_id: user.id,
@@ -298,15 +304,13 @@ const ProfessionalPageContent = () => {
       if (newTaskResult) {
         setTasks([...tasks, newTaskResult]);
         
-        // Create alarm if enabled
-        if (alarmEnabled && alarmTime && user) {
-          await addAlarm({
-            title: `Alarm for: ${newTask.title}`,
-            source: 'Professional Task',
-            triggerLocalIso: alarmTime,
-            link: `/professional`
-          });
-        }
+        // 2. Automated Alarm Creation for Web Application Notifications
+        await addAlarm({
+          title: `Professional: ${newTask.title}`,
+          source: 'Professional Task',
+          triggerLocalIso: `${newTask.task_date}T09:00:00`,
+          link: `/professional`
+        });
         
         setShowTaskForm(false);
         setNewTask({
@@ -322,7 +326,6 @@ const ProfessionalPageContent = () => {
       console.error('Error creating task:', error);
     } finally {
       setLoading(false);
-      setIsLoading(false);
     }
   };
   
@@ -531,7 +534,7 @@ ${index + 1}. ${task.title}
   };
   
   if (loading) {
-    return null; // The global loading screen will be shown by LoadingProvider
+    return null;
   }
   
   if (showSetupForm) {
@@ -1440,6 +1443,25 @@ ${index + 1}. ${task.title}
                                     {format(parseISO(task.task_date), 'MMM d, yyyy')}
                                   </Typography>
                                 </Box>
+                                {task.completion_feedback && (
+                                  <Box sx={{ 
+                                    mt: 2.5, 
+                                    p: 2, 
+                                    borderRadius: 3, 
+                                    bgcolor: 'rgba(102, 126, 234, 0.05)', 
+                                    borderLeft: '4px solid #667eea',
+                                    width: '100%',
+                                    display: 'block',
+                                    clear: 'both'
+                                  }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#5a67d8', textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 0.5 }}>
+                                      Performance Reflection
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', lineHeight: 1.6 }}>
+                                      "{task.completion_feedback}"
+                                    </Typography>
+                                  </Box>
+                                )}
                                 {task.scheduled_for && task.scheduled_for !== task.task_date && (
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <EventIcon sx={{ fontSize: 16, color: '#667eea' }} />

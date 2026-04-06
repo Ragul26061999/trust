@@ -10,6 +10,7 @@ export interface CalendarEntry {
     category_data?: any;
     priority?: string;
     status?: string;
+    completion_feedback?: string;
     created_at?: string;
     updated_at?: string;
     multimedia_content?: {
@@ -21,6 +22,11 @@ export interface CalendarEntry {
     }; // Multimedia content from converted notes
 }
 
+// Function to update task feedback
+export const updateTaskFeedback = async (entryId: string, feedback: string) => {
+    return updateCalendarEntry(entryId, { completion_feedback: feedback } as any);
+};
+
 export interface CustomCalendar {
     id: string;
     user_id: string;
@@ -31,8 +37,7 @@ export interface CustomCalendar {
     updated_at?: string;
 }
 
-// Function to get calendar entries for a specific user
-export const getCalendarEntries = async (userId: string) => {
+export const getCalendarEntries = async (userId: string, options?: { startDate?: string, endDate?: string, limit?: number }) => {
     // Check if Supabase is configured
     if (!isSupabaseConfigured() || !supabase) {
         console.warn('Supabase is not configured. Returning empty calendar entries for development.');
@@ -40,26 +45,39 @@ export const getCalendarEntries = async (userId: string) => {
     }
 
     try {
-        const { data, error } = await supabase
+        let query = supabase
             .from('timetable_entries')
             .select('*')
             .eq('user_id', userId)
             .order('entry_date', { ascending: true });
+
+        if (options?.startDate) {
+            query = query.gte('entry_date', options.startDate);
+        }
+        
+        if (options?.endDate) {
+            query = query.lte('entry_date', options.endDate);
+        }
+        
+        if (options?.limit) {
+            query = query.limit(options.limit);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error('Error fetching calendar entries:', error);
             return [];
         }
 
-        // Map the data to CalendarEntry format, handling different field names
+        // Map the data to CalendarEntry format
         const mappedData = data.map(item => {
-            // Use entry_date if available, otherwise use start_time
             const entryDate = item.entry_date || item.start_time || item.created_at;
             
             return {
                 ...item,
                 entry_date: entryDate,
-                date: new Date(entryDate) // Add a date field for compatibility
+                date: new Date(entryDate)
             } as CalendarEntry;
         });
 

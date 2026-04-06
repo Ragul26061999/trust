@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { useThemeSync } from '../../lib/use-theme-sync';
 import useTranslations from '../../lib/use-translations';
-import { useLoading } from '../../lib/loading-context';
 import ProtectedLayout from '../protected-layout';
 import TranslatedText from '../../components/translated-text';
 import {
@@ -138,7 +137,6 @@ const AnalyticalPageContent = () => {
   const { user, logout } = useAuth();
   const { syncTheme } = useThemeSync(); // Add theme sync
   const { t } = useTranslations('common');
-  const { setIsLoading } = useLoading();
   const router = useRouter();
   const theme = useTheme();
   
@@ -166,11 +164,40 @@ const AnalyticalPageContent = () => {
     const fetchAnalyticsData = async () => {
       if (!user) return;
       
-      setIsLoading(true);
       setLoading(true);
       try {
-        // Fetch personal calendar data
-        const personalEntries = await getCalendarEntries(user.id);
+        const now = new Date();
+        let startDate: Date;
+        
+        switch (timeRange) {
+          case 'week':
+          case '7days' as any:
+            startDate = subWeeks(now, 1);
+            break;
+          case 'month':
+          case '30days' as any:
+            startDate = subMonths(now, 1);
+            break;
+          case 'quarter':
+          case '90days' as any:
+            startDate = subMonths(now, 3);
+            break;
+          case '1year' as any:
+            startDate = subMonths(now, 12);
+            break;
+          default:
+            startDate = subMonths(now, 1);
+        }
+
+        const startDateStr = startDate.toISOString().split('T')[0];
+
+        // Fetch personal calendar data and professional data in parallel with date filters
+        const [personalEntries, professionalTasks, professionalInfo] = await Promise.all([
+          getCalendarEntries(user.id, { startDate: startDateStr }),
+          getProfessionalTasks(user.id, { startDate: startDateStr }),
+          getProfessionalInfo(user.id)
+        ]);
+
         const mappedPersonalEntries: CalendarEntry[] = personalEntries.map(entry => ({
           id: entry.id,
           title: entry.title,
@@ -181,10 +208,6 @@ const AnalyticalPageContent = () => {
           date: parseISO(entry.entry_date)
         }));
         
-        // Fetch professional data
-        const professionalTasks = await getProfessionalTasks(user.id);
-        const professionalInfo = await getProfessionalInfo(user.id);
-        
         // Process data for analytics
         const processedData = processData(mappedPersonalEntries, professionalTasks, professionalInfo);
         setAnalyticsData(processedData);
@@ -193,7 +216,6 @@ const AnalyticalPageContent = () => {
         console.error('Error fetching analytics data:', error);
       } finally {
         setLoading(false);
-        setIsLoading(false);
       }
     };
     
@@ -213,13 +235,19 @@ const AnalyticalPageContent = () => {
     
     switch (timeRange) {
       case 'week':
+      case '7days' as any:
         startDate = subWeeks(now, 1);
         break;
       case 'month':
+      case '30days' as any:
         startDate = subMonths(now, 1);
         break;
       case 'quarter':
+      case '90days' as any:
         startDate = subMonths(now, 3);
+        break;
+      case '1year' as any:
+        startDate = subMonths(now, 12);
         break;
       default:
         startDate = subMonths(now, 1);
@@ -415,17 +443,22 @@ const AnalyticalPageContent = () => {
   const handleRefresh = () => {
     // Trigger data refresh
     if (user) {
-      setIsLoading(true);
       setLoading(true);
       setTimeout(() => {
         setLoading(false);
-        setIsLoading(false);
       }, 300);
     }
   };
   
   if (loading || !analyticsData) {
-    return null; // Global loading screen will be shown
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 3 }}>
+        <CircularProgress size={60} thickness={4} sx={{ color: '#2196F3' }} />
+        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.secondary', opacity: 0.8 }}>
+          <TranslatedText text="Analyzing your performance data..." />
+        </Typography>
+      </Box>
+    );
   }
 
   return (

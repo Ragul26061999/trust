@@ -3,14 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
-import { useLoading } from '../../lib/loading-context';
 import TranslatedText from '../../components/translated-text';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading, login, signInWithGoogle } = useAuth();
-  const { setIsLoading: setGlobalLoading } = useLoading();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -38,7 +36,6 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setGlobalLoading(true);
     setError('');
 
     try {
@@ -54,12 +51,11 @@ export default function LoginPage() {
       console.error('Login error:', err);
     } finally {
       setIsLoading(false);
-      setGlobalLoading(false);
     }
   };
 
   if (loading) {
-    return null; // Global loading screen will be shown
+    return null;
   }
 
   return (

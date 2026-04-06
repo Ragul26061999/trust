@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { useLoading } from '../lib/loading-context';
 import {
   Dialog,
   DialogTitle,
@@ -45,7 +44,6 @@ interface ProfileModalProps {
 
 const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, isFirstTime = false }) => {
   const { user } = useAuth();
-  const { setIsLoading } = useLoading();
   const [profile, setProfile] = useState<UserProfile>({
     email: user?.email || '',
   });
@@ -149,7 +147,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, isFirstTime 
     if (!user) return;
 
     setLoading(true);
-    setIsLoading(true);
     setError(null);
     setSuccess(null);
 
@@ -234,7 +231,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, isFirstTime 
       setError(err.message || 'Failed to save profile');
     } finally {
       setLoading(false);
-      setIsLoading(false);
     }
   };
 

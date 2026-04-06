@@ -47,19 +47,6 @@ export default function ProtectedLayout({
     }
   }, [user, loading, router]);
 
-  if (loading) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        bgcolor: 'background.default'
-      }}>
-        <Box>Loading...</Box>
-      </Box>
-    );
-  }
 
   if (!user) {
     return null;
