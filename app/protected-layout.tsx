@@ -59,7 +59,7 @@ export default function ProtectedLayout({
         component="main" 
         sx={{ 
           flexGrow: 1, 
-          p: 3,
+          p: 0,
           overflow: 'auto',
           bgcolor: 'background.default'
         }}

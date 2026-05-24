@@ -13,6 +13,8 @@ export interface CalendarEntry {
     completion_feedback?: string;
     created_at?: string;
     updated_at?: string;
+    before_popup_minutes?: number;
+    after_popup_minutes?: number;
     multimedia_content?: {
         has_attachments: boolean;
         attachments: any[];
@@ -24,7 +26,7 @@ export interface CalendarEntry {
 
 // Function to update task feedback
 export const updateTaskFeedback = async (entryId: string, feedback: string) => {
-    return updateCalendarEntry(entryId, { completion_feedback: feedback } as any);
+    return updateCalendarEntry(entryId, { completion_feedback: feedback, status: 'completed' } as any);
 };
 
 export interface CustomCalendar {
@@ -121,7 +123,9 @@ export const addCalendarEntry = async (entry: Omit<CalendarEntry, 'id' | 'create
             priority: entry.priority || 'medium',
             entry_date: entryDateTime,  // Keep entry_date for backward compatibility
             category_data: entry.category_data || {},
-            status: entry.status || 'pending'
+            status: entry.status || 'pending',
+            before_popup_minutes: entry.before_popup_minutes || 0,
+            after_popup_minutes: entry.after_popup_minutes || 0
         };
         
         console.log('Prepared database entry:', dbEntry);
@@ -172,6 +176,8 @@ export const updateCalendarEntry = async (entryId: string, updates: Partial<Omit
         if (updates.category) preparedUpdates.category = updates.category;
         if (updates.priority) preparedUpdates.priority = updates.priority;
         if (updates.status) preparedUpdates.status = updates.status;
+        if (updates.before_popup_minutes !== undefined) preparedUpdates.before_popup_minutes = updates.before_popup_minutes;
+        if (updates.after_popup_minutes !== undefined) preparedUpdates.after_popup_minutes = updates.after_popup_minutes;
         
         // Handle date fields - update both start_time, end_time, and entry_date
         if (updates.entry_date) {

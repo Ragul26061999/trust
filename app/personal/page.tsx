@@ -153,6 +153,8 @@ interface CalendarEntry {
     completion_feedback?: string;
     source?: string;
     integrationId?: string;
+    before_popup_minutes?: number;
+    after_popup_minutes?: number;
 }
 
 interface CustomCalendar {
@@ -180,6 +182,8 @@ const PersonalCalendarPage = () => {
     const [categoryData, setCategoryData] = useState<any>({});
     const [editingEntry, setEditingEntry] = useState<CalendarEntry & { dateStr: string, timeStr: string } | null>(null);
     const [multipleEntries, setMultipleEntries] = useState<{ title: string, date: string }[]>([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]);
+    const [beforePopupMinutes, setBeforePopupMinutes] = useState(0);
+    const [afterPopupMinutes, setAfterPopupMinutes] = useState(0);
     const [goalDuration, setGoalDuration] = useState('day');
     const [goalRecurring, setGoalRecurring] = useState(false);
     const [visibleCategories, setVisibleCategories] = useState<Record<string, boolean>>(
@@ -514,7 +518,9 @@ const PersonalCalendarPage = () => {
                         category_data: categoryData || {},
                         priority: selectedPriority,
                         status: 'pending',
-                        description: ''
+                        description: '',
+                        before_popup_minutes: beforePopupMinutes,
+                        after_popup_minutes: afterPopupMinutes
                     };
                 });
         } else if (selectedCategory === 'goal') {
@@ -534,7 +540,9 @@ const PersonalCalendarPage = () => {
                 category_data: categoryData || {},
                 priority: selectedPriority,
                 status: 'pending',
-                description: ''
+                description: '',
+                before_popup_minutes: beforePopupMinutes,
+                after_popup_minutes: afterPopupMinutes
             }];
         }
 
@@ -564,12 +572,16 @@ const PersonalCalendarPage = () => {
                 category_data: addedEntry.category_data,
                 priority: addedEntry.priority,
                 description: addedEntry.description,
-                date: parseISO(addedEntry.entry_date)
+                date: parseISO(addedEntry.entry_date),
+                before_popup_minutes: addedEntry.before_popup_minutes,
+                after_popup_minutes: addedEntry.after_popup_minutes
             }));
 
             setEntries([...entries, ...mappedAddedEntries]);
             setNewEntryTitle('');
             setMultipleEntries([{ title: '', date: format(new Date(), 'yyyy-MM-dd') }]);
+            setBeforePopupMinutes(0);
+            setAfterPopupMinutes(0);
             setOpenDialog(false);
             showSnackbar('Task scheduled and notification set!', 'success');
         }
@@ -741,6 +753,8 @@ const PersonalCalendarPage = () => {
         setSelectedPriority(entry.priority || 'Medium');
         setNewEntryDate(format(entry.date, 'yyyy-MM-dd'));
         setNewEntryTime(format(entry.date, 'HH:mm'));
+        setBeforePopupMinutes(entry.before_popup_minutes || 0);
+        setAfterPopupMinutes(entry.after_popup_minutes || 0);
         setOpenDialog(true);
     };
 
@@ -758,7 +772,9 @@ const PersonalCalendarPage = () => {
                 entry_date: new Date(`${newEntryDate}T${newEntryTime}`).toISOString(),
                 category_data: categoryData || {},
                 priority: selectedPriority,
-                description: ''
+                description: '',
+                before_popup_minutes: beforePopupMinutes,
+                after_popup_minutes: afterPopupMinutes
             };
         } else if (selectedCategory === 'goal') {
             // Handle goal updates
@@ -768,7 +784,9 @@ const PersonalCalendarPage = () => {
                 entry_date: new Date(`${newEntryDate}T${newEntryTime}`).toISOString(),
                 category_data: categoryData || {},
                 priority: selectedPriority,
-                description: ''
+                description: '',
+                before_popup_minutes: beforePopupMinutes,
+                after_popup_minutes: afterPopupMinutes
             };
         } else {
             updates = {
@@ -777,7 +795,9 @@ const PersonalCalendarPage = () => {
                 entry_date: new Date(`${newEntryDate}T${newEntryTime}`).toISOString(),
                 category_data: categoryData || {},
                 priority: selectedPriority,
-                description: ''
+                description: '',
+                before_popup_minutes: beforePopupMinutes,
+                after_popup_minutes: afterPopupMinutes
             };
         }
 
@@ -794,7 +814,9 @@ const PersonalCalendarPage = () => {
                         category_data: updates.category_data,
                         priority: updates.priority,
                         description: updates.description,
-                        date: new Date(updates.entry_date)
+                        date: new Date(updates.entry_date),
+                        before_popup_minutes: updates.before_popup_minutes,
+                        after_popup_minutes: updates.after_popup_minutes
                     }
                     : entry
             ));
@@ -1182,7 +1204,7 @@ const PersonalCalendarPage = () => {
             flexDirection: 'column',
             height: '100vh',
             bgcolor: 'background.default',
-            m: -4, // Counteract ProtectedLayout padding
+            m: 0,
             overflow: 'hidden'
         }}>
             {/* Header */}
@@ -2494,6 +2516,40 @@ const PersonalCalendarPage = () => {
                             </Box>
                         )}
 
+                        <Divider sx={{ my: 2 }} />
+                        <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                            Popup Timing
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Box sx={{ flex: 1 }}>
+                                <FormControl fullWidth variant="outlined">
+                                    <InputLabel>Before (mins)</InputLabel>
+                                    <Select
+                                        value={beforePopupMinutes}
+                                        onChange={(e) => setBeforePopupMinutes(Number(e.target.value))}
+                                        label="Before (mins)"
+                                    >
+                                        {[0, 5, 10, 15, 30, 60].map(mins => (
+                                            <MenuItem key={mins} value={mins}>{mins}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                                <FormControl fullWidth variant="outlined">
+                                    <InputLabel>After (mins)</InputLabel>
+                                    <Select
+                                        value={afterPopupMinutes}
+                                        onChange={(e) => setAfterPopupMinutes(Number(e.target.value))}
+                                        label="After (mins)"
+                                    >
+                                        {[0, 5, 10, 15, 30, 60].map(mins => (
+                                            <MenuItem key={mins} value={mins}>{mins}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Box>
+                        </Box>
 
                     </Box>
                 </DialogContent>

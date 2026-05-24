@@ -113,6 +113,8 @@ const ProfessionalPageContent = () => {
     description: '',
     priority: 'Medium',
     task_date: format(new Date(), 'yyyy-MM-dd'),
+    before_popup_minutes: 0,
+    after_popup_minutes: 0,
   });
   
   // State for alarm functionality
@@ -297,6 +299,8 @@ const ProfessionalPageContent = () => {
       task_date: newTask.task_date,
       priority: newTask.priority,
       status: 'pending',
+      before_popup_minutes: newTask.before_popup_minutes,
+      after_popup_minutes: newTask.after_popup_minutes,
     };
     
     try {
@@ -318,6 +322,8 @@ const ProfessionalPageContent = () => {
           description: '',
           priority: 'Medium',
           task_date: format(new Date(), 'yyyy-MM-dd'),
+          before_popup_minutes: 0,
+          after_popup_minutes: 0,
         });
         setAlarmEnabled(false);
         setAlarmTime('');

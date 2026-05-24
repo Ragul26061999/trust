@@ -57,7 +57,6 @@ import {
   ChevronRight,
   Monitor,
   Bell,
-  Languages as LanguageIcon,
   PieChart as PieIcon,
 } from 'lucide-react';
 import { 
@@ -90,7 +89,6 @@ const DashboardContent = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [greeting, setGreeting] = useState(getTimeBasedGreetingByLanguage(currentLanguage));
   const [themeMenuAnchor, setThemeMenuAnchor] = useState<null | HTMLElement>(null);
-  const [languageMenuAnchor, setLanguageMenuAnchor] = useState<null | HTMLElement>(null);
   
   const [tasks, setTasks] = useState<any[]>([]);
   const [personalEntries, setPersonalEntries] = useState<any[]>([]);
@@ -257,9 +255,6 @@ const DashboardContent = () => {
   const handleThemeMenuOpen = (e: React.MouseEvent<HTMLElement>) => setThemeMenuAnchor(e.currentTarget);
   const handleThemeMenuClose = () => setThemeMenuAnchor(null);
   const handleThemeChange = (mode: ThemeMode) => { setThemeMode(mode); syncTheme(); handleThemeMenuClose(); };
-  const handleLanguageMenuOpen = (e: React.MouseEvent<HTMLElement>) => setLanguageMenuAnchor(e.currentTarget);
-  const handleLanguageMenuClose = () => setLanguageMenuAnchor(null);
-  const handleLanguageChange = (code: string) => { setLanguage(code); handleLanguageMenuClose(); };
 
   if (!user) return null;
 
@@ -267,14 +262,19 @@ const DashboardContent = () => {
     <>
       <FirstTimeLoginChecker />
       <Fade in timeout={800}>
-        <Container maxWidth="xl" sx={{ 
-          py: { xs: 2, md: 5 }, 
-          position: 'relative',
+        <Box sx={{ 
           minHeight: '100vh',
-          background: theme.themeMode === 'dark' 
-            ? 'radial-gradient(circle at 0% 0%, rgba(103, 80, 164, 0.05) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(0, 210, 255, 0.05) 0%, transparent 50%)'
-            : 'radial-gradient(circle at 0% 0%, rgba(103, 80, 164, 0.02) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(0, 210, 255, 0.02) 0%, transparent 50%)'
+          width: '100%',
+          bgcolor: theme.themeMode === 'dark' ? '#0f172a' : '#f4f7fe',
+          display: 'flex',
+          flexDirection: 'column'
         }}>
+          <Container maxWidth={false} sx={{ 
+            py: { xs: 3, md: 5 },
+            px: { xs: 2, md: 4, lg: 6 },
+            position: 'relative',
+            flexGrow: 1
+          }}>
           <Box sx={{ position: 'relative', zIndex: 1 }}>
             {/* Header Section */}
             <Box sx={{ mb: 6, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
@@ -305,14 +305,13 @@ const DashboardContent = () => {
                 <TranslatedText 
                   text="Welcome back! Here's your workspace overview for today."
                   variant="h6"
-                  sx={{ color: 'text.secondary', fontWeight: 500, opacity: 0.7, ml: 0.8, fontSize: { xs: '1rem', md: '1.25rem' } }}
+                  sx={{ color: theme.themeMode === 'dark' ? '#94a3b8' : '#64748b', fontWeight: 500, mt: 0.5, ml: 0.8, fontSize: { xs: '1rem', md: '1.1rem' } }}
                 />
               </Box>
               
               <Box sx={{ display: 'flex', gap: 1.5, p: 1.5, borderRadius: 5, bgcolor: alpha(theme.themeMode === 'dark' ? '#fff' : '#000', 0.05), border: '1px solid', borderColor: 'divider', backdropFilter: 'blur(20px)' }}>
                 <IconButton onClick={() => router.push('/user-clock')} sx={{ color: 'text.primary' }}><ClockIcon size={22} /></IconButton>
                 <IconButton onClick={handleThemeMenuOpen} sx={{ color: 'text.primary' }}>{theme.themeMode === 'dark' ? <MoonIcon size={22} /> : <SunIcon size={22} />}</IconButton>
-                <IconButton onClick={handleLanguageMenuOpen} sx={{ color: 'text.primary' }}><LanguageIcon size={22} /></IconButton>
                 <Box sx={{ position: 'relative' }}>
                   <IconButton sx={{ color: 'text.primary' }}><Bell size={22} /></IconButton>
                   <Box sx={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, bgcolor: 'error.main', borderRadius: '50%', border: '2px solid', borderColor: 'background.paper' }} />
@@ -331,17 +330,15 @@ const DashboardContent = () => {
                 <Grid key={i} size={{ xs: 12, sm: 12, md: 3 }}>
                   <Grow in timeout={i * 100}>
                     <Card sx={{ 
-                      borderRadius: 4, 
-                      bgcolor: alpha(stat.color, theme.themeMode === 'dark' ? 0.08 : 0.04),
-                      backdropFilter: 'blur(10px)',
+                      borderRadius: '20px', 
+                      bgcolor: theme.themeMode === 'dark' ? '#1e293b' : '#ffffff',
                       border: '1px solid',
-                      borderColor: alpha(stat.color, 0.2),
-                      boxShadow: 'none',
+                      borderColor: theme.themeMode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                      boxShadow: theme.themeMode === 'dark' ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.04)',
                       transition: 'all 0.3s ease',
                       '&:hover': {
-                        transform: 'translateY(-5px)',
-                        bgcolor: alpha(stat.color, theme.themeMode === 'dark' ? 0.12 : 0.08),
-                        borderColor: alpha(stat.color, 0.4),
+                        transform: 'translateY(-4px)',
+                        boxShadow: theme.themeMode === 'dark' ? '0 8px 30px rgba(0,0,0,0.6)' : '0 10px 30px rgba(0,0,0,0.08)',
                       }
                     }}>
                       <CardContent sx={{ p: '20px !important' }}>
@@ -380,7 +377,7 @@ const DashboardContent = () => {
               <Grid size={{ xs: 12, lg: 8 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {/* Professional Tracker */}
-                  <Card sx={{ borderRadius: 6, bgcolor: alpha(theme.themeMode === 'dark' ? '#222' : '#fff', 0.5), backdropFilter: 'blur(20px)', border: '1px solid', borderColor: 'divider' }}>
+                  <Card sx={{ borderRadius: '24px', bgcolor: theme.themeMode === 'dark' ? '#1e293b' : '#ffffff', border: '1px solid', borderColor: theme.themeMode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', boxShadow: theme.themeMode === 'dark' ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.04)' }}>
                     <CardContent sx={{ p: 4 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
                         <Typography variant="h5" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -419,7 +416,7 @@ const DashboardContent = () => {
                   {/* Personal & Notes Hub */}
                   <Grid container spacing={3}>
                     <Grid size={{ xs: 12, md: 6 }}>
-                      <Card sx={{ height: '100%', borderRadius: 6, bgcolor: alpha(theme.themeMode === 'dark' ? '#222' : '#fff', 0.5), backdropFilter: 'blur(20px)', border: '1px solid', borderColor: 'divider' }}>
+                      <Card sx={{ height: '100%', borderRadius: '24px', bgcolor: theme.themeMode === 'dark' ? '#1e293b' : '#ffffff', border: '1px solid', borderColor: theme.themeMode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', boxShadow: theme.themeMode === 'dark' ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.04)' }}>
                         <CardContent sx={{ p: 4 }}>
                           <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
                             <PersonalIcon size={20} color="#9C27B0" /> Personal Life
@@ -439,7 +436,7 @@ const DashboardContent = () => {
                       </Card>
                     </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
-                      <Card sx={{ height: '100%', borderRadius: 6, bgcolor: alpha(theme.themeMode === 'dark' ? '#222' : '#fff', 0.5), backdropFilter: 'blur(20px)', border: '1px solid', borderColor: 'divider' }}>
+                      <Card sx={{ height: '100%', borderRadius: '24px', bgcolor: theme.themeMode === 'dark' ? '#1e293b' : '#ffffff', border: '1px solid', borderColor: theme.themeMode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', boxShadow: theme.themeMode === 'dark' ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.04)' }}>
                         <CardContent sx={{ p: 4 }}>
                           <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
                             <NoteIcon size={20} color="#6750A4" /> Note Taking
@@ -463,7 +460,7 @@ const DashboardContent = () => {
               {/* Sidebar Analytics */}
               <Grid size={{ xs: 12, lg: 4 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <Card sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: alpha(theme.themeMode === 'dark' ? '#1a1a1a' : '#fff', 0.8), backdropFilter: 'blur(20px)' }}>
+                  <Card sx={{ borderRadius: '24px', bgcolor: theme.themeMode === 'dark' ? '#1e293b' : '#ffffff', border: '1px solid', borderColor: theme.themeMode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', boxShadow: theme.themeMode === 'dark' ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.04)' }}>
                     <CardContent sx={{ p: 3 }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Activity size={20} color="#00D2FF" /> Weekly Activity
@@ -482,7 +479,7 @@ const DashboardContent = () => {
                     </CardContent>
                   </Card>
 
-                  <Card sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: alpha(theme.themeMode === 'dark' ? '#1a1a1a' : '#fff', 0.8), backdropFilter: 'blur(20px)' }}>
+                  <Card sx={{ borderRadius: '24px', bgcolor: theme.themeMode === 'dark' ? '#1e293b' : '#ffffff', border: '1px solid', borderColor: theme.themeMode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', boxShadow: theme.themeMode === 'dark' ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.04)' }}>
                     <CardContent sx={{ p: 3 }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Target size={20} color="#FFD700" /> Success Metrics
@@ -518,6 +515,7 @@ const DashboardContent = () => {
             </Grid>
           </Box>
         </Container>
+        </Box>
       </Fade>
 
       {/* Menus */}
@@ -525,12 +523,6 @@ const DashboardContent = () => {
         <MenuItem onClick={() => handleThemeChange('light')} sx={{ gap: 2 }}><SunIcon size={18} color="#FFD700" /> Light</MenuItem>
         <MenuItem onClick={() => handleThemeChange('dark')} sx={{ gap: 2 }}><MoonIcon size={18} color="#9C27B0" /> Dark</MenuItem>
         <MenuItem onClick={() => handleThemeChange('auto')} sx={{ gap: 2 }}><Monitor size={18} color="#2196F3" /> Auto</MenuItem>
-      </Menu>
-
-      <Menu anchorEl={languageMenuAnchor} open={Boolean(languageMenuAnchor)} onClose={handleLanguageMenuClose} PaperProps={{ sx: { borderRadius: 3, mt: 1, minWidth: 180 } }}>
-        {availableLanguages.map(lang => (
-          <MenuItem key={lang.code} onClick={() => handleLanguageChange(lang.code)} selected={currentLanguage === lang.code} sx={{ fontWeight: 600 }}>{lang.name}</MenuItem>
-        ))}
       </Menu>
     </>
   );

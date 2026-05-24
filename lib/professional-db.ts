@@ -29,6 +29,8 @@ export interface ProfessionalTask {
     rescheduled_from?: string;
     created_at?: string;
     updated_at?: string;
+    before_popup_minutes?: number;
+    after_popup_minutes?: number;
     // Multimedia fields for converted notes
     drawing_data?: any;
     drawing_thumbnail?: string;
@@ -432,6 +434,8 @@ export const addProfessionalTask = async (task: Omit<ProfessionalTask, 'id' | 'c
             experience: task.experience || '',
             priority: task.priority || 'Medium',
             status: task.status || 'pending',
+            before_popup_minutes: task.before_popup_minutes || 0,
+            after_popup_minutes: task.after_popup_minutes || 0,
         };
         
         console.log('Task with defaults:', taskWithDefaults);
@@ -495,7 +499,7 @@ export const updateProfessionalTask = async (taskId: string, updates: Partial<Om
 };
 
 export const updateProfessionalTaskFeedback = async (taskId: string, feedback: string) => {
-    return updateProfessionalTask(taskId, { completion_feedback: feedback } as any);
+    return updateProfessionalTask(taskId, { completion_feedback: feedback, status: 'completed' } as any);
 };
 
 export const rescheduleProfessionalTask = async (taskId: string, newDate: string) => {

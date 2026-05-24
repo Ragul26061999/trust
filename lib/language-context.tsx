@@ -1,82 +1,24 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { Language, languages, getLanguageByCode } from './languages';
-import { translationService } from './translation-service';
+import { createContext, useContext, ReactNode } from 'react';
 
 interface LanguageContextType {
   currentLanguage: string;
   setLanguage: (languageCode: string) => void;
-  availableLanguages: Language[];
+  availableLanguages: any[];
   isLoading: boolean;
   autoTranslate: (text: string) => Promise<string>;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-interface LanguageProviderProps {
-  children: ReactNode;
-}
-
-export function LanguageProvider({ children }: LanguageProviderProps) {
-  const [currentLanguage, setCurrentLanguage] = useState<string>('en');
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    // Load language from localStorage or browser preference
-    const loadLanguage = () => {
-      try {
-        // Check if language is saved in localStorage
-        const savedLanguage = localStorage.getItem('preferred-language');
-        
-        if (savedLanguage && getLanguageByCode(savedLanguage)) {
-          setCurrentLanguage(savedLanguage);
-        } else {
-          // Fallback to browser language detection
-          const browserLang = navigator.language.split('-')[0];
-          const supportedLang = getLanguageByCode(browserLang);
-          
-          if (supportedLang) {
-            setCurrentLanguage(browserLang);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading language preference:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadLanguage();
-  }, []);
-
-  const setLanguage = (languageCode: string) => {
-    try {
-      const language = getLanguageByCode(languageCode);
-      if (language) {
-        setCurrentLanguage(languageCode);
-        localStorage.setItem('preferred-language', languageCode);
-        
-        // Reload the page to apply the new language
-        router.refresh();
-      }
-    } catch (error) {
-      console.error('Error setting language:', error);
-    }
-  };
-
-  const autoTranslate = async (text: string): Promise<string> => {
-    return await translationService.translate(text, currentLanguage);
-  };
-
+export function LanguageProvider({ children }: { children: ReactNode }) {
   const value: LanguageContextType = {
-    currentLanguage,
-    setLanguage,
-    availableLanguages: languages,
-    isLoading,
-    autoTranslate,
+    currentLanguage: 'en',
+    setLanguage: () => {},
+    availableLanguages: [{ code: 'en', name: 'English' }],
+    isLoading: false,
+    autoTranslate: async (text: string) => text,
   };
 
   return (

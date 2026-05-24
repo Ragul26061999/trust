@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import useTranslations from '../lib/use-translations';
 import ProfileModal from './profile-modal';
 import {
   Box,
@@ -40,7 +39,9 @@ import {
   ChevronRight as ChevronRightIcon,
   Lock as LockIcon,
   UserCircle as ProfileIcon,
+  Mic as VoiceIcon,
 } from 'lucide-react';
+import VoiceSchedulerModal from './voice-scheduler-modal';
 
 // Create icon wrapper components for Lucide icons to work with MUI
 const LucideIcon = ({ icon: Icon, size = 20, sx, ...props }: any) => (
@@ -135,13 +136,14 @@ const Sidebar = () => {
   const pathname = usePathname();
   const theme = useTheme();
   const { logout, user } = useAuth();
-  const { t } = useTranslations('common');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const openProfileMenu = Boolean(anchorEl);
+  
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
   // Load user profile data
   useEffect(() => {
@@ -225,13 +227,14 @@ const Sidebar = () => {
   };
 
   const navItems = [
-    { text: t('sidebar.home'), icon: <LucideIcon icon={HomeIcon} />, path: '/home', color: '#4F46E5', locked: false },
-    { text: t('sidebar.dashboard'), icon: <LucideIcon icon={DashboardIcon} />, path: '/dashboard', color: '#667eea', locked: false },
-    { text: t('sidebar.analytical'), icon: <LucideIcon icon={AnalyticsIcon} />, path: '/analytical', color: '#2196F3', locked: false },
-    { text: t('sidebar.professional'), icon: <LucideIcon icon={ProfessionalIcon} />, path: '/professional', color: '#FF9800', locked: false },
-    { text: t('sidebar.personal'), icon: <LucideIcon icon={PersonalIcon} />, path: '/personal', color: '#9C27B0', locked: false },
-    { text: t('sidebar.note_taking'), icon: <LucideIcon icon={NoteIcon} />, path: '/note-taking', color: '#6750A4', locked: false },
-    { text: t('sidebar.calendar'), icon: <LucideIcon icon={CalendarIcon} />, path: '/calendar', color: '#4CAF50', locked: true },
+    { text: 'Home', icon: <LucideIcon icon={HomeIcon} />, path: '/home', color: '#4F46E5', locked: false },
+    { text: 'Dashboard', icon: <LucideIcon icon={DashboardIcon} />, path: '/dashboard', color: '#667eea', locked: false },
+    { text: 'Analytical', icon: <LucideIcon icon={AnalyticsIcon} />, path: '/analytical', color: '#2196F3', locked: false },
+    { text: 'Professional', icon: <LucideIcon icon={ProfessionalIcon} />, path: '/professional', color: '#FF9800', locked: false },
+    { text: 'Personal Life', icon: <LucideIcon icon={PersonalIcon} />, path: '/personal', color: '#9C27B0', locked: false },
+    { text: 'Note Taking', icon: <LucideIcon icon={NoteIcon} />, path: '/note-taking', color: '#6750A4', locked: false },
+    { text: 'Calendar', icon: <LucideIcon icon={CalendarIcon} />, path: '/calendar', color: '#4CAF50', locked: false },
+    { text: 'Voice Schedule', icon: <LucideIcon icon={VoiceIcon} />, path: 'voice-action', color: '#f44336', locked: false },
   ];
 
   const currentWidth = isCollapsed ? collapsedWidth : drawerWidth;
@@ -241,126 +244,98 @@ const Sidebar = () => {
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      bgcolor: 'background.paper',
+      bgcolor: theme.palette.mode === 'dark' ? '#111827' : '#ffffff',
       transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       width: currentWidth,
+      position: 'relative',
       overflowX: 'hidden',
+      overflowY: 'auto',
+      borderRight: '1px solid',
+      borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
     }}>
       {/* Brand Header */}
       <Box sx={{
         p: 3,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: isCollapsed ? 'center' : 'space-between',
-        mb: 3,
+        justifyContent: 'center',
+        mb: 2,
         borderBottom: '1px solid',
-        borderColor: 'divider'
+        borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#f1f5f9'
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, my: 1 }}>
-          <Image
-            src="/6-removebg-preview.png"
-            alt="Time OS Logo"
-            width={120}
-            height={20}
-            objectFit="contain"
-            priority={true}
-          />
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {!isCollapsed ? (
+            <Image
+              src="/6-removebg-preview.png"
+              alt="Time OS Logo"
+              width={120}
+              height={20}
+              objectFit="contain"
+              priority={true}
+            />
+          ) : (
+            <Box sx={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'primary.main' }}>
+              T
+            </Box>
+          )}
         </Box>
-
-        {!isCollapsed && (
-          <IconButton 
-            onClick={handleCollapseToggle} 
-            size="small" 
-            sx={{ 
-              color: 'text.secondary',
-              bgcolor: 'action.hover',
-              '&:hover': {
-                bgcolor: 'action.selected',
-                color: 'text.primary'
-              }
-            }}
-          >
-            <LucideIcon icon={ChevronLeftIcon} size={20} />
-          </IconButton>
-        )}
       </Box>
 
-      {isCollapsed && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-          <IconButton 
-            onClick={handleCollapseToggle} 
-            size="small" 
-            sx={{ 
-              color: 'primary.main', 
-              bgcolor: 'primary.light',
-              '&:hover': {
-                bgcolor: 'primary.dark',
-              }
-            }}
-          >
-            <LucideIcon icon={ChevronRightIcon} size={20} />
-          </IconButton>
-        </Box>
-      )}
 
       {/* Navigation List */}
       <List sx={{ px: isCollapsed ? 1.5 : 2, flexGrow: 1 }}>
         {navItems.map((item) => {
-          const isActive = pathname === item.path;
+          const isActive = pathname === item.path || (pathname === '/' && item.path === '/dashboard');
+          
+          // Modern pill design for active state
           const itemContent = (
             <ListItemButton
-              onClick={() => !item.locked && handleNavigation(item.path)}
+              onClick={() => {
+                if (item.locked) return;
+                if (item.path === 'voice-action') {
+                  setIsVoiceModalOpen(true);
+                  if (mobileOpen) setMobileOpen(false);
+                } else {
+                  handleNavigation(item.path);
+                }
+              }}
               sx={{
-                borderRadius: 3,
-                py: 1.2,
-                px: isCollapsed ? 0 : 2.5,
+                borderRadius: '12px',
+                py: 1,
+                px: isCollapsed ? 0 : 2,
                 justifyContent: isCollapsed ? 'center' : 'flex-start',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                bgcolor: isActive ? `${item.color}15` : 'transparent',
+                transition: 'all 0.2s ease-in-out',
+                bgcolor: isActive ? (theme.palette.mode === 'dark' ? alpha(item.color, 0.15) : alpha(item.color, 0.1)) : 'transparent',
+                color: isActive ? item.color : (theme.palette.mode === 'dark' ? '#94a3b8' : '#64748b'),
                 position: 'relative',
-                opacity: item.locked ? 0.6 : 1,
+                opacity: item.locked ? 0.5 : 1,
                 cursor: item.locked ? 'not-allowed' : 'pointer',
+                mb: 0.5,
                 '&:hover': !item.locked ? {
-                  bgcolor: isActive ? `${item.color}25` : 'action.hover',
-                  transform: 'translateX(4px)'
-                } : {
-                  bgcolor: 'transparent',
-                  transform: 'none'
-                },
+                  bgcolor: isActive ? (theme.palette.mode === 'dark' ? alpha(item.color, 0.2) : alpha(item.color, 0.15)) : (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc'),
+                  color: isActive ? item.color : (theme.palette.mode === 'dark' ? '#f8fafc' : '#0f172a'),
+                } : {},
               }}
             >
               <ListItemIcon sx={{
-                minWidth: isCollapsed ? 0 : 48,
+                minWidth: isCollapsed ? 0 : 40,
                 justifyContent: 'center',
-                position: 'relative'
+                color: 'inherit',
               }}>
-                <Box sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 3,
-                  bgcolor: isActive ? `${item.color}20` : item.locked ? 'action.disabled' : `${item.color}10`,
-                  color: isActive ? item.color : item.locked ? 'text.disabled' : item.color,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.3s ease',
-                  boxShadow: isActive ? `0 4px 12px ${item.color}30` : 'none'
-                }}>
-                  {item.icon}
-                </Box>
+                {item.icon}
               </ListItemIcon>
               {!isCollapsed && (
                 <ListItemText
                   primary={item.text}
                   primaryTypographyProps={{
-                    fontWeight: isActive ? 700 : 600,
-                    fontSize: '0.875rem',
-                    color: isActive ? item.color : item.locked ? 'text.disabled' : 'text.primary',
-                    noWrap: true
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: '0.9rem',
+                    color: 'inherit',
+                    letterSpacing: '-0.01em',
                   }}
                   secondary={item.locked ? 'Coming Soon' : ''}
                   secondaryTypographyProps={{
-                    fontSize: '0.75rem',
+                    fontSize: '0.7rem',
                     color: 'text.secondary',
                     fontWeight: 500
                   }}
@@ -441,7 +416,7 @@ const Sidebar = () => {
                   <LucideIcon icon={ProfileIcon} size={18} />
                 </ListItemIcon>
                 <ListItemText 
-                  primary={t('sidebar.edit_profile')} 
+                  primary="Edit Profile" 
                   primaryTypographyProps={{ 
                     fontSize: '0.85rem',
                     fontWeight: 500 
@@ -454,7 +429,7 @@ const Sidebar = () => {
                   <LucideIcon icon={LogoutIcon} size={18} sx={{ color: 'error.main' }} />
                 </ListItemIcon>
                 <ListItemText 
-                  primary={t('sidebar.logout')} 
+                  primary="Logout" 
                   primaryTypographyProps={{ 
                     fontSize: '0.85rem',
                     fontWeight: 500,
@@ -504,12 +479,35 @@ const Sidebar = () => {
               width: currentWidth,
               border: 'none',
               transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              overflowX: 'hidden',
+              overflow: 'visible',
             },
           }}
           open
         >
           {drawer}
+          {/* Center Right Edge Collapse Toggle */}
+          <IconButton 
+            onClick={handleCollapseToggle} 
+            size="small" 
+            sx={{ 
+              position: 'absolute',
+              top: '50%',
+              right: -14,
+              transform: 'translateY(-50%)',
+              zIndex: 10,
+              bgcolor: theme.palette.mode === 'dark' ? '#1e293b' : '#ffffff',
+              border: '1px solid',
+              borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+              color: theme.palette.mode === 'dark' ? '#94a3b8' : '#64748b',
+              '&:hover': {
+                bgcolor: theme.palette.mode === 'dark' ? '#334155' : '#f8fafc',
+                color: 'primary.main'
+              }
+            }}
+          >
+            <LucideIcon icon={isCollapsed ? ChevronRightIcon : ChevronLeftIcon} size={16} />
+          </IconButton>
         </Drawer>
       </Box>
 
@@ -537,6 +535,22 @@ const Sidebar = () => {
         onClose={handleProfileModalClose}
         isFirstTime={false}
       />
+      
+      {/* Voice Scheduler Modal */}
+      {user && (
+        <VoiceSchedulerModal 
+          open={isVoiceModalOpen} 
+          onClose={() => setIsVoiceModalOpen(false)} 
+          userId={user.id} 
+          onSuccess={() => {
+            if (pathname === '/calendar') {
+              window.location.reload();
+            } else {
+              router.push('/calendar');
+            }
+          }} 
+        />
+      )}
     </>
   );
 };
