@@ -421,7 +421,7 @@ const HomeContent = () => {
               display: 'flex', 
               alignItems: 'center', 
               gap: 1.5,
-              background: 'linear-gradient(45deg, #4F46E5 30%, #9333EA 90%)',
+              background: 'linear-gradient(45deg, #2563EB 30%, #60A5FA 90%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}>
@@ -484,7 +484,7 @@ const HomeContent = () => {
               border: '1px solid',
               borderColor: 'divider'
             }}>
-              <Box sx={{ height: 100, background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)' }} />
+              <Box sx={{ height: 100, background: 'linear-gradient(135deg, #2563EB 0%, #60A5FA 100%)' }} />
               <CardContent sx={{ pt: 0, textAlign: 'center', mt: -6 }}>
                 <Avatar 
                   sx={{ 

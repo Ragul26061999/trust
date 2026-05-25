@@ -227,14 +227,14 @@ const Sidebar = () => {
   };
 
   const navItems = [
-    { text: 'Home', icon: <LucideIcon icon={HomeIcon} />, path: '/home', color: '#4F46E5', locked: false },
-    { text: 'Dashboard', icon: <LucideIcon icon={DashboardIcon} />, path: '/dashboard', color: '#667eea', locked: false },
-    { text: 'Analytical', icon: <LucideIcon icon={AnalyticsIcon} />, path: '/analytical', color: '#2196F3', locked: false },
-    { text: 'Professional', icon: <LucideIcon icon={ProfessionalIcon} />, path: '/professional', color: '#FF9800', locked: false },
-    { text: 'Personal Life', icon: <LucideIcon icon={PersonalIcon} />, path: '/personal', color: '#9C27B0', locked: false },
-    { text: 'Note Taking', icon: <LucideIcon icon={NoteIcon} />, path: '/note-taking', color: '#6750A4', locked: false },
-    { text: 'Calendar', icon: <LucideIcon icon={CalendarIcon} />, path: '/calendar', color: '#4CAF50', locked: false },
-    { text: 'Voice Schedule', icon: <LucideIcon icon={VoiceIcon} />, path: 'voice-action', color: '#f44336', locked: false },
+    { text: 'Home', icon: <LucideIcon icon={HomeIcon} />, path: '/home', color: '#3B82F6', locked: false },
+    { text: 'Dashboard', icon: <LucideIcon icon={DashboardIcon} />, path: '/dashboard', color: '#3B82F6', locked: false },
+    { text: 'Analytical', icon: <LucideIcon icon={AnalyticsIcon} />, path: '/analytical', color: '#3B82F6', locked: false },
+    { text: 'Professional', icon: <LucideIcon icon={ProfessionalIcon} />, path: '/professional', color: '#3B82F6', locked: false },
+    { text: 'Personal Life', icon: <LucideIcon icon={PersonalIcon} />, path: '/personal', color: '#3B82F6', locked: false },
+    { text: 'Note Taking', icon: <LucideIcon icon={NoteIcon} />, path: '/note-taking', color: '#3B82F6', locked: false },
+    { text: 'Calendar', icon: <LucideIcon icon={CalendarIcon} />, path: '/calendar', color: '#3B82F6', locked: false },
+    { text: 'Voice Schedule', icon: <LucideIcon icon={VoiceIcon} />, path: 'voice-action', color: '#38BDF8', locked: false },
   ];
 
   const currentWidth = isCollapsed ? collapsedWidth : drawerWidth;

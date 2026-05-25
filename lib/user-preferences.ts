@@ -5,11 +5,11 @@ export type ThemeMode = 'light' | 'dark' | 'auto';
 
 // Default theme settings
 export const DEFAULT_THEME = {
-  primaryColor: '#6750A4',
-  secondaryColor: '#625B71',
-  backgroundColor: '#FEF7FF',
-  textColor: '#1C1B1F',
-  accentColor: '#FF7D95',
+  primaryColor: '#3B82F6',
+  secondaryColor: '#64748B',
+  backgroundColor: '#F8FAFC',
+  textColor: '#0F172A',
+  accentColor: '#38BDF8',
   backgroundImage: null,
   themeMode: 'light' as ThemeMode, // 'light', 'dark', or 'auto'
 };
