@@ -220,7 +220,35 @@ const NoteMediaDisplay: React.FC<NoteMediaDisplayProps> = ({
               Attachments ({attachments.length})
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {attachments.slice(0, compact ? 2 : 5).map((attachment) => (
+              {attachments.slice(0, compact ? 2 : 5).map((attachment) => {
+                const previewUrl = attachment.file_url || attachment.file_data;
+                const isImage = attachment.file_type === 'image' || (attachment as any).mime_type?.startsWith('image/');
+
+                if (!compact && isImage && previewUrl) {
+                  return (
+                    <Box 
+                      key={attachment.id} 
+                      sx={{ 
+                        width: '100%', 
+                        mb: 1, 
+                        borderRadius: 3, 
+                        overflow: 'hidden', 
+                        cursor: 'pointer',
+                        border: '1px solid',
+                        borderColor: 'divider'
+                      }}
+                      onClick={() => handlePreview('image', previewUrl, attachment.file_name)}
+                    >
+                      <img 
+                        src={previewUrl} 
+                        alt={attachment.file_name}
+                        style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', display: 'block' }}
+                      />
+                    </Box>
+                  );
+                }
+
+                return (
                 <Chip
                   key={attachment.id}
                   icon={getFileIcon(attachment.file_type)}
@@ -231,7 +259,6 @@ const NoteMediaDisplay: React.FC<NoteMediaDisplayProps> = ({
                   variant="outlined"
                   clickable
                   onClick={() => {
-                    const previewUrl = attachment.file_url || attachment.file_data;
                     if (previewUrl) {
                       handlePreview(
                         attachment.file_type as 'image' | 'video' | 'audio' | 'document' | 'drawing', 
@@ -242,7 +269,7 @@ const NoteMediaDisplay: React.FC<NoteMediaDisplayProps> = ({
                   }}
                   sx={{ fontSize: '0.7rem' }}
                 />
-              ))}
+              )})}
               {!compact && attachments.length > 5 && (
                 <Chip
                   label={`+${attachments.length - 5} more`}

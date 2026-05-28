@@ -58,6 +58,7 @@ import { getProfessionalInfo, getProfessionalTasks, ProfessionalTask } from '../
 import { getCalendarEntries, CalendarEntry } from '../../lib/personal-calendar-db';
 import { getNotes, addNote, Note, getNotesWithAttachments, addNoteWithAttachments, updateNote, deleteNoteWithAttachments } from '../../lib/notes-db';
 import { toggleLike, getPostLikes, getPostComments, addComment, PostLike, PostComment } from '../../lib/social-db';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { 
   Dialog, 
   DialogTitle, 
@@ -92,6 +93,7 @@ const HomeContent = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [connectedUserIds, setConnectedUserIds] = useState<string[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
   
   // Social states
   const [likes, setLikes] = useState<Record<string, PostLike[]>>({});
@@ -191,7 +193,8 @@ const HomeContent = () => {
         getCalendarEntries(user.id),
         getNotesWithAttachments(user.id),
         getAllUsers(),
-        getUserConnections(user.id)
+        getUserConnections(user.id),
+        isSupabaseConfigured() && supabase ? supabase.from('user_profiles').select('avatar_url').eq('user_id', user.id).single() : Promise.resolve({ data: null })
       ]);
 
       const info = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -200,6 +203,7 @@ const HomeContent = () => {
       const notesData = results[3].status === 'fulfilled' ? results[3].value : [];
       const usersData = results[4].status === 'fulfilled' ? results[4].value : [];
       const connectionsData = results[5].status === 'fulfilled' ? results[5].value : [];
+      const profileData = results[6].status === 'fulfilled' && results[6].value ? (results[6].value as any).data : null;
 
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const todayTasks = tasksData?.filter((t: any) => t.task_date === todayStr) || [];
@@ -210,6 +214,7 @@ const HomeContent = () => {
       setPosts(notesData);
       setAllUsers(usersData.filter(u => u.id !== user.id)); // Exclude current user
       setConnectedUserIds(connectionsData);
+      setUserProfile(profileData);
       setTasks(todayTasks);
       setSchedule(calData || []);
       // Treat notes as posts for the social feed
@@ -416,7 +421,7 @@ const HomeContent = () => {
         mx: { xs: -2, md: -4 }, // counteract parent padding to make header full width
       }}>
         <Grid container alignItems="center" spacing={2}>
-          <Grid size={3}>
+          <Grid size={{ xs: 6, md: 3 }}>
             <Typography variant="h5" fontWeight={900} color="primary" sx={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -429,7 +434,9 @@ const HomeContent = () => {
               {t('home.title')}
             </Typography>
           </Grid>
-          <Grid size={6}>
+          
+          {/* Search Bar - Full width on mobile, middle on desktop */}
+          <Grid size={{ xs: 12, md: 6 }} sx={{ order: { xs: 3, md: 2 } }}>
             <TextField
               fullWidth
               size="small"
@@ -451,8 +458,10 @@ const HomeContent = () => {
               }}
             />
           </Grid>
-          <Grid size={3} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 3 }}>
-            <Box sx={{ textAlign: 'right' }}>
+
+          {/* Date and Notification - Right side */}
+          <Grid size={{ xs: 6, md: 3 }} sx={{ order: { xs: 2, md: 3 }, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: { xs: 1, md: 3 } }}>
+            <Box sx={{ textAlign: 'right', display: { xs: 'none', lg: 'block' } }}>
               <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1 }}>
                 {format(currentDate, 'EEEE')}
               </Typography>
@@ -460,14 +469,12 @@ const HomeContent = () => {
                 {format(currentDate, 'MMMM do, yyyy')}
               </Typography>
             </Box>
-            <IconButton sx={{ 
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
-            }}>
-              <Badge badgeContent={3} color="primary" overlap="circular">
-                <BellIcon size={20} />
-              </Badge>
-            </IconButton>
+            <Box sx={{ position: 'relative' }}>
+              <IconButton sx={{ color: 'text.primary' }}>
+                <BellIcon size={22} />
+              </IconButton>
+              <Box sx={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, bgcolor: 'error.main', borderRadius: '50%', border: '2px solid', borderColor: 'background.paper' }} />
+            </Box>
           </Grid>
         </Grid>
       </Box>
@@ -487,6 +494,7 @@ const HomeContent = () => {
               <Box sx={{ height: 100, background: 'linear-gradient(135deg, #2563EB 0%, #60A5FA 100%)' }} />
               <CardContent sx={{ pt: 0, textAlign: 'center', mt: -6 }}>
                 <Avatar 
+                  src={userProfile?.avatar_url || (user as any)?.user_metadata?.avatar_url}
                   sx={{ 
                     width: 100, 
                     height: 100, 
@@ -507,11 +515,6 @@ const HomeContent = () => {
                   {professionalInfo?.department || 'Department not set'}
                 </Typography>
                 
-                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', gap: 1 }}>
-                  <Chip label="Member" size="small" sx={{ fontWeight: 600, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main' }} />
-                  <Chip label="Pro" size="small" sx={{ fontWeight: 600, bgcolor: alpha(theme.palette.secondary.main, 0.1), color: 'secondary.main' }} />
-                </Box>
-
                 <Divider sx={{ my: 3 }} />
                 
                 <Grid container spacing={2}>
@@ -583,7 +586,7 @@ const HomeContent = () => {
             borderColor: 'divider'
           }}>
             <Box sx={{ display: 'flex', gap: 2, mb: selectedImage || selectedDoc ? 1 : 3 }}>
-              <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.main', fontWeight: 700 }}>{user?.email?.charAt(0).toUpperCase()}</Avatar>
+              <Avatar src={userProfile?.avatar_url || (user as any)?.user_metadata?.avatar_url} sx={{ width: 48, height: 48, bgcolor: 'primary.main', fontWeight: 700 }}>{user?.email?.charAt(0).toUpperCase()}</Avatar>
               <TextField
                 fullWidth
                 multiline
@@ -716,7 +719,7 @@ const HomeContent = () => {
               <CardContent sx={{ pb: 2, px: 3, pt: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
                   <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Avatar sx={{ width: 44, height: 44, bgcolor: 'secondary.main', fontWeight: 800 }}>
+                    <Avatar src={userProfile?.avatar_url || (user as any)?.user_metadata?.avatar_url} sx={{ width: 44, height: 44, bgcolor: 'secondary.main', fontWeight: 800 }}>
                       {user?.email?.charAt(0).toUpperCase()}
                     </Avatar>
                     <Box>
@@ -741,7 +744,7 @@ const HomeContent = () => {
                   );
                   return (
                     <Grid container spacing={2} sx={{ mb: 2 }}>
-                      <Grid size={{ xs: 12, sm: hasAttachments ? 8 : 12 }}>
+                      <Grid size={{ xs: 12 }}>
                         <Typography variant="body1" sx={{ 
                           whiteSpace: 'pre-wrap', 
                           lineHeight: 1.6,
@@ -752,8 +755,8 @@ const HomeContent = () => {
                         </Typography>
                       </Grid>
                       {hasAttachments && (
-                        <Grid size={{ xs: 12, sm: 4 }} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
-                          <Box sx={{ width: '100%', maxWidth: '200px' }}>
+                        <Grid size={{ xs: 12 }}>
+                          <Box sx={{ width: '100%', mt: 1 }}>
                             <NoteMediaDisplay 
                               attachments={(post as any).note_attachments} 
                               drawingData={(post as any).drawing_data}
@@ -761,7 +764,7 @@ const HomeContent = () => {
                               audioRecordingUrl={(post as any).audio_recording_url}
                               isDrawing={(post as any).is_drawing}
                               isRecording={(post as any).is_recording}
-                              compact={true} 
+                              compact={false} 
                             />
                           </Box>
                         </Grid>
@@ -914,16 +917,34 @@ const HomeContent = () => {
                         secondary={person.email}
                         secondaryTypographyProps={{ variant: 'caption', fontWeight: 500 }}
                       />
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleToggleConnection(person.id)}
-                        sx={{ 
-                          color: isConnected ? 'error.main' : 'primary.main', 
-                          bgcolor: isConnected ? alpha(theme.palette.error.main, 0.05) : alpha(theme.palette.primary.main, 0.05) 
-                        }}
-                      >
-                        {isConnected ? <XIcon size={16} /> : <PlusIcon size={16} />}
-                      </IconButton>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        {isConnected && (
+                          <Tooltip title="Message">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => alert('Messaging feature coming soon!')}
+                              sx={{ 
+                                color: 'success.main', 
+                                bgcolor: alpha(theme.palette.success.main, 0.1) 
+                              }}
+                            >
+                              <MessageIcon size={16} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Tooltip title={isConnected ? "Disconnect" : "Connect"}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleToggleConnection(person.id)}
+                            sx={{ 
+                              color: isConnected ? 'error.main' : 'primary.main', 
+                              bgcolor: isConnected ? alpha(theme.palette.error.main, 0.1) : alpha(theme.palette.primary.main, 0.1) 
+                            }}
+                          >
+                            {isConnected ? <XIcon size={16} /> : <PlusIcon size={16} />}
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </ListItem>
                   );
                 }) : (
