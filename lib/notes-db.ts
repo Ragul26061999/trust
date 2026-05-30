@@ -17,6 +17,8 @@ export interface Note {
     tags?: string[]; // Array of tags
     is_drawing?: boolean; // Flag for drawings
     is_recording?: boolean; // Flag for recordings
+    task_level?: string;
+    task_status?: string;
 }
 
 // Interface for note attachments
@@ -32,6 +34,29 @@ export interface NoteAttachment {
     created_at: string;
     updated_at: string;
 }
+
+// Helper functions for encoding/decoding virtual fields to tags
+const encodeNote = (note: any) => {
+    const { task_level, task_status, tags = [], ...rest } = note;
+    const newTags = tags.filter((t: string) => !t.startsWith('level:') && !t.startsWith('status:'));
+    if (task_level) newTags.push(`level:${task_level}`);
+    if (task_status) newTags.push(`status:${task_status}`);
+    return { ...rest, tags: newTags };
+};
+
+const decodeNote = (note: any): any => {
+    if (!note) return note;
+    const tags = note.tags || [];
+    const levelTag = tags.find((t: string) => t.startsWith('level:'));
+    const statusTag = tags.find((t: string) => t.startsWith('status:'));
+    const newTags = tags.filter((t: string) => !t.startsWith('level:') && !t.startsWith('status:'));
+    return {
+        ...note,
+        tags: newTags,
+        task_level: levelTag ? levelTag.split(':')[1] : undefined,
+        task_status: statusTag ? statusTag.split(':')[1] : undefined,
+    };
+};
 
 // Function to get note attachments for a specific note
 export const getNoteAttachments = async (noteId: string) => {
@@ -146,7 +171,7 @@ export const addNoteWithAttachments = async (note: Omit<Note, 'id' | 'created_at
         // First, add the note
         const { data: noteData, error: noteError } = await supabase
             .from('notes')
-            .insert([note])
+            .insert([encodeNote(note)])
             .select()
             .single();
 
@@ -177,7 +202,7 @@ export const addNoteWithAttachments = async (note: Omit<Note, 'id' | 'created_at
             attachmentData = attData as NoteAttachment[];
         }
 
-        return { note: noteData as Note, attachments: attachmentData };
+        return { note: decodeNote(noteData) as Note, attachments: attachmentData };
     } catch (error) {
         console.error('Unexpected error adding note with attachments:', error);
         return null;
@@ -208,7 +233,7 @@ export const getNotesWithAttachments = async (userId: string) => {
             return [];
         }
 
-        return data as (Note & { note_attachments: NoteAttachment[] })[];
+        return data.map(decodeNote) as (Note & { note_attachments: NoteAttachment[] })[];
     } catch (error) {
         console.error('Unexpected error fetching notes with attachments:', error);
         return [];
@@ -231,7 +256,7 @@ export const updateNoteWithAttachments = async (
         // Update the note
         const { error: noteError } = await supabase
             .from('notes')
-            .update(noteUpdates)
+            .update(encodeNote(noteUpdates))
             .eq('id', noteId);
 
         if (noteError) {
@@ -327,7 +352,7 @@ export const getNotes = async (userId: string, limit?: number) => {
             return [];
         }
 
-        return data as Note[];
+        return data.map(decodeNote) as Note[];
     } catch (error) {
         console.error('Unexpected error fetching notes:', error);
         return [];
@@ -351,7 +376,7 @@ export const addNote = async (note: Omit<Note, 'id' | 'created_at' | 'updated_at
     try {
         const { data, error } = await supabase
             .from('notes')
-            .insert([note])
+            .insert([encodeNote(note)])
             .select()
             .single();
 
@@ -366,7 +391,7 @@ export const addNote = async (note: Omit<Note, 'id' | 'created_at' | 'updated_at
             return null;
         }
 
-        return data as Note;
+        return decodeNote(data) as Note;
     } catch (error) {
         console.error('Unexpected error adding note:', error);
         return null;
@@ -385,7 +410,7 @@ export const updateNote = async (noteId: string, updates: Partial<Omit<Note, 'id
     try {
         const { error } = await supabase
             .from('notes')
-            .update(updates)
+            .update(encodeNote(updates))
             .eq('id', noteId);
 
         if (error) {

@@ -29,7 +29,12 @@ import {
   useTheme,
   alpha,
   CircularProgress,
-  Tooltip
+  Tooltip,
+  Select,
+  FormControl,
+  InputLabel,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -71,7 +76,9 @@ import {
 import Link from 'next/link';
 import VoiceSchedulerModal from '../../components/voice-scheduler-modal';
 import NoteMediaDisplay from '../../components/note-media-display';
-import { getAllUsers, getUserConnections, toggleUserConnection } from '../actions/user-actions';
+import { getAllUsers, getUserConnectionsInfo, sendConnectionRequest, acceptConnectionRequest, rejectConnectionRequest, removeConnection } from '../actions/user-actions';
+import ChatBox from '../../components/chat-box';
+import { getUnreadCounts, markMessagesAsRead } from '../../lib/chat-db';
 // Lucide Icon Wrapper
 const LucideIcon = ({ icon: Icon, size = 20, style = {} }: any) => (
   <Icon size={size} style={style} />
@@ -90,9 +97,15 @@ const HomeContent = () => {
   const [posts, setPosts] = useState<Note[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
+  const [taskLevel, setTaskLevel] = useState('Low');
+  const [taskStatus, setTaskStatus] = useState('Pending');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [connectedUserIds, setConnectedUserIds] = useState<string[]>([]);
+  const [connectionsInfo, setConnectionsInfo] = useState<{
+    connections: string[];
+    sentRequests: string[];
+    pendingRequests: string[];
+  }>({ connections: [], sentRequests: [], pendingRequests: [] });
   const [userProfile, setUserProfile] = useState<any>(null);
   
   // Social states
@@ -102,6 +115,19 @@ const HomeContent = () => {
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [interactionsLoading, setInteractionsLoading] = useState<Record<string, boolean>>({});
+  
+  // Chat state
+  const [activeChatUser, setActiveChatUser] = useState<any>(null);
+  const [chatNotification, setChatNotification] = useState<{ open: boolean; message: string; sender: any } | null>(null);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+  const handleOpenChat = async (userObj: any) => {
+    setActiveChatUser(userObj);
+    if (user?.id && userObj?.id) {
+      await markMessagesAsRead(user.id, userObj.id);
+      setUnreadCounts(prev => ({ ...prev, [userObj.id]: 0 }));
+    }
+  };
 
   // Action Buttons States
   const [selectedImage, setSelectedImage] = useState<{
@@ -183,6 +209,54 @@ const HomeContent = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured() || !supabase) return;
+
+    // Listen for incoming messages
+    const channel = supabase
+      .channel('global_messages_listener')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          
+          // Only show notification if the chatbox for this user is NOT open
+          setAllUsers(prevUsers => {
+            const sender = prevUsers.find(u => u.id === newMsg.sender_id);
+            setActiveChatUser((prevActive: any) => {
+              if (prevActive?.id !== newMsg.sender_id && sender) {
+                setChatNotification({
+                  open: true,
+                  message: newMsg.content,
+                  sender: sender
+                });
+                setUnreadCounts(counts => ({
+                  ...counts,
+                  [newMsg.sender_id]: (counts[newMsg.sender_id] || 0) + 1
+                }));
+              } else if (prevActive?.id === newMsg.sender_id) {
+                // If chat is open, immediately mark as read
+                markMessagesAsRead(user.id, newMsg.sender_id);
+              }
+              return prevActive;
+            });
+            return prevUsers;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase?.removeChannel(channel);
+    };
+  }, [user]);
+
   const fetchData = async () => {
     if (!user) return;
     try {
@@ -193,8 +267,9 @@ const HomeContent = () => {
         getCalendarEntries(user.id),
         getNotesWithAttachments(user.id),
         getAllUsers(),
-        getUserConnections(user.id),
-        isSupabaseConfigured() && supabase ? supabase.from('user_profiles').select('avatar_url').eq('user_id', user.id).single() : Promise.resolve({ data: null })
+        getUserConnectionsInfo(user.id),
+        isSupabaseConfigured() && supabase ? supabase!.from('user_profiles').select('avatar_url').eq('user_id', user.id).single() : Promise.resolve({ data: null }),
+        getUnreadCounts(user.id)
       ]);
 
       const info = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -202,8 +277,9 @@ const HomeContent = () => {
       const calData = results[2].status === 'fulfilled' ? results[2].value : [];
       const notesData = results[3].status === 'fulfilled' ? results[3].value : [];
       const usersData = results[4].status === 'fulfilled' ? results[4].value : [];
-      const connectionsData = results[5].status === 'fulfilled' ? results[5].value : [];
+      const connectionsData = results[5].status === 'fulfilled' ? results[5].value : { connections: [], sentRequests: [], pendingRequests: [] };
       const profileData = results[6].status === 'fulfilled' && results[6].value ? (results[6].value as any).data : null;
+      const unreadData = results[7].status === 'fulfilled' ? results[7].value : {};
 
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const todayTasks = tasksData?.filter((t: any) => t.task_date === todayStr) || [];
@@ -213,8 +289,9 @@ const HomeContent = () => {
       setSchedule(calData);
       setPosts(notesData);
       setAllUsers(usersData.filter(u => u.id !== user.id)); // Exclude current user
-      setConnectedUserIds(connectionsData);
+      setConnectionsInfo(connectionsData);
       setUserProfile(profileData);
+      setUnreadCounts(unreadData);
       setTasks(todayTasks);
       setSchedule(calData || []);
       // Treat notes as posts for the social feed
@@ -289,7 +366,9 @@ const HomeContent = () => {
         user_id: user.id,
         title: 'Post',
         content: finalContent,
-        tags: ['social_post']
+        tags: ['social_post'],
+        task_level: taskLevel,
+        task_status: taskStatus
       };
       
       let newNote;
@@ -342,6 +421,16 @@ const HomeContent = () => {
     }
   };
 
+  const handleUpdateStatus = async (postId: string, newStatus: string) => {
+    try {
+      setPosts(prevPosts => prevPosts.map(p => p.id === postId ? { ...p, task_status: newStatus } : p));
+      await updateNote(postId, { task_status: newStatus });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      fetchData(); // revert on error
+    }
+  };
+
   const handleOpenComments = (postId: string) => {
     setActivePostId(postId);
     setCommentDialogOpen(true);
@@ -382,17 +471,53 @@ const HomeContent = () => {
     }
   };
 
-  const handleToggleConnection = async (targetUserId: string) => {
+  const handleSendRequest = async (targetUserId: string) => {
     if (!user) return;
     try {
-      const result = await toggleUserConnection(user.id, targetUserId);
-      if (result.status === 'connected') {
-        setConnectedUserIds(prev => [...prev, targetUserId]);
-      } else {
-        setConnectedUserIds(prev => prev.filter(id => id !== targetUserId));
-      }
+      await sendConnectionRequest(user.id, targetUserId);
+      setConnectionsInfo(prev => ({ ...prev, sentRequests: [...prev.sentRequests, targetUserId] }));
     } catch (error) {
-      console.error('Error toggling connection:', error);
+      console.error(error);
+    }
+  };
+
+  const handleAcceptRequest = async (targetUserId: string) => {
+    if (!user) return;
+    try {
+      await acceptConnectionRequest(user.id, targetUserId);
+      setConnectionsInfo(prev => ({ 
+        ...prev, 
+        pendingRequests: prev.pendingRequests.filter(id => id !== targetUserId),
+        connections: [...prev.connections, targetUserId] 
+      }));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleRejectRequest = async (targetUserId: string) => {
+    if (!user) return;
+    try {
+      await rejectConnectionRequest(user.id, targetUserId);
+      setConnectionsInfo(prev => ({ 
+        ...prev, 
+        pendingRequests: prev.pendingRequests.filter(id => id !== targetUserId)
+      }));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleRemoveConnection = async (targetUserId: string) => {
+    if (!user) return;
+    try {
+      await removeConnection(user.id, targetUserId);
+      setConnectionsInfo(prev => ({ 
+        ...prev, 
+        connections: prev.connections.filter(id => id !== targetUserId)
+      }));
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -653,6 +778,33 @@ const HomeContent = () => {
               </Box>
             )}
 
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Level</InputLabel>
+                <Select
+                  value={taskLevel}
+                  label="Level"
+                  onChange={(e) => setTaskLevel(e.target.value)}
+                >
+                  <MenuItem value="Low">Low</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="High">High</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={taskStatus}
+                  label="Status"
+                  onChange={(e) => setTaskStatus(e.target.value)}
+                >
+                  <MenuItem value="Pending">Pending</MenuItem>
+                  <MenuItem value="In Progress">In Progress</MenuItem>
+                  <MenuItem value="Completed">Completed</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box sx={{ display: 'flex', gap: 0.5 }}>
                 <Tooltip title="Add Media">
@@ -780,35 +932,89 @@ const HomeContent = () => {
                 </Box>
               </CardContent>
               <Divider sx={{ opacity: 0.6 }} />
-                <Box sx={{ p: 1, px: 2, display: 'flex', justifyContent: 'space-around', bgcolor: alpha(theme.palette.action.hover, 0.2) }}>
-                <Button 
-                  startIcon={<HeartIcon size={20} fill={likes[post.id]?.some(l => l.user_id === user?.id) ? theme.palette.error.main : 'none'} />} 
-                  onClick={() => handleLike(post.id)}
-                  sx={{ 
-                    color: likes[post.id]?.some(l => l.user_id === user?.id) ? 'error.main' : 'text.secondary', 
-                    fontWeight: 700, 
-                    flex: 1, 
-                    textTransform: 'none', 
-                    '&:hover': { color: 'error.main' } 
-                  }}
-                >
-                  {likes[post.id]?.length || 0} Like
-                </Button>
-                <Button 
-                  startIcon={<MessageIcon size={20} />} 
-                  onClick={() => handleOpenComments(post.id)}
-                  sx={{ color: 'text.secondary', fontWeight: 700, flex: 1, textTransform: 'none', '&:hover': { color: 'primary.main' } }}
-                >
-                  {comments[post.id]?.length || 0} Comment
-                </Button>
-                <Button 
-                  startIcon={<ShareIcon size={20} />} 
-                  onClick={() => handleShare(post)}
-                  sx={{ color: 'text.secondary', fontWeight: 700, flex: 1, textTransform: 'none', '&:hover': { color: 'info.main' } }}
-                >
-                  Share
-                </Button>
-              </Box>
+                <Box sx={{ 
+                  p: 1.5, 
+                  px: 3, 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  bgcolor: theme.palette.mode === 'dark' ? alpha('#000', 0.2) : alpha(theme.palette.primary.main, 0.02),
+                  borderTop: '1px solid',
+                  borderColor: alpha(theme.palette.divider, 0.5)
+                }}>
+                  {/* Level Section */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Level
+                    </Typography>
+                    <Chip 
+                      label={post.task_level || 'Low'}
+                      size="small"
+                      sx={{ 
+                        fontWeight: 800, 
+                        height: 24,
+                        fontSize: '0.75rem',
+                        bgcolor: (post.task_level || 'Low') === 'High' ? alpha(theme.palette.error.main, 0.1) : ((post.task_level || 'Low') === 'Medium' ? alpha(theme.palette.warning.main, 0.1) : alpha(theme.palette.success.main, 0.1)),
+                        color: (post.task_level || 'Low') === 'High' ? 'error.main' : ((post.task_level || 'Low') === 'Medium' ? 'warning.main' : 'success.main'),
+                        border: '1px solid',
+                        borderColor: (post.task_level || 'Low') === 'High' ? alpha(theme.palette.error.main, 0.3) : ((post.task_level || 'Low') === 'Medium' ? alpha(theme.palette.warning.main, 0.3) : alpha(theme.palette.success.main, 0.3)),
+                      }} 
+                    />
+                  </Box>
+
+                  {/* Status Section */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Status
+                    </Typography>
+                    <Select
+                      size="small"
+                      value={post.task_status || 'Pending'}
+                      onChange={(e) => handleUpdateStatus(post.id, e.target.value)}
+                      sx={{ 
+                        height: 32, 
+                        fontSize: '0.8rem', 
+                        fontWeight: 800, 
+                        color: 'primary.main',
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                        borderRadius: 3,
+                        transition: 'all 0.2s',
+                        '.MuiOutlinedInput-notchedOutline': { border: 'none' },
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.15) },
+                        '.MuiSelect-select': { py: 0.5, pl: 2, pr: 4, display: 'flex', alignItems: 'center' },
+                      }}
+                    >
+                      <MenuItem value="Pending" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>⏳ Pending</MenuItem>
+                      <MenuItem value="In Progress" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>🚀 In Progress</MenuItem>
+                      <MenuItem value="Completed" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>✅ Completed</MenuItem>
+                    </Select>
+                  </Box>
+
+                  {/* Share Section */}
+                  <Button 
+                    startIcon={<ShareIcon size={16} />} 
+                    onClick={() => handleShare(post)}
+                    variant="contained"
+                    sx={{ 
+                      bgcolor: alpha(theme.palette.info.main, 0.1),
+                      color: 'info.main',
+                      fontWeight: 800, 
+                      fontSize: '0.8rem',
+                      px: 2,
+                      py: 0.75,
+                      borderRadius: 3,
+                      boxShadow: 'none',
+                      textTransform: 'none', 
+                      '&:hover': { 
+                        bgcolor: alpha(theme.palette.info.main, 0.2),
+                        boxShadow: 'none',
+                      },
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    Share
+                  </Button>
+                </Box>
             </Card>
           ))}
         </Grid>
@@ -897,7 +1103,13 @@ const HomeContent = () => {
               
               <List disablePadding>
                 {allUsers.length > 0 ? allUsers.map((person, idx) => {
-                  const isConnected = connectedUserIds.includes(person.id);
+                  const isConnected = connectionsInfo.connections.includes(person.id);
+                  const isSent = connectionsInfo.sentRequests.includes(person.id);
+                  const isPending = connectionsInfo.pendingRequests.includes(person.id);
+                  
+                  const displayName = person.name ? person.name.charAt(0).toUpperCase() + person.name.slice(1) : 'Unknown';
+                  const unreadMsgCount = unreadCounts[person.id] || 0;
+
                   return (
                     <ListItem key={person.id} sx={{ px: 0, py: 1.5 }}>
                       <ListItemAvatar sx={{ minWidth: 50 }}>
@@ -908,42 +1120,64 @@ const HomeContent = () => {
                           color="success" // Assuming everyone online for demo or use logic
                           sx={{ '& .MuiBadge-badge': { width: 10, height: 10, borderRadius: '50%', border: '2px solid white' } }}
                         >
-                          <Avatar sx={{ width: 40, height: 40, bgcolor: theme.palette.info.main, fontWeight: 800 }}>{person.name[0]}</Avatar>
+                          <Badge
+                            overlap="circular"
+                            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                            badgeContent={unreadMsgCount}
+                            color="error"
+                          >
+                            <Avatar src={person.avatarUrl} sx={{ width: 40, height: 40, bgcolor: theme.palette.info.main, fontWeight: 800 }}>
+                              {!person.avatarUrl && displayName[0]}
+                            </Avatar>
+                          </Badge>
                         </Badge>
                       </ListItemAvatar>
                       <ListItemText 
-                        primary={person.name}
+                        primary={displayName}
                         primaryTypographyProps={{ variant: 'body2', fontWeight: 800 }}
                         secondary={person.email}
                         secondaryTypographyProps={{ variant: 'caption', fontWeight: 500 }}
                       />
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        {isConnected && (
-                          <Tooltip title="Message">
+                        {isConnected ? (
+                          <>
+                            <Tooltip title="Message">
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleOpenChat(person)}
+                                sx={{ color: 'success.main', bgcolor: alpha(theme.palette.success.main, 0.1) }}
+                              >
+                                <MessageIcon size={16} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Disconnect">
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleRemoveConnection(person.id)}
+                                sx={{ color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.1) }}
+                              >
+                                <XIcon size={16} />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        ) : isPending ? (
+                          <>
+                            <Button size="small" variant="contained" color="primary" sx={{ minWidth: 0, px: 1, borderRadius: 2 }} onClick={() => handleAcceptRequest(person.id)}>Accept</Button>
+                            <Button size="small" variant="outlined" color="error" sx={{ minWidth: 0, px: 1, borderRadius: 2 }} onClick={() => handleRejectRequest(person.id)}>Decline</Button>
+                          </>
+                        ) : isSent ? (
+                          <Button size="small" variant="outlined" color="inherit" sx={{ minWidth: 0, px: 1, borderRadius: 2, fontSize: '0.75rem', fontWeight: 700 }} disabled>Pending</Button>
+                        ) : (
+                          <Tooltip title="Connect">
                             <IconButton 
                               size="small" 
-                              onClick={() => alert('Messaging feature coming soon!')}
-                              sx={{ 
-                                color: 'success.main', 
-                                bgcolor: alpha(theme.palette.success.main, 0.1) 
-                              }}
+                              onClick={() => handleSendRequest(person.id)}
+                              sx={{ color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.1) }}
                             >
-                              <MessageIcon size={16} />
+                              <PlusIcon size={16} />
                             </IconButton>
                           </Tooltip>
                         )}
-                        <Tooltip title={isConnected ? "Disconnect" : "Connect"}>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleToggleConnection(person.id)}
-                            sx={{ 
-                              color: isConnected ? 'error.main' : 'primary.main', 
-                              bgcolor: isConnected ? alpha(theme.palette.error.main, 0.1) : alpha(theme.palette.primary.main, 0.1) 
-                            }}
-                          >
-                            {isConnected ? <XIcon size={16} /> : <PlusIcon size={16} />}
-                          </IconButton>
-                        </Tooltip>
                       </Box>
                     </ListItem>
                   );
@@ -1209,6 +1443,50 @@ const HomeContent = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Chat Notification Snackbar */}
+      <Snackbar 
+        open={chatNotification?.open || false} 
+        autoHideDuration={5000} 
+        onClose={() => setChatNotification(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Alert 
+          onClose={() => setChatNotification(null)} 
+          severity="info" 
+          icon={false}
+          sx={{ width: '100%', cursor: 'pointer', borderRadius: 3, boxShadow: 3, p: 2, display: 'flex', alignItems: 'center' }}
+          onClick={() => {
+            if (chatNotification?.sender) {
+              handleOpenChat(chatNotification.sender);
+            }
+            setChatNotification(null);
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Avatar src={chatNotification?.sender?.avatarUrl} sx={{ width: 40, height: 40 }}>
+              {!chatNotification?.sender?.avatarUrl && ((chatNotification?.sender?.name?.[0] || 'U').toUpperCase())}
+            </Avatar>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>
+                New message from {chatNotification?.sender?.name ? chatNotification.sender.name.charAt(0).toUpperCase() + chatNotification.sender.name.slice(1) : 'Unknown'}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.8 }} noWrap>
+                {chatNotification?.message}
+              </Typography>
+            </Box>
+          </Box>
+        </Alert>
+      </Snackbar>
+
+      {/* Chat Widget */}
+      {activeChatUser && (
+        <ChatBox 
+          currentUser={user} 
+          recipientUser={activeChatUser} 
+          onClose={() => setActiveChatUser(null)} 
+        />
+      )}
     </Box>
   );
 };
