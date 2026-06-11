@@ -25,6 +25,7 @@ import {
 
 import { getMessages, sendMessage, ChatMessage as DBChatMessage } from '../lib/chat-db';
 import { supabase } from '../lib/supabase';
+import { getUserConnectionsInfo } from '../app/actions/user-actions';
 
 interface ChatMessage {
   id: string;
@@ -45,12 +46,26 @@ export default function ChatBox({ currentUser, recipientUser, onClose }: ChatBox
   const [newMessage, setNewMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRecipientConnectedToMe, setIsRecipientConnectedToMe] = useState<boolean | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (!currentUser?.id || !recipientUser?.id) return;
+      try {
+        const recipientInfo = await getUserConnectionsInfo(recipientUser.id);
+        setIsRecipientConnectedToMe(recipientInfo.connections.includes(currentUser.id));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    checkConnection();
+  }, [currentUser?.id, recipientUser?.id]);
 
   useEffect(() => {
     if (!isMinimized) {
@@ -268,7 +283,6 @@ export default function ChatBox({ currentUser, recipientUser, onClose }: ChatBox
         </Box>
       </Box>
 
-      {/* Messages Area */}
       <Box 
         sx={{ 
           flex: 1, 
@@ -280,6 +294,20 @@ export default function ChatBox({ currentUser, recipientUser, onClose }: ChatBox
           bgcolor: alpha(theme.palette.background.default, 0.5)
         }}
       >
+        {isRecipientConnectedToMe === false && (
+          <Box sx={{ 
+            p: 1.5, 
+            bgcolor: alpha(theme.palette.error.main, 0.1), 
+            borderRadius: 3, 
+            border: '1px solid', 
+            borderColor: alpha(theme.palette.error.main, 0.3),
+            mb: 1
+          }}>
+            <Typography variant="body2" color="error.main" fontWeight={700} textAlign="center" sx={{ lineHeight: 1.4 }}>
+              {recipientUser?.name ? recipientUser.name.charAt(0).toUpperCase() + recipientUser.name.slice(1) : 'This user'} is not connected to you, so your message will not be received.
+            </Typography>
+          </Box>
+        )}
         {messages.map((msg, idx) => {
           const isMe = msg.senderId === (currentUser?.id || 'me');
           return (
@@ -323,11 +351,12 @@ export default function ChatBox({ currentUser, recipientUser, onClose }: ChatBox
         <TextField
           fullWidth
           size="small"
-          placeholder="Write a message..."
+          placeholder={isRecipientConnectedToMe === false ? "Cannot send message..." : "Write a message..."}
           variant="outlined"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={handleKeyPress}
+          disabled={isRecipientConnectedToMe === false}
           multiline
           maxRows={3}
           sx={{ 
@@ -341,14 +370,14 @@ export default function ChatBox({ currentUser, recipientUser, onClose }: ChatBox
           InputProps={{
             endAdornment: (
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <IconButton size="small" sx={{ color: 'text.secondary' }}>
+                <IconButton size="small" sx={{ color: 'text.secondary' }} disabled={isRecipientConnectedToMe === false}>
                   <SmileIcon size={18} />
                 </IconButton>
                 <IconButton 
                   size="small" 
                   color="primary" 
                   onClick={handleSendMessage}
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() || isRecipientConnectedToMe === false}
                   sx={{ 
                     bgcolor: newMessage.trim() ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
                     '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }

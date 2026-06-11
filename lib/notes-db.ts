@@ -240,6 +240,75 @@ export const getNotesWithAttachments = async (userId: string) => {
     }
 };
 
+// Function to get social feed posts (user's posts, connections' posts, and related/suggested posts)
+export const getSocialFeedPosts = async (userId: string, connectionIds: string[]) => {
+    if (!isSupabaseConfigured() || !supabase) {
+        console.warn('Supabase is not configured. Returning empty notes for development.');
+        return [];
+    }
+
+    try {
+        const userIds = [userId, ...connectionIds];
+        
+        // 1. Fetch posts from user and connections
+        const { data: networkPosts, error: networkError } = await supabase
+            .from('notes')
+            .select(`
+                *,
+                note_attachments (*)
+            `)
+            .in('user_id', userIds)
+            .is('converted_to_task', null)
+            .order('created_at', { ascending: false });
+
+        if (networkError) {
+            console.error('Error fetching network posts:', networkError);
+        }
+
+        // 2. Fetch related/suggested posts (e.g. recent posts from other users that have tags like 'social_post')
+        // We fetch a batch of recent posts and filter out the network ones
+        const { data: recentPosts, error: recentError } = await supabase
+            .from('notes')
+            .select(`
+                *,
+                note_attachments (*)
+            `)
+            .is('converted_to_task', null)
+            .order('created_at', { ascending: false })
+            .limit(50); // Fetch up to 50 recent posts to find suggestions
+
+        if (recentError) {
+            console.error('Error fetching recent posts for suggestions:', recentError);
+        }
+
+        let combined = [...(networkPosts || [])];
+
+        if (recentPosts) {
+            const suggestedPosts = recentPosts.filter((post: any) => {
+                // Not already in the network
+                if (userIds.includes(post.user_id)) return false;
+                
+                // Related logic: has 'social_post' tag or similar
+                const decodedPost = decodeNote(post);
+                const hasSocialTag = decodedPost.tags?.includes('social_post');
+                return hasSocialTag;
+            });
+            combined = [...combined, ...suggestedPosts];
+        }
+
+        // Remove duplicates
+        const uniquePosts = Array.from(new Map(combined.map(item => [item.id, item])).values());
+        
+        // Sort by created_at descending
+        uniquePosts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        return uniquePosts.map(decodeNote) as (Note & { note_attachments: NoteAttachment[] })[];
+    } catch (error) {
+        console.error('Unexpected error fetching social feed posts:', error);
+        return [];
+    }
+};
+
 // Function to update a note with attachments
 export const updateNoteWithAttachments = async (
     noteId: string, 

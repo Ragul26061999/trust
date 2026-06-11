@@ -59,8 +59,9 @@ function parseDate(text: string): string {
       january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
       july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
     };
-    d.setMonth(months[monthMatch[1]]);
-    d.setDate(parseInt(monthMatch[2]));
+    const monthIndex = months[monthMatch[1]];
+    const dateNum = parseInt(monthMatch[2]);
+    d.setMonth(monthIndex, dateNum);
   }
   return d.toISOString().split('T')[0];
 }
@@ -96,6 +97,7 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
 
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const handleAnswerRef = useRef<any>(null);
 
   // Auto-scroll conversation
   useEffect(() => {
@@ -112,8 +114,14 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
     rec.interimResults = true;
     rec.lang = 'en-US';
     rec.onresult = (e: any) => {
-      const t = e.results[e.resultIndex][0].transcript;
+      const result = e.results[e.resultIndex];
+      const t = result[0].transcript;
       setLiveTranscript(t);
+      
+      if (result.isFinal && handleAnswerRef.current) {
+        setIsListening(false);
+        handleAnswerRef.current(t);
+      }
     };
     rec.onerror = (e: any) => {
       console.error('Speech recognition error:', e.error);
@@ -188,36 +196,91 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
     if (!answer.trim()) return;
     const lower = answer.toLowerCase();
 
-    if (step === 'type') {
-      const t = parseType(answer);
-      setType(t);
-      const nextStep = 'title';
-      askNext(nextStep, answer);
-    } else if (step === 'title') {
-      setTitle(answer);
-      // Skip date for notes
-      const nextStep = type === 'note' ? 'description' : 'date';
-      askNext(nextStep, answer);
-    } else if (step === 'date') {
-      setDate(parseDate(answer));
-      askNext('description', answer);
-    } else if (step === 'description') {
-      setDescription(answer);
-      // Build confirm message
-      const confirmText = `Perfect! Here's a summary: Type is ${type}, Title is ${title}, ${type !== 'note' ? `Date is ${parseDate(answer !== description ? date : date)},` : ''} Description: ${answer}. Say Yes to save or No to cancel.`;
-      addMsg('user', answer);
-      setLiveTranscript('');
+    const goToConfirm = (t: string, titleVal: string, dateVal: string, descVal: string) => {
+      const confirmText = `Perfect! Here's a summary: Type is ${t}, Title is ${titleVal}, ${t !== 'note' ? `Date is ${dateVal},` : ''} Description: ${descVal}. Say Yes to save or No to cancel, or tell me what to change.`;
       setStep('confirm');
       setIsSpeaking(true);
       setTimeout(() => {
         addMsg('ai', confirmText);
         speak(confirmText, () => setIsSpeaking(false));
       }, 400);
+    };
+
+    if (step === 'type') {
+      const t = parseType(answer);
+      setType(t);
+      if (title && description) {
+        addMsg('user', answer);
+        setLiveTranscript('');
+        goToConfirm(t, title, date, description);
+      } else {
+        askNext('title', answer);
+      }
+    } else if (step === 'title') {
+      setTitle(answer);
+      if (description) {
+        addMsg('user', answer);
+        setLiveTranscript('');
+        goToConfirm(type, answer, date, description);
+      } else {
+        const nextStep = type === 'note' ? 'description' : 'date';
+        askNext(nextStep, answer);
+      }
+    } else if (step === 'date') {
+      const parsedDate = parseDate(answer);
+      setDate(parsedDate);
+      if (description) {
+        addMsg('user', answer);
+        setLiveTranscript('');
+        goToConfirm(type, title, parsedDate, description);
+      } else {
+        askNext('description', answer);
+      }
+    } else if (step === 'description') {
+      setDescription(answer);
+      addMsg('user', answer);
+      setLiveTranscript('');
+      goToConfirm(type, title, date, answer);
     } else if (step === 'confirm') {
       addMsg('user', answer);
       setLiveTranscript('');
-      if (lower.includes('yes') || lower.includes('yeah') || lower.includes('save') || lower.includes('confirm') || lower.includes('ok')) {
+      
+      const isYes = lower.includes('yes') || lower.includes('yeah') || lower.includes('save') || lower.includes('confirm') || lower.includes('ok');
+      
+      if (isYes) {
         handleSave();
+      } else if (lower.includes('title') || lower.includes('name')) {
+        setStep('title');
+        const msg = 'Okay, what should the new title be?';
+        setIsSpeaking(true);
+        setTimeout(() => {
+          addMsg('ai', msg);
+          speak(msg, () => setIsSpeaking(false));
+        }, 400);
+      } else if (lower.includes('date') || lower.includes('time') || lower.includes('when')) {
+        setStep('date');
+        const msg = 'Okay, what is the new date?';
+        setIsSpeaking(true);
+        setTimeout(() => {
+          addMsg('ai', msg);
+          speak(msg, () => setIsSpeaking(false));
+        }, 400);
+      } else if (lower.includes('description') || lower.includes('detail') || lower.includes('content')) {
+        setStep('description');
+        const msg = 'Okay, what is the new description?';
+        setIsSpeaking(true);
+        setTimeout(() => {
+          addMsg('ai', msg);
+          speak(msg, () => setIsSpeaking(false));
+        }, 400);
+      } else if (lower.includes('type') || lower.includes('category')) {
+        setStep('type');
+        const msg = 'Okay, is it a Personal, Professional, or Note?';
+        setIsSpeaking(true);
+        setTimeout(() => {
+          addMsg('ai', msg);
+          speak(msg, () => setIsSpeaking(false));
+        }, 400);
       } else {
         const msg = 'No problem! Let\'s start over.';
         addMsg('ai', msg);
@@ -231,6 +294,10 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
       }
     }
   }, [step, type, title, date, description, askNext]);
+
+  useEffect(() => {
+    handleAnswerRef.current = handleAnswer;
+  }, [handleAnswer]);
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,8 +351,9 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
 
   const stopListening = () => {
     recognitionRef.current?.stop();
-    setIsListening(false);
-    if (liveTranscript) handleAnswer(liveTranscript);
+    // Do not call setIsListening(false) or handleAnswer here.
+    // The recognition instance will fire an onresult event with isFinal=true, 
+    // or an onend event, which will handle the final submission and state change.
   };
 
   const stepIndex = STEPS.indexOf(step);

@@ -37,11 +37,14 @@ export async function getUserConnectionsInfo(userId: string) {
     return {
       connections: (prefs.connections as string[]) || [],
       sentRequests: (prefs.sent_requests as string[]) || [],
-      pendingRequests: (prefs.pending_requests as string[]) || []
+      pendingRequests: (prefs.pending_requests as string[]) || [],
+      connectionTypes: (prefs.connection_types as Record<string, string>) || {},
+      pendingTypes: (prefs.pending_types as Record<string, string>) || {},
+      cancelRequests: (prefs.cancel_requests as string[]) || []
     };
   } catch (error) {
     console.error('Error in getUserConnectionsInfo:', error);
-    return { connections: [], sentRequests: [], pendingRequests: [] };
+    return { connections: [], sentRequests: [], pendingRequests: [], connectionTypes: {}, pendingTypes: {}, cancelRequests: [] };
   }
 }
 
@@ -67,20 +70,24 @@ async function updatePreferences(userId: string, updateFn: (prefs: any) => any) 
   }
 }
 
-export async function sendConnectionRequest(userId: string, targetUserId: string) {
+export async function sendConnectionRequest(userId: string, targetUserId: string, connectionType: string = 'Professional') {
   try {
     // Add target to user's sent_requests
     await updatePreferences(userId, (prefs) => {
       const sent = new Set(prefs.sent_requests || []);
       sent.add(targetUserId);
-      return { ...prefs, sent_requests: Array.from(sent) };
+      const connection_types = { ...(prefs.connection_types || {}) };
+      connection_types[targetUserId] = connectionType;
+      return { ...prefs, sent_requests: Array.from(sent), connection_types };
     });
 
     // Add user to target's pending_requests
     await updatePreferences(targetUserId, (prefs) => {
       const pending = new Set(prefs.pending_requests || []);
       pending.add(userId);
-      return { ...prefs, pending_requests: Array.from(pending) };
+      const pending_types = { ...(prefs.pending_types || {}) };
+      pending_types[userId] = connectionType;
+      return { ...prefs, pending_requests: Array.from(pending), pending_types };
     });
 
     return { status: 'sent' };
@@ -90,7 +97,7 @@ export async function sendConnectionRequest(userId: string, targetUserId: string
   }
 }
 
-export async function acceptConnectionRequest(userId: string, targetUserId: string) {
+export async function acceptConnectionRequest(userId: string, targetUserId: string, connectionType: string = 'Professional') {
   try {
     // Remove from pending/sent and add to connections for both users
     await updatePreferences(userId, (prefs) => {
@@ -98,7 +105,11 @@ export async function acceptConnectionRequest(userId: string, targetUserId: stri
       pending.delete(targetUserId);
       const connections = new Set(prefs.connections || []);
       connections.add(targetUserId);
-      return { ...prefs, pending_requests: Array.from(pending), connections: Array.from(connections) };
+      const connection_types = { ...(prefs.connection_types || {}) };
+      connection_types[targetUserId] = connectionType;
+      const pending_types = { ...(prefs.pending_types || {}) };
+      delete pending_types[targetUserId];
+      return { ...prefs, pending_requests: Array.from(pending), connections: Array.from(connections), connection_types, pending_types };
     });
 
     await updatePreferences(targetUserId, (prefs) => {
@@ -122,13 +133,17 @@ export async function rejectConnectionRequest(userId: string, targetUserId: stri
     await updatePreferences(userId, (prefs) => {
       const pending = new Set(prefs.pending_requests || []);
       pending.delete(targetUserId);
-      return { ...prefs, pending_requests: Array.from(pending) };
+      const pending_types = { ...(prefs.pending_types || {}) };
+      delete pending_types[targetUserId];
+      return { ...prefs, pending_requests: Array.from(pending), pending_types };
     });
 
     await updatePreferences(targetUserId, (prefs) => {
       const sent = new Set(prefs.sent_requests || []);
       sent.delete(userId);
-      return { ...prefs, sent_requests: Array.from(sent) };
+      const connection_types = { ...(prefs.connection_types || {}) };
+      delete connection_types[userId];
+      return { ...prefs, sent_requests: Array.from(sent), connection_types };
     });
 
     return { status: 'rejected' };
@@ -144,13 +159,18 @@ export async function removeConnection(userId: string, targetUserId: string) {
     await updatePreferences(userId, (prefs) => {
       const connections = new Set(prefs.connections || []);
       connections.delete(targetUserId);
-      return { ...prefs, connections: Array.from(connections) };
+      const connection_types = { ...(prefs.connection_types || {}) };
+      delete connection_types[targetUserId];
+      return { ...prefs, connections: Array.from(connections), connection_types };
     });
 
     await updatePreferences(targetUserId, (prefs) => {
-      const connections = new Set(prefs.connections || []);
-      connections.delete(userId);
-      return { ...prefs, connections: Array.from(connections) };
+      const cancel_requests = new Set(prefs.cancel_requests || []);
+      const targetConnections = prefs.connections || [];
+      if (targetConnections.includes(userId)) {
+        cancel_requests.add(userId);
+      }
+      return { ...prefs, cancel_requests: Array.from(cancel_requests) };
     });
 
     return { status: 'disconnected' };
@@ -159,3 +179,49 @@ export async function removeConnection(userId: string, targetUserId: string) {
     throw error;
   }
 }
+
+export async function resolveCancelRequest(userId: string, targetUserId: string, keepConnection: boolean) {
+  try {
+    await updatePreferences(userId, (prefs) => {
+      const cancel_requests = new Set(prefs.cancel_requests || []);
+      cancel_requests.delete(targetUserId);
+      
+      const connections = new Set(prefs.connections || []);
+      if (!keepConnection) {
+        connections.delete(targetUserId);
+        const connection_types = { ...(prefs.connection_types || {}) };
+        delete connection_types[targetUserId];
+        return { ...prefs, cancel_requests: Array.from(cancel_requests), connections: Array.from(connections), connection_types };
+      }
+      
+      return { ...prefs, cancel_requests: Array.from(cancel_requests), connections: Array.from(connections) };
+    });
+    return { status: 'resolved' };
+  } catch (error) {
+    console.error('Error in resolveCancelRequest:', error);
+    throw error;
+  }
+}
+
+export async function getBannerPreferences(userId: string) {
+  try {
+    const { data } = await supabaseServer
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', userId)
+      .single();
+      
+    const prefs = data?.preferences || {};
+    return {
+      bannerColor: prefs.bannerColor || null,
+      bannerUrl: prefs.bannerUrl || null,
+    };
+  } catch (error) {
+    return { bannerColor: null, bannerUrl: null };
+  }
+}
+
+export async function saveBannerPreferences(userId: string, bannerColor: string | null, bannerUrl: string | null) {
+  await updatePreferences(userId, (prefs) => ({ ...prefs, bannerColor, bannerUrl }));
+}
+

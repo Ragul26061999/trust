@@ -230,20 +230,45 @@ const NoteMediaDisplay: React.FC<NoteMediaDisplayProps> = ({
                       key={attachment.id} 
                       sx={{ 
                         width: '100%', 
-                        mb: 1, 
-                        borderRadius: 3, 
+                        mb: 2, 
+                        borderRadius: 4, 
                         overflow: 'hidden', 
                         cursor: 'pointer',
                         border: '1px solid',
-                        borderColor: 'divider'
+                        borderColor: 'divider',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+                        position: 'relative',
+                        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-4px)',
+                          boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                          '& .image-overlay': { opacity: 1 }
+                        }
                       }}
                       onClick={() => handlePreview('image', previewUrl, attachment.file_name)}
                     >
                       <img 
                         src={previewUrl} 
                         alt={attachment.file_name}
-                        style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', display: 'block' }}
+                        style={{ width: '100%', maxHeight: '450px', objectFit: 'cover', display: 'block' }}
                       />
+                      <Box 
+                        className="image-overlay"
+                        sx={{
+                          position: 'absolute',
+                          top: 0, left: 0, right: 0, bottom: 0,
+                          background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)',
+                          opacity: 0,
+                          transition: 'opacity 0.3s ease',
+                          display: 'flex',
+                          alignItems: 'flex-end',
+                          p: 3
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight={800} sx={{ color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <LucideIcon icon={EyeIcon} size={18} /> View Image Fullscreen
+                        </Typography>
+                      </Box>
                     </Box>
                   );
                 }

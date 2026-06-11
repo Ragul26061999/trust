@@ -374,7 +374,10 @@ const Sidebar = () => {
                   bgcolor: 'action.hover',
                 }
               }}
-              onClick={handleUserAccountClick}
+              onClick={() => {
+                if (mobileOpen) setMobileOpen(false);
+                router.push('/profile');
+              }}
             >
               <UserAvatar user={user} size={48} profile={userProfile} />
               {!isCollapsed && (
@@ -385,59 +388,6 @@ const Sidebar = () => {
                 </Box>
               )}
             </Box>
-            
-            {/* Profile Popup Menu */}
-            <Menu
-              anchorEl={anchorEl}
-              open={openProfileMenu}
-              onClose={handleProfileMenuClose}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              transformOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
-              }}
-              PaperProps={{
-                sx: {
-                  minWidth: 180,
-                  borderRadius: 2,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-                  mt: 1,
-                  '& .MuiList-root': {
-                    py: 0.5,
-                  }
-                }
-              }}
-            >
-              <MenuItem dense onClick={() => { handleProfileClick(); handleProfileMenuClose(); }}>
-                <ListItemIcon sx={{ minWidth: 32 }}>
-                  <LucideIcon icon={ProfileIcon} size={18} />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Edit Profile" 
-                  primaryTypographyProps={{ 
-                    fontSize: '0.85rem',
-                    fontWeight: 500 
-                  }} 
-                />
-              </MenuItem>
-              <Divider sx={{ my: 0.5 }} />
-              <MenuItem dense onClick={() => { handleSignOut(); handleProfileMenuClose(); }}>
-                <ListItemIcon sx={{ minWidth: 32 }}>
-                  <LucideIcon icon={LogoutIcon} size={18} sx={{ color: 'error.main' }} />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Logout" 
-                  primaryTypographyProps={{ 
-                    fontSize: '0.85rem',
-                    fontWeight: 500,
-                    color: 'error.main'
-                  }} 
-                />
-              </MenuItem>
-            </Menu>
           </Box>
         )}
 

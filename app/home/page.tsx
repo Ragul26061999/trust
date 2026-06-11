@@ -61,7 +61,7 @@ import {
 import { format } from 'date-fns';
 import { getProfessionalInfo, getProfessionalTasks, ProfessionalTask } from '../../lib/professional-db';
 import { getCalendarEntries, CalendarEntry } from '../../lib/personal-calendar-db';
-import { getNotes, addNote, Note, getNotesWithAttachments, addNoteWithAttachments, updateNote, deleteNoteWithAttachments } from '../../lib/notes-db';
+import { getNotes, addNote, Note, getNotesWithAttachments, addNoteWithAttachments, updateNote, deleteNoteWithAttachments, getSocialFeedPosts } from '../../lib/notes-db';
 import { toggleLike, getPostLikes, getPostComments, addComment, PostLike, PostComment } from '../../lib/social-db';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { 
@@ -76,7 +76,7 @@ import {
 import Link from 'next/link';
 import VoiceSchedulerModal from '../../components/voice-scheduler-modal';
 import NoteMediaDisplay from '../../components/note-media-display';
-import { getAllUsers, getUserConnectionsInfo, sendConnectionRequest, acceptConnectionRequest, rejectConnectionRequest, removeConnection } from '../actions/user-actions';
+import { getAllUsers, getUserConnectionsInfo, sendConnectionRequest, acceptConnectionRequest, rejectConnectionRequest, removeConnection, resolveCancelRequest, getBannerPreferences, saveBannerPreferences } from '../actions/user-actions';
 import ChatBox from '../../components/chat-box';
 import { getUnreadCounts, markMessagesAsRead } from '../../lib/chat-db';
 // Lucide Icon Wrapper
@@ -105,9 +105,44 @@ const HomeContent = () => {
     connections: string[];
     sentRequests: string[];
     pendingRequests: string[];
-  }>({ connections: [], sentRequests: [], pendingRequests: [] });
-  const [userProfile, setUserProfile] = useState<any>(null);
+    connectionTypes: Record<string, string>;
+    pendingTypes: Record<string, string>;
+    cancelRequests: string[];
+  }>({ connections: [], sentRequests: [], pendingRequests: [], connectionTypes: {}, pendingTypes: {}, cancelRequests: [] });
   
+  const personalCount = connectionsInfo.connections.filter(id => connectionsInfo.connectionTypes[id] === 'Personal').length;
+  const professionalCount = connectionsInfo.connections.filter(id => connectionsInfo.connectionTypes[id] === 'Professional').length;
+
+  const [cancelDialogUser, setCancelDialogUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (connectionsInfo.cancelRequests.length > 0 && !cancelDialogUser && allUsers.length > 0) {
+      const uId = connectionsInfo.cancelRequests[0];
+      const userObj = allUsers.find(u => u.id === uId);
+      if (userObj) {
+        setCancelDialogUser(userObj);
+      }
+    }
+  }, [connectionsInfo.cancelRequests, allUsers, cancelDialogUser]);
+
+  const handleResolveCancel = async (targetUserId: string | undefined, keepConnection: boolean) => {
+    if (!targetUserId || !user) return;
+    try {
+      await resolveCancelRequest(user.id, targetUserId, keepConnection);
+      setConnectionsInfo(prev => ({
+        ...prev,
+        cancelRequests: prev.cancelRequests.filter(id => id !== targetUserId),
+        connections: keepConnection ? prev.connections : prev.connections.filter(id => id !== targetUserId)
+      }));
+      setCancelDialogUser(null);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [bannerColor, setBannerColor] = useState<string | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
   // Social states
   const [likes, setLikes] = useState<Record<string, PostLike[]>>({});
   const [comments, setComments] = useState<Record<string, PostComment[]>>({});
@@ -120,6 +155,20 @@ const HomeContent = () => {
   const [activeChatUser, setActiveChatUser] = useState<any>(null);
   const [chatNotification, setChatNotification] = useState<{ open: boolean; message: string; sender: any } | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [connectionPopup, setConnectionPopup] = useState<{ open: boolean; userId: string; actionType: 'send' | 'accept' } | null>(null);
+
+  const handleConfirmConnection = async (type: string) => {
+    if (!connectionPopup) return;
+    const { userId, actionType } = connectionPopup;
+    setConnectionPopup(null);
+    
+    // In the future, we can save the type (Personal/Professional) to user_preferences
+    if (actionType === 'send') {
+      await handleSendRequest(userId);
+    } else if (actionType === 'accept') {
+      await handleAcceptRequest(userId);
+    }
+  };
 
   const handleOpenChat = async (userObj: any) => {
     setActiveChatUser(userObj);
@@ -257,19 +306,36 @@ const HomeContent = () => {
     };
   }, [user]);
 
+  const handleSaveBanner = async (color: string | null, url: string | null) => {
+    if (!user) return;
+    try {
+      await saveBannerPreferences(user.id, color, url);
+      setBannerColor(color);
+      setBannerUrl(url);
+      setBannerDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving banner:", error);
+    }
+  };
+
   const fetchData = async () => {
     if (!user) return;
     try {
       setLoading(true);
+      // Fetch connections first to get the social feed properly
+      const connectionsDataResult = await getUserConnectionsInfo(user.id);
+      const connectionsData = connectionsDataResult as { connections: string[]; sentRequests: string[]; pendingRequests: string[]; connectionTypes: Record<string, string>; pendingTypes: Record<string, string>; cancelRequests: string[]; };
+      const connectionIds = connectionsData.connections || [];
+
       const results = await Promise.allSettled([
         getProfessionalInfo(user.id),
         getProfessionalTasks(user.id),
         getCalendarEntries(user.id),
-        getNotesWithAttachments(user.id),
+        getSocialFeedPosts(user.id, connectionIds),
         getAllUsers(),
-        getUserConnectionsInfo(user.id),
         isSupabaseConfigured() && supabase ? supabase!.from('user_profiles').select('avatar_url').eq('user_id', user.id).single() : Promise.resolve({ data: null }),
-        getUnreadCounts(user.id)
+        getUnreadCounts(user.id),
+        getBannerPreferences(user.id)
       ]);
 
       const info = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -277,9 +343,9 @@ const HomeContent = () => {
       const calData = results[2].status === 'fulfilled' ? results[2].value : [];
       const notesData = results[3].status === 'fulfilled' ? results[3].value : [];
       const usersData = results[4].status === 'fulfilled' ? results[4].value : [];
-      const connectionsData = results[5].status === 'fulfilled' ? results[5].value : { connections: [], sentRequests: [], pendingRequests: [] };
-      const profileData = results[6].status === 'fulfilled' && results[6].value ? (results[6].value as any).data : null;
-      const unreadData = results[7].status === 'fulfilled' ? results[7].value : {};
+      const profileData = results[5].status === 'fulfilled' && results[5].value ? (results[5].value as any).data : null;
+      const unreadData = results[6].status === 'fulfilled' ? results[6].value : {};
+      const bannerData = results[7].status === 'fulfilled' ? (results[7].value as any) : { bannerColor: null, bannerUrl: null };
 
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const todayTasks = tasksData?.filter((t: any) => t.task_date === todayStr) || [];
@@ -292,6 +358,8 @@ const HomeContent = () => {
       setConnectionsInfo(connectionsData);
       setUserProfile(profileData);
       setUnreadCounts(unreadData);
+      setBannerColor(bannerData.bannerColor);
+      setBannerUrl(bannerData.bannerUrl);
       setTasks(todayTasks);
       setSchedule(calData || []);
       // Treat notes as posts for the social feed
@@ -616,7 +684,17 @@ const HomeContent = () => {
               border: '1px solid',
               borderColor: 'divider'
             }}>
-              <Box sx={{ height: 100, background: 'linear-gradient(135deg, #2563EB 0%, #60A5FA 100%)' }} />
+              <Box 
+                sx={{ 
+                  height: 100, 
+                  background: bannerUrl ? `url(${bannerUrl}) center/cover` : (bannerColor || 'linear-gradient(135deg, #2563EB 0%, #60A5FA 100%)'),
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }} 
+              >
+              </Box>
               <CardContent sx={{ pt: 0, textAlign: 'center', mt: -6 }}>
                 <Avatar 
                   src={userProfile?.avatar_url || (user as any)?.user_metadata?.avatar_url}
@@ -644,12 +722,12 @@ const HomeContent = () => {
                 
                 <Grid container spacing={2}>
                   <Grid size={6}>
-                    <Typography variant="h6" fontWeight={800}>12</Typography>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>COMPLETED</Typography>
+                    <Typography variant="h6" fontWeight={800}>{personalCount}</Typography>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}>PERSONAL</Typography>
                   </Grid>
                   <Grid size={6}>
-                    <Typography variant="h6" fontWeight={800}>84</Typography>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>NETWORK</Typography>
+                    <Typography variant="h6" fontWeight={800}>{professionalCount}</Typography>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}>PROFESSIONAL</Typography>
                   </Grid>
                 </Grid>
               </CardContent>
@@ -666,41 +744,120 @@ const HomeContent = () => {
               </Box>
             </Card>
 
-            <Card sx={{ 
-              borderRadius: 6, 
-              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-              border: '1px solid',
-              borderColor: 'divider'
-            }}>
-              <CardContent>
-                <Typography variant="subtitle1" fontWeight={800} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                  <TrendingIcon size={20} color={theme.palette.secondary.main} />
-                  {t('home.trending')}
-                </Typography>
-                <List disablePadding>
-                  {[
-                    { tag: '#Productivity', posts: '1.2k' },
-                    { tag: '#WorkLife', posts: '850' },
-                    { tag: '#TimeOS', posts: '2.4k' },
-                    { tag: '#NextGen', posts: '1.5k' }
-                  ].map((item) => (
-                    <ListItem key={item.tag} sx={{ px: 0, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 'none' } }}>
+          <Card sx={{ 
+            borderRadius: 6, 
+            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            border: '1px solid',
+            borderColor: 'divider'
+          }}>
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                <UsersIcon size={20} color={theme.palette.info.main} />
+                {t('home.connections')}
+              </Typography>
+              
+              <List disablePadding>
+                {allUsers.length > 0 ? allUsers.map((person, idx) => {
+                  const isConnected = connectionsInfo.connections.includes(person.id);
+                  const isSent = connectionsInfo.sentRequests.includes(person.id);
+                  const isPending = connectionsInfo.pendingRequests.includes(person.id);
+                  
+                  const displayName = person.name ? person.name.charAt(0).toUpperCase() + person.name.slice(1) : 'Unknown';
+                  const unreadMsgCount = unreadCounts[person.id] || 0;
+
+                  return (
+                    <ListItem key={person.id} sx={{ px: 0, py: 1.5 }}>
+                      <ListItemAvatar sx={{ minWidth: 50 }}>
+                        <Badge
+                          overlap="circular"
+                          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                          variant="dot"
+                          color="success" // Assuming everyone online for demo or use logic
+                          sx={{ '& .MuiBadge-badge': { width: 10, height: 10, borderRadius: '50%', border: '2px solid white' } }}
+                        >
+                          <Badge
+                            overlap="circular"
+                            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                            badgeContent={unreadMsgCount}
+                            color="error"
+                          >
+                            <Avatar src={person.avatarUrl} sx={{ width: 40, height: 40, bgcolor: theme.palette.info.main, fontWeight: 800 }}>
+                              {!person.avatarUrl && displayName[0]}
+                            </Avatar>
+                          </Badge>
+                        </Badge>
+                      </ListItemAvatar>
                       <ListItemText 
-                        primary={item.tag} 
-                        primaryTypographyProps={{ variant: 'body2', fontWeight: 800, color: 'primary.main' }}
-                        secondary={`${item.posts} interactions`}
+                        primary={displayName}
+                        primaryTypographyProps={{ variant: 'body2', fontWeight: 800 }}
+                        secondary={person.email}
                         secondaryTypographyProps={{ variant: 'caption', fontWeight: 500 }}
                       />
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        {isConnected ? (
+                          <>
+                            <Tooltip title="Message">
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleOpenChat(person)}
+                                sx={{ color: 'success.main', bgcolor: alpha(theme.palette.success.main, 0.1) }}
+                              >
+                                <MessageIcon size={16} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Disconnect">
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleRemoveConnection(person.id)}
+                                sx={{ color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.1) }}
+                              >
+                                <XIcon size={16} />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        ) : isPending ? (
+                          <>
+                            <Button size="small" variant="contained" color="primary" sx={{ minWidth: 0, px: 1, borderRadius: 2 }} onClick={() => setConnectionPopup({ open: true, userId: person.id, actionType: 'accept' })}>Accept</Button>
+                            <Button size="small" variant="outlined" color="error" sx={{ minWidth: 0, px: 1, borderRadius: 2 }} onClick={() => handleRejectRequest(person.id)}>Decline</Button>
+                          </>
+                        ) : isSent ? (
+                          <Button size="small" variant="outlined" color="inherit" sx={{ minWidth: 0, px: 1, borderRadius: 2, fontSize: '0.75rem', fontWeight: 700 }} disabled>Pending</Button>
+                        ) : (
+                          <Tooltip title="Connect">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => setConnectionPopup({ open: true, userId: person.id, actionType: 'send' })}
+                              sx={{ color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.1) }}
+                            >
+                              <PlusIcon size={16} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Box>
                     </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
+                  );
+                }) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                    No other users found.
+                  </Typography>
+                )}
+              </List>
+              
+              <Button 
+                fullWidth 
+                variant="text" 
+                size="small" 
+                sx={{ mt: 1, fontWeight: 700, textTransform: 'none' }}
+              >
+                {t('home.view_suggestions')}
+              </Button>
+            </CardContent>
+          </Card>
           </Box>
         </Grid>
 
         {/* Middle Column: Post Feed & Tasks */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid size={{ xs: 12, md: 9 }}>
           {/* Create Post Section */}
           <Paper sx={{ 
             p: 3, 
@@ -742,25 +899,48 @@ const HomeContent = () => {
 
             {/* Image Preview */}
             {selectedImage && (
-              <Box sx={{ position: 'relative', display: 'inline-block', mt: 1, mb: 2, borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+              <Box sx={{ 
+                position: 'relative', 
+                mt: 2, 
+                mb: 3, 
+                borderRadius: 4, 
+                overflow: 'hidden', 
+                boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
+                border: '1px solid',
+                borderColor: alpha(theme.palette.divider, 0.1)
+              }}>
                 <img 
                   src={selectedImage.data} 
                   alt="Selected Preview" 
-                  style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '12px', display: 'block' }} 
+                  style={{ width: '100%', maxHeight: '350px', objectFit: 'cover', display: 'block' }} 
+                />
+                <Box 
+                  sx={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 30%)',
+                    pointerEvents: 'none'
+                  }}
                 />
                 <IconButton 
                   size="small" 
                   onClick={() => setSelectedImage(null)}
                   sx={{ 
                     position: 'absolute', 
-                    top: 8, 
-                    right: 8, 
-                    bgcolor: 'rgba(0,0,0,0.6)', 
+                    top: 12, 
+                    right: 12, 
+                    bgcolor: 'rgba(0,0,0,0.4)', 
+                    backdropFilter: 'blur(8px)',
                     color: 'white',
-                    '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' } 
+                    p: 1,
+                    '&:hover': { 
+                      bgcolor: 'rgba(255, 59, 48, 0.9)', 
+                      transform: 'scale(1.1)' 
+                    },
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
                 >
-                  <XIcon size={16} />
+                  <XIcon size={18} />
                 </IconButton>
               </Box>
             )}
@@ -1020,185 +1200,6 @@ const HomeContent = () => {
         </Grid>
 
 
-        {/* Right Column: Notifications & Schedule */}
-        <Grid size={{ xs: 12, md: 3 }}>
-          {/* Schedule Section */}
-          <Card sx={{ 
-            borderRadius: 6, 
-            mb: 4, 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-            border: '1px solid',
-            borderColor: 'divider'
-          }}>
-            <CardContent sx={{ pb: 2 }}>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                <CalendarIcon size={20} color={theme.palette.primary.main} />
-                {t('home.my_schedule')}
-              </Typography>
-              
-              <List disablePadding>
-                {schedule.length > 0 ? (
-                  schedule.slice(0, 5).map((entry) => (
-                    <ListItem key={entry.id} sx={{ px: 0, py: 1.5, borderBottom: '1px solid', borderColor: alpha(theme.palette.divider, 0.5), '&:last-child': { borderBottom: 'none' } }}>
-                      <Box sx={{ 
-                        width: 48, 
-                        height: 48,
-                        textAlign: 'center', 
-                        mr: 2, 
-                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                        borderRadius: 3,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        <Typography variant="caption" fontWeight={900} color="primary" sx={{ display: 'block', lineHeight: 1, fontSize: '1rem' }}>
-                          {format(new Date(entry.entry_date), 'dd')}
-                        </Typography>
-                        <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', textTransform: 'uppercase', fontSize: '0.6rem', opacity: 0.8 }}>
-                          {format(new Date(entry.entry_date), 'MMM')}
-                        </Typography>
-                      </Box>
-                      <ListItemText 
-                        primary={entry.title}
-                        primaryTypographyProps={{ variant: 'body2', fontWeight: 800, noWrap: true }}
-                        secondary={format(new Date(entry.entry_date), 'h:mm a')}
-                        secondaryTypographyProps={{ variant: 'caption', fontWeight: 600 }}
-                      />
-                    </ListItem>
-                  ))
-                ) : (
-                  <Box sx={{ py: 3, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                      No events scheduled.
-                    </Typography>
-                  </Box>
-                )}
-              </List>
-              
-              <Button 
-                fullWidth 
-                variant="outlined" 
-                size="medium" 
-                sx={{ mt: 2, borderRadius: 3, fontWeight: 700, textTransform: 'none' }}
-                onClick={() => router.push('/calendar')}
-              >
-                Open Calendar
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* People to Connect */}
-          <Card sx={{ 
-            borderRadius: 6, 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-            border: '1px solid',
-            borderColor: 'divider'
-          }}>
-            <CardContent>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                <UsersIcon size={20} color={theme.palette.info.main} />
-                {t('home.connections')}
-              </Typography>
-              
-              <List disablePadding>
-                {allUsers.length > 0 ? allUsers.map((person, idx) => {
-                  const isConnected = connectionsInfo.connections.includes(person.id);
-                  const isSent = connectionsInfo.sentRequests.includes(person.id);
-                  const isPending = connectionsInfo.pendingRequests.includes(person.id);
-                  
-                  const displayName = person.name ? person.name.charAt(0).toUpperCase() + person.name.slice(1) : 'Unknown';
-                  const unreadMsgCount = unreadCounts[person.id] || 0;
-
-                  return (
-                    <ListItem key={person.id} sx={{ px: 0, py: 1.5 }}>
-                      <ListItemAvatar sx={{ minWidth: 50 }}>
-                        <Badge
-                          overlap="circular"
-                          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                          variant="dot"
-                          color="success" // Assuming everyone online for demo or use logic
-                          sx={{ '& .MuiBadge-badge': { width: 10, height: 10, borderRadius: '50%', border: '2px solid white' } }}
-                        >
-                          <Badge
-                            overlap="circular"
-                            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                            badgeContent={unreadMsgCount}
-                            color="error"
-                          >
-                            <Avatar src={person.avatarUrl} sx={{ width: 40, height: 40, bgcolor: theme.palette.info.main, fontWeight: 800 }}>
-                              {!person.avatarUrl && displayName[0]}
-                            </Avatar>
-                          </Badge>
-                        </Badge>
-                      </ListItemAvatar>
-                      <ListItemText 
-                        primary={displayName}
-                        primaryTypographyProps={{ variant: 'body2', fontWeight: 800 }}
-                        secondary={person.email}
-                        secondaryTypographyProps={{ variant: 'caption', fontWeight: 500 }}
-                      />
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        {isConnected ? (
-                          <>
-                            <Tooltip title="Message">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleOpenChat(person)}
-                                sx={{ color: 'success.main', bgcolor: alpha(theme.palette.success.main, 0.1) }}
-                              >
-                                <MessageIcon size={16} />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Disconnect">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleRemoveConnection(person.id)}
-                                sx={{ color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.1) }}
-                              >
-                                <XIcon size={16} />
-                              </IconButton>
-                            </Tooltip>
-                          </>
-                        ) : isPending ? (
-                          <>
-                            <Button size="small" variant="contained" color="primary" sx={{ minWidth: 0, px: 1, borderRadius: 2 }} onClick={() => handleAcceptRequest(person.id)}>Accept</Button>
-                            <Button size="small" variant="outlined" color="error" sx={{ minWidth: 0, px: 1, borderRadius: 2 }} onClick={() => handleRejectRequest(person.id)}>Decline</Button>
-                          </>
-                        ) : isSent ? (
-                          <Button size="small" variant="outlined" color="inherit" sx={{ minWidth: 0, px: 1, borderRadius: 2, fontSize: '0.75rem', fontWeight: 700 }} disabled>Pending</Button>
-                        ) : (
-                          <Tooltip title="Connect">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleSendRequest(person.id)}
-                              sx={{ color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.1) }}
-                            >
-                              <PlusIcon size={16} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </ListItem>
-                  );
-                }) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
-                    No other users found.
-                  </Typography>
-                )}
-              </List>
-              
-              <Button 
-                fullWidth 
-                variant="text" 
-                size="small" 
-                sx={{ mt: 1, fontWeight: 700, textTransform: 'none' }}
-              >
-                {t('home.view_suggestions')}
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
 
 
@@ -1487,6 +1488,147 @@ const HomeContent = () => {
           onClose={() => setActiveChatUser(null)} 
         />
       )}
+
+      {/* Cancel Connection Dialog */}
+      <Dialog 
+        open={cancelDialogUser !== null} 
+        onClose={() => setCancelDialogUser(null)}
+        PaperProps={{ sx: { borderRadius: 4, p: 2, minWidth: 350 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>
+          Connection Cancellation
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', pb: 1 }}>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            {cancelDialogUser?.name || cancelDialogUser?.email} has cancelled their connection with you. 
+            Do you still want to keep your connection to them?
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={6}>
+              <Button 
+                fullWidth 
+                variant="contained" 
+                color="primary"
+                onClick={() => handleResolveCancel(cancelDialogUser?.id, true)}
+                sx={{ borderRadius: 3, py: 1.5, fontWeight: 700 }}
+              >
+                Yes, Keep Connection
+              </Button>
+            </Grid>
+            <Grid size={6}>
+              <Button 
+                fullWidth 
+                variant="outlined" 
+                color="error"
+                onClick={() => handleResolveCancel(cancelDialogUser?.id, false)}
+                sx={{ borderRadius: 3, py: 1.5, fontWeight: 700 }}
+              >
+                No, Disconnect
+              </Button>
+            </Grid>
+          </Grid>
+        </DialogContent>
+      </Dialog>
+
+      {/* Connection Type Dialog */}
+      <Dialog 
+        open={connectionPopup?.open || false} 
+        onClose={() => setConnectionPopup(null)}
+        PaperProps={{ sx: { borderRadius: 4, p: 2, minWidth: 350 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>
+          Select Connection Type
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', pb: 1 }}>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            How would you like to categorize this connection? They will only be added to your network once you select a category.
+          </Typography>
+          <Grid container spacing={2}>
+            {(connectionPopup?.actionType === 'send' || (connectionPopup?.actionType === 'accept' && connectionsInfo.pendingTypes[connectionPopup.userId] === 'Personal')) && (
+              <Grid size={connectionPopup?.actionType === 'send' ? 6 : 12}>
+                <Button 
+                  fullWidth 
+                  variant="outlined" 
+                  color="primary"
+                  onClick={() => handleConfirmConnection('Personal')}
+                  sx={{ borderRadius: 3, py: 1.5, fontWeight: 700 }}
+                >
+                  {connectionPopup?.actionType === 'accept' ? 'Accept as Personal' : 'Personal'}
+                </Button>
+              </Grid>
+            )}
+            {(connectionPopup?.actionType === 'send' || (connectionPopup?.actionType === 'accept' && connectionsInfo.pendingTypes[connectionPopup.userId] === 'Professional')) && (
+              <Grid size={connectionPopup?.actionType === 'send' ? 6 : 12}>
+                <Button 
+                  fullWidth 
+                  variant="outlined" 
+                  color="secondary"
+                  onClick={() => handleConfirmConnection('Professional')}
+                  sx={{ borderRadius: 3, py: 1.5, fontWeight: 700 }}
+                >
+                  {connectionPopup?.actionType === 'accept' ? 'Accept as Professional' : 'Professional'}
+                </Button>
+              </Grid>
+            )}
+            {connectionPopup?.actionType === 'accept' && !connectionsInfo.pendingTypes[connectionPopup.userId] && (
+              <>
+                <Grid size={6}>
+                  <Button fullWidth variant="outlined" color="primary" onClick={() => handleConfirmConnection('Personal')} sx={{ borderRadius: 3, py: 1.5, fontWeight: 700 }}>Personal</Button>
+                </Grid>
+                <Grid size={6}>
+                  <Button fullWidth variant="outlined" color="secondary" onClick={() => handleConfirmConnection('Professional')} sx={{ borderRadius: 3, py: 1.5, fontWeight: 700 }}>Professional</Button>
+                </Grid>
+              </>
+            )}
+          </Grid>
+        </DialogContent>
+      </Dialog>
+
+      {/* Banner Dialog */}
+      <Dialog open={bannerDialogOpen} onClose={() => setBannerDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 800 }}>Customize Profile Banner</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="subtitle2" fontWeight={700} gutterBottom>Suggested Colors</Typography>
+          <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
+            {['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', 'linear-gradient(135deg, #2563EB 0%, #60A5FA 100%)', 'linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%)', '#0F172A'].map((color) => (
+              <Box 
+                key={color}
+                onClick={() => handleSaveBanner(color, null)}
+                sx={{ width: 40, height: 40, borderRadius: '50%', background: color, cursor: 'pointer', border: '2px solid', borderColor: bannerColor === color ? 'primary.main' : 'transparent', '&:hover': { opacity: 0.8 } }}
+              />
+            ))}
+          </Box>
+          <Typography variant="subtitle2" fontWeight={700} gutterBottom>Suggested Images</Typography>
+          <Grid container spacing={1} sx={{ mb: 3 }}>
+            {[
+              'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=500&q=80',
+              'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=500&q=80',
+              'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=500&q=80',
+              'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=500&q=80'
+            ].map((url) => (
+              <Grid size={6} key={url}>
+                <Box 
+                  onClick={() => handleSaveBanner(null, url)}
+                  sx={{ height: 80, borderRadius: 2, background: `url(${url}) center/cover`, cursor: 'pointer', border: '2px solid', borderColor: bannerUrl === url ? 'primary.main' : 'transparent', '&:hover': { opacity: 0.8 } }}
+                />
+              </Grid>
+            ))}
+          </Grid>
+          <Typography variant="subtitle2" fontWeight={700} gutterBottom>Custom Image URL</Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <input 
+              type="text" 
+              placeholder="https://example.com/image.jpg" 
+              id="custom-banner-url"
+              style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+            />
+            <Button variant="contained" onClick={() => {
+              const el = document.getElementById('custom-banner-url') as HTMLInputElement;
+              if (el && el.value) handleSaveBanner(null, el.value);
+            }}>Apply</Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

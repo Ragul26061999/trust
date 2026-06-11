@@ -7,7 +7,7 @@ interface LucideIconProps extends BoxProps {
 }
 
 const LucideIcon = ({ icon: Icon, size = 20, sx, ...props }: LucideIconProps) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', ...sx }} {...props}>
+  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', ...sx }} {...props}>
     <Icon size={size} />
   </Box>
 );

@@ -1,0 +1,3 @@
+ALTER TABLE user_profiles
+ADD COLUMN IF NOT EXISTS banner_color TEXT,
+ADD COLUMN IF NOT EXISTS banner_url TEXT;
