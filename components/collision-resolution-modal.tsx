@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Task } from '@/lib/scheduling-collision';
+import { Task } from '../lib/scheduling-collision';
 
 interface CollisionResolutionModalProps {
   isOpen: boolean;
