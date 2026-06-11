@@ -225,3 +225,123 @@ export async function saveBannerPreferences(userId: string, bannerColor: string 
   await updatePreferences(userId, (prefs) => ({ ...prefs, bannerColor, bannerUrl }));
 }
 
+// ─── Social Feed with Author Profiles ─────────────────────────────────────────
+// Uses supabaseServer (service_role) to bypass RLS and fetch cross-user posts.
+// Returns posts enriched with author name, avatar, and email.
+
+export interface FeedPost {
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  converted_to_task?: boolean;
+  color?: string;
+  drawing_data?: any;
+  drawing_thumbnail?: string;
+  audio_recording_url?: string;
+  video_recording_url?: string;
+  tags?: string[];
+  is_drawing?: boolean;
+  is_recording?: boolean;
+  task_level?: string;
+  task_status?: string;
+  note_attachments?: any[];
+  // Author profile fields
+  author_name: string;
+  author_avatar: string | null;
+  author_email: string;
+}
+
+// Helper to decode level/status from tags (mirrors notes-db.ts logic)
+function decodeFeedNote(note: any): any {
+  if (!note) return note;
+  const tags = note.tags || [];
+  const levelTag = tags.find((t: string) => t.startsWith('level:'));
+  const statusTag = tags.find((t: string) => t.startsWith('status:'));
+  const cleanTags = tags.filter((t: string) => !t.startsWith('level:') && !t.startsWith('status:'));
+  return {
+    ...note,
+    tags: cleanTags,
+    task_level: levelTag ? levelTag.split(':')[1] : undefined,
+    task_status: statusTag ? statusTag.split(':')[1] : undefined,
+  };
+}
+
+export async function getSocialFeedWithAuthors(userId: string): Promise<FeedPost[]> {
+  try {
+    // 1. Resolve the user's connections from user_preferences
+    const { data: prefData } = await supabaseServer
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', userId)
+      .single();
+
+    const prefs = prefData?.preferences || {};
+    const connectionIds: string[] = prefs.connections || [];
+
+    // 2. Build the list of user IDs whose posts we want
+    const feedUserIds = [userId, ...connectionIds];
+
+    // 3. Fetch posts from all those users (service_role bypasses RLS)
+    const { data: posts, error: postsError } = await supabaseServer
+      .from('notes')
+      .select(`
+        *,
+        note_attachments (*)
+      `)
+      .in('user_id', feedUserIds)
+      .is('converted_to_task', null)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (postsError) {
+      console.error('Error fetching social feed posts:', postsError);
+      return [];
+    }
+
+    if (!posts || posts.length === 0) return [];
+
+    // 4. Collect unique author IDs from the posts
+    const authorIds = [...new Set(posts.map((p: any) => p.user_id))];
+
+    // 5. Fetch author profiles (avatar_url) from user_profiles table
+    const { data: profiles } = await supabaseServer
+      .from('user_profiles')
+      .select('user_id, avatar_url')
+      .in('user_id', authorIds);
+
+    const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.avatar_url]));
+
+    // 6. Fetch author metadata (name, email, avatar) from auth.users
+    const { data: { users: authUsers } } = await supabaseServer.auth.admin.listUsers();
+    const authUserMap = new Map(
+      (authUsers || []).map(u => [u.id, {
+        name: u.user_metadata?.name || u.email?.split('@')[0] || 'Unknown User',
+        email: u.email || '',
+        avatar: u.user_metadata?.avatar_url || null
+      }])
+    );
+
+    // 7. Enrich each post with author data
+    const enrichedPosts: FeedPost[] = posts.map((post: any) => {
+      const decoded = decodeFeedNote(post);
+      const authUser = authUserMap.get(post.user_id);
+      const profileAvatar = profileMap.get(post.user_id);
+
+      return {
+        ...decoded,
+        author_name: authUser?.name || 'Unknown User',
+        author_avatar: profileAvatar || authUser?.avatar || null,
+        author_email: authUser?.email || '',
+      };
+    });
+
+    return enrichedPosts;
+  } catch (error) {
+    console.error('Error in getSocialFeedWithAuthors:', error);
+    return [];
+  }
+}
+

@@ -61,7 +61,7 @@ import {
 import { format } from 'date-fns';
 import { getProfessionalInfo, getProfessionalTasks, ProfessionalTask } from '../../lib/professional-db';
 import { getCalendarEntries, CalendarEntry } from '../../lib/personal-calendar-db';
-import { getNotes, addNote, Note, getNotesWithAttachments, addNoteWithAttachments, updateNote, deleteNoteWithAttachments, getSocialFeedPosts } from '../../lib/notes-db';
+import { getNotes, addNote, Note, getNotesWithAttachments, addNoteWithAttachments, updateNote, deleteNoteWithAttachments } from '../../lib/notes-db';
 import { toggleLike, getPostLikes, getPostComments, addComment, PostLike, PostComment } from '../../lib/social-db';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { 
@@ -76,7 +76,7 @@ import {
 import Link from 'next/link';
 import VoiceSchedulerModal from '../../components/voice-scheduler-modal';
 import NoteMediaDisplay from '../../components/note-media-display';
-import { getAllUsers, getUserConnectionsInfo, sendConnectionRequest, acceptConnectionRequest, rejectConnectionRequest, removeConnection, resolveCancelRequest, getBannerPreferences, saveBannerPreferences } from '../actions/user-actions';
+import { getAllUsers, getUserConnectionsInfo, sendConnectionRequest, acceptConnectionRequest, rejectConnectionRequest, removeConnection, resolveCancelRequest, getBannerPreferences, saveBannerPreferences, getSocialFeedWithAuthors, FeedPost } from '../actions/user-actions';
 import ChatBox from '../../components/chat-box';
 import { getUnreadCounts, markMessagesAsRead } from '../../lib/chat-db';
 // Lucide Icon Wrapper
@@ -94,7 +94,7 @@ const HomeContent = () => {
   const [professionalInfo, setProfessionalInfo] = useState<any>(null);
   const [tasks, setTasks] = useState<ProfessionalTask[]>([]);
   const [schedule, setSchedule] = useState<CalendarEntry[]>([]);
-  const [posts, setPosts] = useState<Note[]>([]);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
   const [taskLevel, setTaskLevel] = useState('Low');
@@ -325,13 +325,12 @@ const HomeContent = () => {
       // Fetch connections first to get the social feed properly
       const connectionsDataResult = await getUserConnectionsInfo(user.id);
       const connectionsData = connectionsDataResult as { connections: string[]; sentRequests: string[]; pendingRequests: string[]; connectionTypes: Record<string, string>; pendingTypes: Record<string, string>; cancelRequests: string[]; };
-      const connectionIds = connectionsData.connections || [];
 
       const results = await Promise.allSettled([
         getProfessionalInfo(user.id),
         getProfessionalTasks(user.id),
         getCalendarEntries(user.id),
-        getSocialFeedPosts(user.id, connectionIds),
+        getSocialFeedWithAuthors(user.id),
         getAllUsers(),
         isSupabaseConfigured() && supabase ? supabase!.from('user_profiles').select('avatar_url').eq('user_id', user.id).single() : Promise.resolve({ data: null }),
         getUnreadCounts(user.id),
@@ -770,21 +769,13 @@ const HomeContent = () => {
                       <ListItemAvatar sx={{ minWidth: 50 }}>
                         <Badge
                           overlap="circular"
-                          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                          variant="dot"
-                          color="success" // Assuming everyone online for demo or use logic
-                          sx={{ '& .MuiBadge-badge': { width: 10, height: 10, borderRadius: '50%', border: '2px solid white' } }}
+                          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                          badgeContent={unreadMsgCount}
+                          color="error"
                         >
-                          <Badge
-                            overlap="circular"
-                            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                            badgeContent={unreadMsgCount}
-                            color="error"
-                          >
-                            <Avatar src={person.avatarUrl} sx={{ width: 40, height: 40, bgcolor: theme.palette.info.main, fontWeight: 800 }}>
-                              {!person.avatarUrl && displayName[0]}
-                            </Avatar>
-                          </Badge>
+                          <Avatar src={person.avatarUrl} sx={{ width: 40, height: 40, bgcolor: theme.palette.info.main, fontWeight: 800 }}>
+                            {!person.avatarUrl && displayName[0]}
+                          </Avatar>
                         </Badge>
                       </ListItemAvatar>
                       <ListItemText 
@@ -1051,22 +1042,27 @@ const HomeContent = () => {
               <CardContent sx={{ pb: 2, px: 3, pt: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
                   <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Avatar src={userProfile?.avatar_url || (user as any)?.user_metadata?.avatar_url} sx={{ width: 44, height: 44, bgcolor: 'secondary.main', fontWeight: 800 }}>
-                      {user?.email?.charAt(0).toUpperCase()}
+                    <Avatar src={(post as any).author_avatar || undefined} sx={{ width: 44, height: 44, bgcolor: 'secondary.main', fontWeight: 800 }}>
+                      {((post as any).author_name || 'U').charAt(0).toUpperCase()}
                     </Avatar>
                     <Box>
-                      <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1 }}>{user?.email?.split('@')[0]}</Typography>
+                      <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1 }}>
+                        {(post as any).author_name || (post as any).author_email?.split('@')[0] || 'Unknown'}
+                      </Typography>
                       <Typography variant="caption" color="text.secondary" fontWeight={600}>
                         {format(new Date(post.created_at), 'MMM d • h:mm a')}
                       </Typography>
                     </Box>
                   </Box>
-                  <IconButton 
-                    size="small"
-                    onClick={(e) => setPostMenuAnchor({ anchorEl: e.currentTarget, postId: post.id, post })}
-                  >
-                    <MoreIcon size={22} />
-                  </IconButton>
+                  {/* Only show edit/delete menu on user's own posts */}
+                  {post.user_id === user?.id && (
+                    <IconButton 
+                      size="small"
+                      onClick={(e) => setPostMenuAnchor({ anchorEl: e.currentTarget, postId: post.id, post: post as any })}
+                    >
+                      <MoreIcon size={22} />
+                    </IconButton>
+                  )}
                 </Box>
                 {(() => {
                   const hasAttachments = !!(

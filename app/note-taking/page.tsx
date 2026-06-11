@@ -49,7 +49,8 @@ import {
   Fade,
   Divider,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Avatar
 } from '@mui/material';
 import {
   ArrowLeft as ArrowBackIcon,
@@ -166,7 +167,9 @@ const NoteTakingPageContent = () => {
 
   const mergedNotes = useMemo(() => {
     const attachmentMap = new Map(noteWithAttachments.map((n) => [n.id, n]));
-    return notes.map((n) => attachmentMap.get(n.id) || n);
+    return notes
+      .map((n) => attachmentMap.get(n.id) || n)
+      .filter((n) => !n.tags?.includes('social_post'));
   }, [notes, noteWithAttachments]);
 
   // Define color palette for notes
@@ -772,355 +775,128 @@ const NoteTakingPageContent = () => {
         <Container maxWidth="xl" sx={{ py: 4 }}>
           {/* KPI Cards */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card
-                sx={{
-                  height: 140,
-                  background: 'linear-gradient(135deg, rgba(103, 80, 164, 0.05) 0%, rgba(98, 91, 113, 0.05) 100%)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 4,
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&:hover': {
-                    transform: 'translateY(-8px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(103, 80, 164, 0.2)',
-                    borderColor: '#6750A4',
-                    '& .card-icon': {
-                      transform: 'scale(1.1) rotate(5deg)',
-                      background: 'linear-gradient(135deg, #6750A4 0%, #625B71 100%)',
-                      color: 'white'
+            {[
+              {
+                title: t('note_taking.total_notes'),
+                value: notes.length,
+                progress: 100,
+                icon: <TaskIcon size={24} />,
+                color: '#6750A4',
+                gradient: 'linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)',
+              },
+              {
+                title: 'Converted Tasks',
+                value: notes.filter(note => note.converted_to_task).length,
+                progress: notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0,
+                icon: <CheckCircleIcon size={24} />,
+                color: '#10B981',
+                gradient: 'linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)',
+              },
+              {
+                title: 'Conversion Rate',
+                value: `${notes.length > 0 ? Math.round((notes.filter(note => note.converted_to_task).length / notes.length) * 100) : 0}%`,
+                progress: notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0,
+                icon: <TrendingUpIcon size={24} />,
+                color: '#F59E0B',
+                gradient: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)',
+              },
+              {
+                title: 'Active Notes',
+                value: notes.filter(note => !note.converted_to_task).length,
+                progress: notes.length > 0 ? (notes.filter(note => !note.converted_to_task).length / notes.length) * 100 : 0,
+                icon: <TimelineIcon size={24} />,
+                color: '#3B82F6',
+                gradient: 'linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)',
+              }
+            ].map((kpi, index) => (
+              <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
+                <Card
+                  sx={{
+                    height: 120,
+                    background: kpi.gradient,
+                    border: 'none',
+                    borderRadius: 6,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: `0 16px 48px ${alpha(kpi.color, 0.2)}`,
+                      '& .card-icon': {
+                        transform: 'scale(1.15) rotate(5deg)',
+                        boxShadow: `0 8px 24px ${alpha(kpi.color, 0.4)}`,
+                      }
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      bottom: 0,
+                      width: 6,
+                      background: kpi.color,
+                      opacity: 0.8,
                     }
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    width: 4,
-                    background: 'linear-gradient(180deg, #6750A4 0%, #625B71 100%)',
-                    opacity: 0.8,
-                    transition: 'all 0.3s ease'
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box
-                      className="card-icon"
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 3,
-                        background: 'linear-gradient(135deg, rgba(103, 80, 164, 0.1) 0%, rgba(98, 91, 113, 0.1) 100%)',
-                        color: '#6750A4',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(103, 80, 164, 0.2)'
-                      }}
-                    >
-                      <LucideIcon icon={TaskIcon} size={20} />
+                  }}
+                >
+                  <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', fontSize: '0.85rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1, mb: 0.5 }}>
+                          {kpi.title}
+                        </Typography>
+                        <Typography variant="h3" sx={{ fontWeight: 900, color: kpi.color, fontSize: '2.5rem', lineHeight: 1 }}>
+                          {kpi.value}
+                        </Typography>
+                      </Box>
+                      <Box
+                        className="card-icon"
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 4,
+                          background: kpi.color,
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: `0 4px 12px ${alpha(kpi.color, 0.3)}`
+                        }}
+                      >
+                        {kpi.icon}
+                      </Box>
                     </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                      {t('note_taking.total_notes')}
-                    </Typography>
-                  </Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #6750A4 0%, #625B71 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
-                    {notes.length}
-                  </Typography>
-                  <Box sx={{ position: 'relative' }}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={100}
-                      sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: 'rgba(103, 80, 164, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #6750A4 0%, #625B71 100%)',
-                          borderRadius: 3,
-                          boxShadow: '0 2px 8px rgba(103, 80, 164, 0.4)',
-                          transition: 'all 0.3s ease'
-                        }
-                      }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card
-                sx={{
-                  height: 140,
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 4,
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&:hover': {
-                    transform: 'translateY(-8px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(16, 185, 129, 0.2)',
-                    borderColor: '#10b981',
-                    '& .card-icon': {
-                      transform: 'scale(1.1) rotate(5deg)',
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white'
-                    }
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    width: 4,
-                    background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
-                    opacity: 0.8,
-                    transition: 'all 0.3s ease'
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box
-                      className="card-icon"
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 3,
-                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
-                        color: '#10b981',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
-                      }}
-                    >
-                      <LucideIcon icon={CheckCircleIcon} size={20} />
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                      Converted Tasks
-                    </Typography>
-                  </Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
-                    {notes.filter(note => note.converted_to_task).length}
-                  </Typography>
-                  <Box sx={{ position: 'relative' }}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0}
-                      sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: 'rgba(16, 185, 129, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
-                          borderRadius: 3,
-                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
-                          transition: 'all 0.3s ease'
-                        }
-                      }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card
-                sx={{
-                  height: 140,
-                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(217, 119, 6, 0.05) 100%)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 4,
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&:hover': {
-                    transform: 'translateY(-8px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(245, 158, 11, 0.2)',
-                    borderColor: '#f59e0b',
-                    '& .card-icon': {
-                      transform: 'scale(1.1) rotate(5deg)',
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      color: 'white'
-                    }
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    width: 4,
-                    background: 'linear-gradient(180deg, #f59e0b 0%, #d97706 100%)',
-                    opacity: 0.8,
-                    transition: 'all 0.3s ease'
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box
-                      className="card-icon"
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 3,
-                        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)',
-                        color: '#f59e0b',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
-                      }}
-                    >
-                      <LucideIcon icon={TrendingUpIcon} size={20} />
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                      Conversion Rate
-                    </Typography>
-                  </Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
-                    {notes.length > 0 ? Math.round((notes.filter(note => note.converted_to_task).length / notes.length) * 100) : 0}%
-                  </Typography>
-                  <Box sx={{ position: 'relative' }}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0}
-                      sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: 'rgba(245, 158, 11, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)',
-                          borderRadius: 3,
-                          boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
-                          transition: 'all 0.3s ease'
-                        }
-                      }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card
-                sx={{
-                  height: 140,
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 4,
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&:hover': {
-                    transform: 'translateY(-8px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(59, 130, 246, 0.2)',
-                    borderColor: '#3b82f6',
-                    '& .card-icon': {
-                      transform: 'scale(1.1) rotate(5deg)',
-                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                      color: 'white'
-                    }
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    width: 4,
-                    background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
-                    opacity: 0.8,
-                    transition: 'all 0.3s ease'
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box
-                      className="card-icon"
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 3,
-                        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)',
-                        color: '#3b82f6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
-                      }}
-                    >
-                      <LucideIcon icon={TimelineIcon} size={20} />
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                      Active Notes
-                    </Typography>
-                  </Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
-                    {notes.filter(note => !note.converted_to_task).length}
-                  </Typography>
-                  <Box sx={{ position: 'relative' }}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={notes.length > 0 ? (notes.filter(note => !note.converted_to_task).length / notes.length) * 100 : 0}
-                      sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: 'rgba(59, 130, 246, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
-                          borderRadius: 3,
-                          boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
-                          transition: 'all 0.3s ease'
-                        }
-                      }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
 
           {/* Add Note Button */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 4 }}>
-            <Fab
-              color="primary"
-              aria-label="add note"
-              onClick={handleOpenDialog}
-              sx={{
-                boxShadow: 3,
-                '&:hover': {
-                  boxShadow: 6,
-                }
-              }}
-            >
-              <LucideIcon icon={AddIcon} size={24} sx={{ color: 'white' }} />
-            </Fab>
-          </Box>
+          <Fab
+            color="primary"
+            aria-label="add note"
+            onClick={handleOpenDialog}
+            sx={{
+              position: 'fixed',
+              bottom: 32,
+              right: 32,
+              boxShadow: '0 8px 32px rgba(103, 80, 164, 0.4)',
+              zIndex: 1000,
+              width: 64,
+              height: 64,
+              '&:hover': {
+                boxShadow: '0 12px 48px rgba(103, 80, 164, 0.6)',
+                transform: 'scale(1.05)',
+              },
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            <LucideIcon icon={AddIcon} size={32} sx={{ color: 'white' }} />
+          </Fab>
 
           {snackbar.open && (
             <Alert
@@ -1151,67 +927,6 @@ const NoteTakingPageContent = () => {
             </Paper>
           ) : (
             <>
-              {/* Tasks Section */}
-              {tasks.length > 0 && (
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="h5" sx={{ mb: 2, color: 'primary.main', fontWeight: 600 }}>
-                    Tasks ({tasks.length})
-                  </Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-                    {tasks.map((task) => (
-                      <Card
-                        key={task.id}
-                        sx={{
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          border: '2px solid',
-                          borderColor: 'success.main',
-                          backgroundColor: 'success.light',
-                          transition: 'transform 0.2s, box-shadow 0.2s',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: 4
-                          }
-                        }}
-                      >
-                        <CardContent sx={{ flexGrow: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                            <LucideIcon icon={TaskIcon} size={20} sx={{ mr: 1, color: 'success.main' }} />
-                            <TranslatedText 
-                              text={task.title} 
-                              sx={{ fontWeight: 600, fontSize: '1.25rem', color: 'text.primary', display: 'block' }} 
-                            />
-                          </Box>
-                          <TranslatedText 
-                            text={task.content} 
-                            sx={{ mb: 2, color: 'text.secondary', fontSize: '0.9rem' }} 
-                          />
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            <Chip
-                              label={task.priority}
-                              size="small"
-                              color={task.priority === 'High' ? 'error' : task.priority === 'Medium' ? 'warning' : 'default'}
-                            />
-                            <Chip
-                              label={task.status}
-                              size="small"
-                              color={task.status === 'completed' ? 'success' : 'info'}
-                            />
-                            <Chip
-                              label="Task"
-                              size="small"
-                              color="success"
-                              icon={<TaskIcon />}
-                            />
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </Box>
-                </Box>
-              )}
-
               {/* Notes Section */}
               {mergedNotes.length > 0 && (
                 <Box>
@@ -1219,8 +934,11 @@ const NoteTakingPageContent = () => {
                     Notes ({mergedNotes.length})
                   </Typography>
                   <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-                    {mergedNotes.map((note) => {
+                    {mergedNotes.map((note, index) => {
                       const attachmentsForNote = (note as any).note_attachments || [];
+                      const pastelColors = ['#FDE68A', '#A7F3D0', '#BFDBFE', '#FBCFE8', '#E9D5FF', '#FED7AA'];
+                      const cardColor = (note.color && note.color !== '#ffffff') ? note.color : pastelColors[index % pastelColors.length];
+                      
                       return (
                         <Card
                           key={note.id}
@@ -1228,38 +946,62 @@ const NoteTakingPageContent = () => {
                             height: '100%',
                             display: 'flex',
                             flexDirection: 'column',
-                            borderRadius: 3,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            background: note.color || '#f8fafc',
-                            boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
-                            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+                            borderRadius: 6,
+                            border: 'none',
+                            background: `linear-gradient(135deg, ${cardColor}88 0%, ${cardColor}44 100%)`,
+                            backdropFilter: 'blur(10px)',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            position: 'relative',
+                            overflow: 'hidden',
                             '&:hover': {
                               transform: 'translateY(-6px)',
-                              boxShadow: '0 16px 40px rgba(0,0,0,0.12)'
+                              boxShadow: '0 12px 48px rgba(0,0,0,0.1)'
+                            },
+                            '&::before': {
+                              content: '""',
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: '4px',
+                              background: cardColor,
                             }
                           }}
                         >
-                          <CardContent sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <Box>
-                                <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
-                                  {formatDate(note.created_at)}
-                                </Typography>
-                                <TranslatedText 
-                                  text={note.title} 
-                                  sx={{ fontWeight: 800, color: 'text.primary', fontSize: '1.25rem', display: 'block' }} 
-                                />
+                          <CardContent sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <Avatar 
+                                  src={(user as any)?.user_metadata?.avatar_url}
+                                  sx={{ width: 40, height: 40, bgcolor: cardColor, color: 'rgba(0,0,0,0.7)', fontWeight: 800, border: '2px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+                                >
+                                  {user?.email?.charAt(0).toUpperCase() || 'U'}
+                                </Avatar>
+                                <Box>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
+                                    {user?.email?.split('@')[0] || 'User'}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                    {formatDate(note.created_at)}
+                                  </Typography>
+                                </Box>
                               </Box>
-                              <IconButton size="small" onClick={(e) => handleNoteMenuOpen(e, note)}>
+                              <IconButton size="small" onClick={(e) => handleNoteMenuOpen(e, note)} sx={{ bgcolor: 'rgba(255,255,255,0.5)' }}>
                                 <MoreVertIcon fontSize="small" />
                               </IconButton>
                             </Box>
 
-                            <TranslatedText 
-                              text={note.content.length > 140 ? `${note.content.substring(0, 140)}...` : note.content} 
-                              sx={{ lineHeight: 1.6, color: 'text.secondary', fontSize: '0.9rem' }} 
-                            />
+                            <Box>
+                              <TranslatedText 
+                                text={note.title} 
+                                sx={{ fontWeight: 800, color: 'text.primary', fontSize: '1.25rem', display: 'block', mb: 1 }} 
+                              />
+                              <TranslatedText 
+                                text={note.content.length > 140 ? `${note.content.substring(0, 140)}...` : note.content} 
+                                sx={{ lineHeight: 1.6, color: 'text.secondary', fontSize: '0.95rem' }} 
+                              />
+                            </Box>
 
                             <NoteMediaDisplay
                               attachments={attachmentsForNote}
@@ -1271,19 +1013,20 @@ const NoteTakingPageContent = () => {
                               compact={true}
                             />
                           </CardContent>
-                          <Divider />
-                          <CardActions sx={{ p: 2, justifyContent: 'flex-end', gap: 1 }}>
-                            <Button size="small" variant="outlined" startIcon={<LucideIcon icon={InsightsIcon} size={16} />} onClick={() => {
+                          
+                          <Divider sx={{ opacity: 0.5 }} />
+                          <CardActions sx={{ p: 1.5, justifyContent: 'flex-end', gap: 1, bgcolor: 'rgba(255,255,255,0.4)' }}>
+                            <Button size="small" variant="text" sx={{ fontWeight: 700, color: 'text.primary', textTransform: 'none' }} startIcon={<LucideIcon icon={InsightsIcon} size={16} />} onClick={() => {
                               const attachmentNote = noteWithAttachments.find((n) => n.id === note.id);
                               setSelectedNoteForView(attachmentNote || { ...(note as any), note_attachments: attachmentsForNote });
                               setViewNoteOpen(true);
                             }}>
                               View
                             </Button>
-                            <Button size="small" startIcon={<EditIcon />} onClick={() => handleEditNote(note)}>
+                            <Button size="small" variant="text" sx={{ fontWeight: 700, color: 'text.primary', textTransform: 'none' }} startIcon={<EditIcon size={16} />} onClick={() => handleEditNote(note)}>
                               Edit
                             </Button>
-                            <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteNote(note.id)}>
+                            <Button size="small" color="error" variant="text" sx={{ fontWeight: 700, textTransform: 'none' }} startIcon={<DeleteIcon size={16} />} onClick={() => handleDeleteNote(note.id)}>
                               Delete
                             </Button>
                           </CardActions>
