@@ -53,6 +53,8 @@ export default function ProfilePage() {
 
   const [personalStats, setPersonalStats] = useState<any>({ completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
   const [professionalStats, setProfessionalStats] = useState<any>({ completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
+  const [notesStats, setNotesStats] = useState<any>({ completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
+  const [posterStats, setPosterStats] = useState<any>({ completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
 
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
@@ -120,6 +122,11 @@ export default function ProfilePage() {
       
       setPersonalStats(calculateStats(personalTasks || []));
       setProfessionalStats(calculateStats(professionalTasks || []));
+      
+      const noteTakingData = (notesData || []).filter((note: any) => !note.tags?.includes('social_post'));
+      const posterData = (notesData || []).filter((note: any) => note.tags?.includes('social_post'));
+      setNotesStats(calculateStats(noteTakingData));
+      setPosterStats(calculateStats(posterData));
     } catch (error) {
       console.error('Error fetching profile data:', error);
     } finally {
@@ -294,7 +301,10 @@ export default function ProfilePage() {
              {/* Card 1: Personal Tasks */}
              <Grid size={{ xs: 12, md: 6 }}>
                <Box sx={{ bgcolor: cardBg, borderRadius: 3, p: 4, height: '100%', border: `1px solid ${cardBorder}` }}>
-                  <Typography variant="h6" sx={{ color: textPrimary, fontWeight: 700, mb: 3 }}>Personal Tasks</Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h6" sx={{ color: textPrimary, fontWeight: 700 }}>Personal Tasks</Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', px: 1.5, py: 0.5, borderRadius: 2 }}>{personalStats.total} Total</Typography>
+                  </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
                      <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 500 }}>Completed</Typography>
                      <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 600 }}>{personalStats.completed} / <Box component="span" sx={{ color: '#4ade80' }}>{personalStats.completedPct}</Box></Typography>
@@ -313,7 +323,10 @@ export default function ProfilePage() {
              {/* Card 2: Professional Tasks */}
              <Grid size={{ xs: 12, md: 6 }}>
                <Box sx={{ bgcolor: cardBg, borderRadius: 3, p: 4, height: '100%', border: `1px solid ${cardBorder}` }}>
-                  <Typography variant="h6" sx={{ color: textPrimary, fontWeight: 700, mb: 3 }}>Professional Tasks</Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h6" sx={{ color: textPrimary, fontWeight: 700 }}>Professional Tasks</Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', px: 1.5, py: 0.5, borderRadius: 2 }}>{professionalStats.total} Total</Typography>
+                  </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
                      <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 500 }}>Completed</Typography>
                      <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 600 }}>{professionalStats.completed} / <Box component="span" sx={{ color: '#4ade80' }}>{professionalStats.completedPct}</Box></Typography>
@@ -325,6 +338,50 @@ export default function ProfilePage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                      <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 500 }}>Incomplete</Typography>
                      <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 600 }}>{professionalStats.incomplete} / <Box component="span" sx={{ color: '#f87171' }}>{professionalStats.incompletePct}</Box></Typography>
+                  </Box>
+               </Box>
+             </Grid>
+
+             {/* Card 3: Notes Taking */}
+             <Grid size={{ xs: 12, md: 6 }}>
+               <Box sx={{ bgcolor: cardBg, borderRadius: 3, p: 4, height: '100%', border: `1px solid ${cardBorder}` }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h6" sx={{ color: textPrimary, fontWeight: 700 }}>Notes Taking</Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', px: 1.5, py: 0.5, borderRadius: 2 }}>{notesStats.total} Total</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 500 }}>Completed</Typography>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 600 }}>{notesStats.completed} / <Box component="span" sx={{ color: '#4ade80' }}>{notesStats.completedPct}</Box></Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 500 }}>In Process</Typography>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 600 }}>{notesStats.inProcess} / <Box component="span" sx={{ color: '#fbbf24' }}>{notesStats.inProcessPct}</Box></Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 500 }}>Incomplete</Typography>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 600 }}>{notesStats.incomplete} / <Box component="span" sx={{ color: '#f87171' }}>{notesStats.incompletePct}</Box></Typography>
+                  </Box>
+               </Box>
+             </Grid>
+
+             {/* Card 4: Poster */}
+             <Grid size={{ xs: 12, md: 6 }}>
+               <Box sx={{ bgcolor: cardBg, borderRadius: 3, p: 4, height: '100%', border: `1px solid ${cardBorder}` }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h6" sx={{ color: textPrimary, fontWeight: 700 }}>Poster</Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', px: 1.5, py: 0.5, borderRadius: 2 }}>{posterStats.total} Total</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 500 }}>Completed</Typography>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 600 }}>{posterStats.completed} / <Box component="span" sx={{ color: '#4ade80' }}>{posterStats.completedPct}</Box></Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 500 }}>In Process</Typography>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 600 }}>{posterStats.inProcess} / <Box component="span" sx={{ color: '#fbbf24' }}>{posterStats.inProcessPct}</Box></Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 500 }}>Incomplete</Typography>
+                     <Typography variant="body1" sx={{ color: textSecondary, fontWeight: 600 }}>{posterStats.incomplete} / <Box component="span" sx={{ color: '#f87171' }}>{posterStats.incompletePct}</Box></Typography>
                   </Box>
                </Box>
              </Grid>

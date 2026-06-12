@@ -92,28 +92,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    const trimmedEmail = email.trim();
+    
     // Check if Supabase is configured
     if (!isSupabaseConfigured() || !supabase) {
       console.warn('Supabase not configured. Using demo mode.');
       // Allow demo credentials if not configured
-      if (email.endsWith('@gmail.com') && password === 'password') {
-        const userData = { email, id: 'demo-' + Date.now() };
+      if (trimmedEmail.endsWith('@gmail.com') && password === 'password') {
+        const userData = { email: trimmedEmail, id: 'demo-' + Date.now() };
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
         return true;
       }
-      return false;
+      throw new Error('Invalid login credentials');
     }
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: trimmedEmail,
         password,
       });
 
       if (error) {
-        console.error('Login error:', error.message);
-        return false;
+        throw new Error(error.message);
       }
 
       if (data.user) {
@@ -126,15 +127,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
       return false;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Catch Login error:', error);
-      return false;
+      throw error;
     }
   };
 
   const register = async (email: string, password: string): Promise<boolean> => {
+    const trimmedEmail = email.trim();
+    
+    if (!trimmedEmail.toLowerCase().endsWith('@gmail.com')) {
+      throw new Error('Only Gmail accounts are permitted for registration.');
+    }
+
     if (!isSupabaseConfigured() || !supabase) {
-      const userData = { email, id: 'demo-' + Date.now() };
+      const userData = { email: trimmedEmail, id: 'demo-' + Date.now() };
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
       return true;
@@ -142,19 +149,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: trimmedEmail,
         password,
       });
 
       if (error) {
-        console.error('Registration error:', error.message);
-        return false;
+        throw new Error(error.message);
+      }
+
+      // Supabase returns a user with empty identities if the email is already taken
+      // (when email enumeration protection is turned on)
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        throw new Error('This email is already registered. Please sign in instead.');
       }
 
       return !!data.user;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Catch Registration error:', error);
-      return false;
+      throw error;
     }
   };
 

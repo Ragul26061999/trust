@@ -345,3 +345,35 @@ export async function getSocialFeedWithAuthors(userId: string): Promise<FeedPost
   }
 }
 
+export async function getSuggestedUsersInfo() {
+  try {
+    const { data: { users }, error: usersError } = await supabaseServer.auth.admin.listUsers();
+    if (usersError) return [];
+    
+    const userIds = users.map(u => u.id);
+    
+    const [profilesRes, rolesRes] = await Promise.all([
+      supabaseServer.from('user_profiles').select('user_id, avatar_url').in('user_id', userIds),
+      supabaseServer.from('professional_roles').select('user_id, role_name, department, experience').in('user_id', userIds)
+    ]);
+    
+    const profileMap = new Map((profilesRes.data || []).map((p: any) => [p.user_id, p.avatar_url]));
+    const roleMap = new Map((rolesRes.data || []).map((r: any) => [r.user_id, r]));
+    
+    return users.map(user => {
+      const roleInfo = roleMap.get(user.id) || {};
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name || user.email?.split('@')[0] || 'Unknown User',
+        avatarUrl: profileMap.get(user.id) || user.user_metadata?.avatar_url || null,
+        role: roleInfo.role_name || 'Professional',
+        department: roleInfo.department || 'General',
+        experience: roleInfo.experience || 'Not specified'
+      };
+    });
+  } catch (error) {
+    console.error('Error in getSuggestedUsersInfo:', error);
+    return [];
+  }
+}

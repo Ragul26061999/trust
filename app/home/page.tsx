@@ -838,6 +838,7 @@ const HomeContent = () => {
                 fullWidth 
                 variant="text" 
                 size="small" 
+                onClick={() => router.push('/suggestions')}
                 sx={{ mt: 1, fontWeight: 700, textTransform: 'none' }}
               >
                 {t('home.view_suggestions')}

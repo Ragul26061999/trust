@@ -8,13 +8,14 @@ import TranslatedText from '../../components/translated-text';
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading, login, signInWithGoogle } = useAuth();
+  const { user, loading, login, register, signInWithGoogle } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [greeting, setGreeting] = useState('Welcome Back');
+  const [isSignUp, setIsSignUp] = useState(false);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -42,22 +43,55 @@ function LoginContent() {
     }
   }, [user, router]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      // Attempt to log in using Supabase auth
-      const success = await login(username, password);
-      if (success) {
-        router.push('/dashboard');
+      if (isSignUp) {
+        const success = await register(username, password);
+        if (success) {
+          // Registration successful, either auto-login or prompt to verify email
+          router.push('/dashboard');
+        } else {
+          setError('Registration failed. Please try again or check if the email is already in use.');
+        }
       } else {
-        setError('Invalid credentials. Please try again.');
+        try {
+          const success = await login(username, password);
+          if (success) {
+            router.push('/dashboard');
+          }
+        } catch (err: any) {
+          if (err.message === 'Invalid login credentials') {
+            // The user might not exist. Let's try to automatically create the account for them!
+            try {
+              const regSuccess = await register(username, password);
+              if (regSuccess) {
+                // Successfully created the user! Now log them in.
+                await login(username, password);
+                router.push('/dashboard');
+              }
+            } catch (regErr: any) {
+              // If registration fails because the email is already registered, 
+              // it means the account DOES exist and they simply typed the wrong password!
+              if (regErr.message.includes('already registered')) {
+                setError('Invalid email or password. Please try again.');
+              } else {
+                // Otherwise, show the actual registration error (e.g. "Only Gmail allowed", "Password too short")
+                setError(regErr.message);
+              }
+            }
+          } else {
+            setError(err.message || 'An error occurred during login. Please try again.');
+          }
+        }
       }
     } catch (err: any) {
-      setError(err?.message || 'An error occurred during login. Please try again.');
-      console.error('Login error:', err);
+      // Catch any other unexpected errors that happen before login/register are even called
+      setError(err?.message || `An error occurred. Please try again.`);
+      console.error('Auth error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -129,16 +163,16 @@ function LoginContent() {
             </div>
             
             <TranslatedText 
-              text={greeting} 
+              text={isSignUp ? 'Create an Account' : greeting} 
               sx={{ fontWeight: 800, fontSize: '2rem', mb: 1.5, color: '#0f172a', display: 'block', letterSpacing: '-0.025em' }} 
             />
             <TranslatedText 
-              text="Please sign in to your account to continue" 
+              text={isSignUp ? "Sign up to get started with Trust App" : "Please sign in to your account to continue"} 
               sx={{ color: '#64748b', fontSize: '1rem' }} 
             />
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5 mt-8">
+          <form onSubmit={handleSubmit} className="space-y-5 mt-8">
             <div className="space-y-2">
               <label htmlFor="username" className="block text-sm font-semibold text-slate-700">
                 Email Address
@@ -165,7 +199,7 @@ function LoginContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 hover:border-slate-300 text-slate-900 placeholder-slate-400 outline-none pr-12"
-                  placeholder="Enter your password"
+                  placeholder={isSignUp ? "Create a secure password" : "Enter your password"}
                   required
                 />
                 <button
@@ -208,13 +242,31 @@ function LoginContent() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Signing in...
+                  {isSignUp ? 'Signing up...' : 'Signing in...'}
                 </>
               ) : (
-                'Sign In'
+                isSignUp ? 'Create Account' : 'Sign In'
               )}
             </button>
           </form>
+
+          <div className="mt-6 text-center text-sm text-slate-600">
+            {isSignUp ? (
+              <>
+                Already have an account?{' '}
+                <button type="button" onClick={() => { setIsSignUp(false); setError(''); }} className="text-blue-600 font-semibold hover:underline">
+                  Sign In
+                </button>
+              </>
+            ) : (
+              <>
+                Don't have an account?{' '}
+                <button type="button" onClick={() => { setIsSignUp(true); setError(''); }} className="text-blue-600 font-semibold hover:underline">
+                  Sign Up
+                </button>
+              </>
+            )}
+          </div>
 
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
