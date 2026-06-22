@@ -12,7 +12,7 @@ export default function Home() {
     // If user is authenticated, redirect to dashboard
     // If user is not authenticated, redirect to login
     if (user) {
-      router.push('/dashboard');
+      router.push('/home');
     } else {
       router.push('/login');
     }

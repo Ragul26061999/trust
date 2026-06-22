@@ -1609,6 +1609,9 @@ ${index + 1}. ${task.title}
                     }}
                   />
                 </Grid>
+                <Grid size={12}>
+                  <TextField type="number" label="Notify me before (mins)" fullWidth variant="outlined" value={newTask.before_popup_minutes} onChange={(e) => setNewTask({ ...newTask, before_popup_minutes: parseInt(e.target.value) || 0 })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }} />
+                </Grid>
               </Grid>
               
               {/* Alarm Controls */}

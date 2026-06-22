@@ -137,9 +137,6 @@ const SuggestionsContent = () => {
           Welcome, {userName.charAt(0).toUpperCase() + userName.slice(1)}!
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <IconButton sx={{ bgcolor: alpha(theme.palette.action.active, 0.05) }}>
-            <BellIcon size={20} />
-          </IconButton>
           <Avatar 
             src={(user as any)?.user_metadata?.avatar_url} 
             sx={{ width: 44, height: 44, border: '2px solid', borderColor: 'primary.main', cursor: 'pointer' }}

@@ -312,10 +312,6 @@ const DashboardContent = () => {
               <Box sx={{ display: 'flex', gap: 1.5, p: 1.5, borderRadius: 5, bgcolor: alpha(theme.themeMode === 'dark' ? '#fff' : '#000', 0.05), border: '1px solid', borderColor: 'divider', backdropFilter: 'blur(20px)' }}>
                 <IconButton onClick={() => router.push('/user-clock')} sx={{ color: 'text.primary' }}><ClockIcon size={22} /></IconButton>
                 <IconButton onClick={handleThemeMenuOpen} sx={{ color: 'text.primary' }}>{theme.themeMode === 'dark' ? <MoonIcon size={22} /> : <SunIcon size={22} />}</IconButton>
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton sx={{ color: 'text.primary' }}><Bell size={22} /></IconButton>
-                  <Box sx={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, bgcolor: 'error.main', borderRadius: '50%', border: '2px solid', borderColor: 'background.paper' }} />
-                </Box>
               </Box>
             </Box>
 

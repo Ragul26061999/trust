@@ -651,7 +651,7 @@ const HomeContent = () => {
             />
           </Grid>
 
-          {/* Date and Notification - Right side */}
+          {/* Date - Right side */}
           <Grid size={{ xs: 6, md: 3 }} sx={{ order: { xs: 2, md: 3 }, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: { xs: 1, md: 3 } }}>
             <Box sx={{ textAlign: 'right', display: { xs: 'none', lg: 'block' } }}>
               <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1 }}>
@@ -660,12 +660,6 @@ const HomeContent = () => {
               <Typography variant="caption" color="text.secondary" fontWeight={500}>
                 {format(currentDate, 'MMMM do, yyyy')}
               </Typography>
-            </Box>
-            <Box sx={{ position: 'relative' }}>
-              <IconButton sx={{ color: 'text.primary' }}>
-                <BellIcon size={22} />
-              </IconButton>
-              <Box sx={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, bgcolor: 'error.main', borderRadius: '50%', border: '2px solid', borderColor: 'background.paper' }} />
             </Box>
           </Grid>
         </Grid>

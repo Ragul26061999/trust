@@ -164,6 +164,7 @@ const NoteTakingPageContent = () => {
   // State for alarm functionality
   const [alarmEnabled, setAlarmEnabled] = useState(false);
   const [alarmTime, setAlarmTime] = useState('');
+  const [beforePopupMinutes, setBeforePopupMinutes] = useState(0);
 
   const mergedNotes = useMemo(() => {
     const attachmentMap = new Map(noteWithAttachments.map((n) => [n.id, n]));
@@ -329,10 +330,14 @@ const NoteTakingPageContent = () => {
       if (addedNote) {
         // Create alarm if enabled
         if (alarmEnabled && alarmTime && user) {
+          let triggerTime = new Date(alarmTime);
+          if (beforePopupMinutes > 0) {
+            triggerTime = new Date(triggerTime.getTime() - beforePopupMinutes * 60000);
+          }
           await addAlarm({
             title: `Alarm for: ${title}`,
             source: 'Note',
-            triggerLocalIso: alarmTime,
+            triggerLocalIso: format(triggerTime, "yyyy-MM-dd'T'HH:mm"),
             link: `/note-taking`
           });
         }
@@ -390,10 +395,14 @@ const NoteTakingPageContent = () => {
         
         // Create alarm if enabled
         if (alarmEnabled && alarmTime && user) {
+          let triggerTime = new Date(alarmTime);
+          if (beforePopupMinutes > 0) {
+            triggerTime = new Date(triggerTime.getTime() - beforePopupMinutes * 60000);
+          }
           await addAlarm({
             title: `Alarm for: ${title}`,
             source: 'Note',
-            triggerLocalIso: alarmTime,
+            triggerLocalIso: format(triggerTime, "yyyy-MM-dd'T'HH:mm"),
             link: `/note-taking`
           });
         }
@@ -403,8 +412,9 @@ const NoteTakingPageContent = () => {
         setOpenDialog(false);
         setEditingNote(null);
         setAlarmEnabled(false);
-        setAlarmTime('');
-        setSnackbar({ open: true, message: 'Note updated successfully!', severity: 'success' });
+    setAlarmTime('');
+    setBeforePopupMinutes(0);
+    setSnackbar({ open: true, message: 'Note updated successfully!', severity: 'success' });
       } else {
         setSnackbar({ open: true, message: 'Failed to update note', severity: 'error' });
       }
@@ -450,6 +460,7 @@ const NoteTakingPageContent = () => {
     setAudioRecordingUrl(null);
     setShowDrawingCanvas(false);
     setShowAudioRecorder(false);
+    setBeforePopupMinutes(0);
   };
 
   const handleLogout = () => {
@@ -1216,9 +1227,23 @@ const NoteTakingPageContent = () => {
                         borderColor: 'rgba(103, 80, 164, 0.5)'
                       },
                       '&.Mui-focused fieldset': {
-                        borderColor: '#6750A4',
                         boxShadow: '0 0 0 2px rgba(103, 80, 164, 0.2)'
                       }
+                    }
+                  }}
+                />
+                <TextField
+                  label="Notify me before (mins)"
+                  type="number"
+                  fullWidth
+                  value={beforePopupMinutes}
+                  onChange={(e) => setBeforePopupMinutes(parseInt(e.target.value) || 0)}
+                  disabled={!alarmEnabled}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      '&:hover fieldset': { borderColor: 'rgba(103, 80, 164, 0.5)' },
+                      '&.Mui-focused fieldset': { borderColor: '#6750A4', boxShadow: '0 0 0 2px rgba(103, 80, 164, 0.2)' }
                     }
                   }}
                 />
