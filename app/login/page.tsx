@@ -36,10 +36,10 @@ function LoginContent() {
     }
   }, [searchParams]);
 
-  // If user is already logged in, redirect to dashboard
+  // If user is already logged in, redirect to home
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      router.push('/home');
     }
   }, [user, router]);
 
@@ -53,7 +53,7 @@ function LoginContent() {
         const success = await register(username, password);
         if (success) {
           // Registration successful, either auto-login or prompt to verify email
-          router.push('/dashboard');
+          router.push('/home');
         } else {
           setError('Registration failed. Please try again or check if the email is already in use.');
         }
@@ -61,7 +61,7 @@ function LoginContent() {
         try {
           const success = await login(username, password);
           if (success) {
-            router.push('/dashboard');
+            router.push('/home');
           }
         } catch (err: any) {
           if (err.message === 'Invalid login credentials') {
@@ -71,7 +71,7 @@ function LoginContent() {
               if (regSuccess) {
                 // Successfully created the user! Now log them in.
                 await login(username, password);
-                router.push('/dashboard');
+                router.push('/home');
               }
             } catch (regErr: any) {
               // If registration fails because the email is already registered, 

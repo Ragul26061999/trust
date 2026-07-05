@@ -297,7 +297,7 @@ const Sidebar = () => {
       {/* Navigation List */}
       <List sx={{ px: isCollapsed ? 1.5 : 2, flexGrow: 1 }}>
         {navItems.map((item) => {
-          const isActive = pathname === item.path || (pathname === '/' && item.path === '/dashboard');
+          const isActive = pathname === item.path || (pathname === '/' && item.path === '/home');
           
           // Modern pill design for active state
           const itemContent = (

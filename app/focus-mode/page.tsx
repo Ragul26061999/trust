@@ -172,7 +172,7 @@ function FocusModeContent() {
         <>
           <AppBar position="static" elevation={0} sx={{ bgcolor: 'primary.main', borderRadius: 2, mb: 3 }}>
             <Toolbar>
-              <IconButton edge="start" color="inherit" onClick={() => router.push('/dashboard')} sx={{ mr: 2 }}>
+              <IconButton edge="start" color="inherit" onClick={() => router.push('/home')} sx={{ mr: 2 }}>
                 <ArrowBackIcon />
               </IconButton>
               <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>

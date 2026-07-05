@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import Sidebar from '../components/sidebar';
 import { Box } from '@mui/material';
 import { getUserPreferencesFromDB } from '../lib/user-preferences-db';
+import ProtectedRoute from '../lib/protected-route';
 
 export default function ProtectedLayout({
   children,
@@ -64,7 +65,9 @@ export default function ProtectedLayout({
           bgcolor: 'background.default'
         }}
       >
-        {children}
+        <ProtectedRoute>
+          {children}
+        </ProtectedRoute>
       </Box>
     </Box>
   );

@@ -62,6 +62,10 @@ export default function ProfilePage() {
   const [tempBannerColor, setTempBannerColor] = useState('#2563EB');
   const [tempBannerUrl, setTempBannerUrl] = useState('');
 
+  const [routinesOpen, setRoutinesOpen] = useState(false);
+  const [routinesData, setRoutinesData] = useState<any>(null);
+  const [routinesLoading, setRoutinesLoading] = useState(false);
+
   const calculateStats = (tasks: any[]) => {
     const total = tasks.length;
     if (total === 0) return { completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' };
@@ -137,6 +141,26 @@ export default function ProfilePage() {
   useEffect(() => {
     fetchProfileData();
   }, [user]);
+
+  const handleOpenRoutines = async () => {
+    setRoutinesOpen(true);
+    setRoutinesLoading(true);
+    try {
+      if (!user || !supabase) return;
+      const prefRes = await supabase.from('user_preferences').select('default_sleep_start, default_sleep_end').eq('user_id', user.id).single();
+      const breaksRes = await supabase.from('user_breaks').select('*').eq('user_id', user.id).order('start_time', { ascending: true });
+      
+      setRoutinesData({
+        sleep_start: prefRes.data?.default_sleep_start || 'Not set',
+        sleep_end: prefRes.data?.default_sleep_end || 'Not set',
+        breaks: breaksRes.data || []
+      });
+    } catch (e) {
+      console.error('Error fetching routines:', e);
+    } finally {
+      setRoutinesLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -281,6 +305,13 @@ export default function ProfilePage() {
                       >
                         Edit Profile
                       </Button>
+                      <IconButton 
+                        size="small"
+                        onClick={handleOpenRoutines}
+                        sx={{ bgcolor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPrimary, borderRadius: 2, '&:hover': { bgcolor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' } }}
+                      >
+                        <SettingsIcon size={18} />
+                      </IconButton>
                       <Button 
                         variant="outlined" 
                         size="small"
@@ -565,6 +596,73 @@ export default function ProfilePage() {
           <DialogActions sx={{ p: 2, pt: 0 }}>
             <Button onClick={() => setBannerDialogOpen(false)}>Cancel</Button>
             <Button variant="contained" onClick={handleSaveBanner}>Save Banner</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Routines / Settings Dialog */}
+        <Dialog open={routinesOpen} onClose={() => setRoutinesOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <SettingsIcon size={20} color={theme.palette.primary.main} />
+              Your Daily Routines
+            </Box>
+          </DialogTitle>
+          <DialogContent sx={{ pt: '10px !important' }}>
+            {routinesLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress size={30} />
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ color: textSecondary, fontWeight: 700, mb: 1, textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                    Sleep Schedule
+                  </Typography>
+                  <Box sx={{ bgcolor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC', p: 2, borderRadius: 3, border: `1px solid ${cardBorder}` }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>Bed Time</Typography>
+                      <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 700 }}>
+                        {routinesData?.sleep_start}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>Wake Up</Typography>
+                      <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 700 }}>
+                        {routinesData?.sleep_end}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" sx={{ color: textSecondary, fontWeight: 700, mb: 1, textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                    Daily Breaks
+                  </Typography>
+                  {routinesData?.breaks?.length === 0 ? (
+                    <Typography variant="body2" sx={{ color: textSecondary, fontStyle: 'italic' }}>No breaks configured.</Typography>
+                  ) : (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {routinesData?.breaks?.map((b: any) => (
+                        <Box key={b.id} sx={{ bgcolor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC', p: 2, borderRadius: 3, border: `1px solid ${cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{b.name}</Typography>
+                          <Typography variant="caption" sx={{ color: '#F59E0B', fontWeight: 700, bgcolor: 'rgba(245, 158, 11, 0.1)', px: 1, py: 0.5, borderRadius: 1.5 }}>
+                            {b.start_time.substring(0,5)} - {b.end_time.substring(0,5)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button variant="outlined" onClick={() => router.push('/onboarding/routines')} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>
+              Edit Routines
+            </Button>
+            <Button variant="contained" onClick={() => setRoutinesOpen(false)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, ml: 'auto' }}>
+              Close
+            </Button>
           </DialogActions>
         </Dialog>
       </Box>

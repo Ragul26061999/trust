@@ -599,7 +599,7 @@ ${index + 1}. ${task.title}
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
               <Button 
                 variant="outlined" 
-                onClick={() => router.push('/dashboard')}
+                onClick={() => router.push('/home')}
                 disabled={loading}
               >
                 Skip for Now

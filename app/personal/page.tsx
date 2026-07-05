@@ -51,7 +51,8 @@ import {
     Tab,
     Switch,
     Slider,
-    Grid
+    Grid,
+    Menu
 } from '@mui/material';
 import {
     ChevronLeft,
@@ -233,6 +234,8 @@ const PersonalCalendarPage = () => {
     const [analyticsFilter, setAnalyticsFilter] = useState('all'); // all, today, week, month
     const [analyticsCategory, setAnalyticsCategory] = useState('all');
 
+    const [addMenuAnchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
+
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -259,8 +262,27 @@ const PersonalCalendarPage = () => {
             fetchCustomCalendars();
             loadUserSettings();
             loadCalendarIntegrations();
+            loadRoutines();
         }
     }, [user]);
+
+    const [userRoutines, setUserRoutines] = useState<{ sleepStart: string | null, sleepEnd: string | null, breaks: any[] }>({ sleepStart: null, sleepEnd: null, breaks: [] });
+
+    const loadRoutines = async () => {
+        if (!user || !supabase) return;
+        try {
+            const prefsRes = await supabase.from('user_preferences').select('default_sleep_start, default_sleep_end').eq('user_id', user.id).single();
+            const breaksRes = await supabase.from('user_breaks').select('*').eq('user_id', user.id);
+            
+            setUserRoutines({
+                sleepStart: prefsRes.data?.default_sleep_start || null,
+                sleepEnd: prefsRes.data?.default_sleep_end || null,
+                breaks: breaksRes.data || []
+            });
+        } catch (e) {
+            console.error('Error loading routines:', e);
+        }
+    };
 
     // Load user settings
     const loadUserSettings = async () => {
@@ -1141,13 +1163,102 @@ const PersonalCalendarPage = () => {
         ).length;
     };
 
-    const filteredEntries = entries.filter((entry: CalendarEntry) => {
+    let filteredEntries = entries.filter((entry: CalendarEntry) => {
         const matchesCategory = visibleCategories[entry.category];
         const matchesSearch = searchQuery === '' ||
             entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             entry.category.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesCategory && matchesSearch;
     });
+
+    // Generate Routine Blocks for visual display (only on this page, not professional)
+    const generateRoutineEntriesForDate = (date: Date) => {
+        const routineEntries: any[] = [];
+        
+        if (userRoutines.sleepStart && userRoutines.sleepEnd) {
+            const [sh, sm] = userRoutines.sleepStart.split(':');
+            const [eh, em] = userRoutines.sleepEnd.split(':');
+            
+            const startHour = parseInt(sh);
+            const endHour = parseInt(eh);
+            
+            // If sleep crosses midnight (e.g. 22:00 to 06:00)
+            if (endHour < startHour) {
+                // Morning block (00:00 to sleepEnd)
+                for (let h = 0; h <= endHour; h++) {
+                    const blockDate = new Date(date);
+                    blockDate.setHours(h, 0, 0, 0);
+                    routineEntries.push({
+                        id: `routine-sleep-m-${date.toISOString()}-${h}`,
+                        title: 'Sleep',
+                        category: 'health',
+                        date: blockDate,
+                        status: 'routine', // Using status as a flag for styling
+                        priority: 'Low'
+                    });
+                }
+                
+                // Evening block (sleepStart to 23:59)
+                for (let h = startHour; h <= 23; h++) {
+                    const blockDate = new Date(date);
+                    blockDate.setHours(h, 0, 0, 0);
+                    routineEntries.push({
+                        id: `routine-sleep-e-${date.toISOString()}-${h}`,
+                        title: 'Sleep',
+                        category: 'health',
+                        date: blockDate,
+                        status: 'routine',
+                        priority: 'Low'
+                    });
+                }
+            } else {
+                // Normal sleep block
+                for (let h = startHour; h <= endHour; h++) {
+                    const blockDate = new Date(date);
+                    blockDate.setHours(h, 0, 0, 0);
+                    routineEntries.push({
+                        id: `routine-sleep-${date.toISOString()}-${h}`,
+                        title: 'Sleep',
+                        category: 'health',
+                        date: blockDate,
+                        status: 'routine',
+                        priority: 'Low'
+                    });
+                }
+            }
+        }
+
+        if (userRoutines.breaks) {
+            userRoutines.breaks.forEach(brk => {
+                const [bh, bm] = brk.start_time.split(':');
+                const [beh, bem] = brk.end_time.split(':');
+                const breakStart = parseInt(bh);
+                const breakEnd = parseInt(beh);
+                
+                for (let h = breakStart; h <= breakEnd; h++) {
+                    const blockDate = new Date(date);
+                    blockDate.setHours(h, 0, 0, 0);
+                    routineEntries.push({
+                        id: `routine-break-${brk.id}-${date.toISOString()}-${h}`,
+                        title: `Break: ${brk.name}`,
+                        category: 'health',
+                        date: blockDate,
+                        status: 'routine',
+                        priority: 'Low'
+                    });
+                }
+            });
+        }
+        
+        return routineEntries;
+    };
+
+    // Append routines for each visible day
+    if (calendarDays && calendarDays.length > 0) {
+        calendarDays.forEach(day => {
+            filteredEntries = [...filteredEntries, ...generateRoutineEntriesForDate(day)];
+        });
+    }
 
     // Analytics data calculation
     const getAnalyticsData = () => {
@@ -1238,58 +1349,83 @@ const PersonalCalendarPage = () => {
                 </Box>
                 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Button 
+                        variant="contained" 
+                        startIcon={<AddIcon />} 
+                        onClick={(e) => setAddMenuAnchor(e.currentTarget)} 
+                        disableElevation 
+                        sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 700, bgcolor: '#6366F1', '&:hover': { bgcolor: '#4F46E5' } }}
+                    >
+                        Add New
+                    </Button>
+                    <Menu
+                        anchorEl={addMenuAnchor}
+                        open={Boolean(addMenuAnchor)}
+                        onClose={() => setAddMenuAnchor(null)}
+                        PaperProps={{ sx: { borderRadius: 3, mt: 1, minWidth: 180, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' } }}
+                    >
+                        <MenuItem onClick={() => { setAddMenuAnchor(null); setNewEntryDate(format(new Date(), 'yyyy-MM-dd')); setSelectedCategory('task'); setOpenDialog(true); }}>
+                            <TaskIcon sx={{ fontSize: 18, mr: 1.5, color: '#3b82f6' }} /> Task
+                        </MenuItem>
+                        <MenuItem onClick={() => { setAddMenuAnchor(null); setNewEntryDate(format(new Date(), 'yyyy-MM-dd')); setSelectedCategory('event'); setOpenDialog(true); }}>
+                            <EventIcon sx={{ fontSize: 18, mr: 1.5, color: '#6366f1' }} /> Event
+                        </MenuItem>
+                        <MenuItem onClick={() => { setAddMenuAnchor(null); setSelectedCategory('goal'); setOpenDialog(true); }}>
+                            <GoalIcon sx={{ fontSize: 18, mr: 1.5, color: '#8b5cf6' }} /> Goal
+                        </MenuItem>
+                    </Menu>
+
                     <TextField size="small" placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} variant="outlined" sx={{ width: 220, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: '#FFFFFF', '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' }, '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.15)' }, '&.Mui-focused fieldset': { borderColor: '#6366F1' } } }} InputProps={{ startAdornment: <SearchIcon sx={{ color: '#94A3B8', mr: 1, fontSize: 18 }} /> }} />
                     <IconButton size="small" onClick={() => setOpenSettings(true)} sx={{ borderRadius: 3, color: '#475569', bgcolor: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', '&:hover': { bgcolor: '#F8FAFC' } }}><SettingsIcon fontSize="small" /></IconButton>
                 </Box>
             </Box>
 
             <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                {/* Left Panel */}
-                <Box sx={{ width: 280, borderRight: '1px solid', borderColor: 'rgba(0,0,0,0.06)', bgcolor: '#FFFFFF', display: 'flex', flexDirection: 'column', p: 3, gap: 4, overflowY: 'auto' }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setNewEntryDate(format(new Date(), 'yyyy-MM-dd')); setOpenDialog(true); }} disableElevation sx={{ borderRadius: 3, py: 1.5, textTransform: 'none', fontWeight: 800, bgcolor: '#6366F1', color: '#FFFFFF', fontSize: '0.95rem', boxShadow: '0 4px 12px rgba(99,102,241,0.25)', '&:hover': { bgcolor: '#4F46E5', boxShadow: '0 6px 16px rgba(99,102,241,0.35)' }, mb: 1, justifyContent: 'center' }}>New Task</Button>
-                        <Typography variant="overline" sx={{ fontWeight: 800, color: '#94A3B8', letterSpacing: '0.05em', mb: 0.5 }}>Quick Actions</Typography>
-                        <Button variant="outlined" startIcon={<AddIcon fontSize="small"/>} onClick={() => { setNewEntryDate(format(new Date(), 'yyyy-MM-dd')); setOpenDialog(true); }} sx={{ justifyContent: 'flex-start', borderRadius: 3, textTransform: 'none', color: '#0F172A', borderColor: 'rgba(0,0,0,0.08)', bgcolor: '#F8FAFC', fontWeight: 600, py: 1.5, '&:hover': { bgcolor: '#F1F5F9', borderColor: 'rgba(0,0,0,0.12)' } }}>Schedule Event</Button>
-                        <Button variant="outlined" startIcon={<GoalIcon fontSize="small"/>} onClick={() => { setSelectedCategory('goal'); setOpenDialog(true); }} sx={{ justifyContent: 'flex-start', borderRadius: 3, textTransform: 'none', color: '#0F172A', borderColor: 'rgba(0,0,0,0.08)', bgcolor: '#F8FAFC', fontWeight: 600, py: 1.5, '&:hover': { bgcolor: '#F1F5F9', borderColor: 'rgba(0,0,0,0.12)' } }}>Set a Goal</Button>
-                    </Box>
-                    
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        <Typography variant="overline" sx={{ fontWeight: 800, color: '#94A3B8', letterSpacing: '0.05em', mb: 1 }}>Categories</Typography>
-                        {CATEGORIES.map(cat => {
-                            const count = entries.filter((e: CalendarEntry) => e.category === cat.id).length;
-                            return (
-                                <Box key={cat.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', px: 2, py: 1.5, borderRadius: 3, transition: 'all 0.2s', '&:hover': { bgcolor: visibleCategories[cat.id] ? `${cat.color}15` : 'rgba(0,0,0,0.04)' }, bgcolor: visibleCategories[cat.id] ? `${cat.color}10` : 'transparent' }} onClick={() => toggleCategory(cat.id)}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 1.5, bgcolor: visibleCategories[cat.id] ? cat.color : 'transparent', color: visibleCategories[cat.id] ? '#FFF' : '#94A3B8', border: visibleCategories[cat.id] ? 'none' : `1px solid rgba(0,0,0,0.1)` }}>
-                                            {cat.icon}
-                                        </Box>
-                                        <Typography variant="body2" sx={{ fontWeight: 600, color: visibleCategories[cat.id] ? '#0F172A' : '#64748B' }}>{cat.label}</Typography>
-                                    </Box>
-                                    {count > 0 && <Typography variant="caption" sx={{ color: visibleCategories[cat.id] ? cat.color : '#94A3B8', fontWeight: 800 }}>{count}</Typography>}
-                                </Box>
-                            );
-                        })}
-                    </Box>
-
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 'auto' }}>
-                        <Card sx={{ borderRadius: 4, bgcolor: '#F8FAFC', border: '1px solid rgba(0,0,0,0.04)', boxShadow: 'none' }}>
-                            <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2, color: '#0F172A' }}>Daily Overview</Typography>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                                    <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 600 }}>Completed</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 800, color: '#10B981' }}>{entries.filter(e => isSameDay(e.date, new Date()) && e.status === 'completed').length}</Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                                    <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 600 }}>Pending</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 800, color: '#F59E0B' }}>{entries.filter(e => isSameDay(e.date, new Date()) && e.status !== 'completed').length}</Typography>
-                                </Box>
-                            </CardContent>
-                        </Card>
-                    </Box>
-                </Box>
-
                 {/* Main Content Area */}
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: 'transparent', overflowY: 'auto', position: 'relative', p: 4 }}>
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: 'transparent', overflowY: 'auto', position: 'relative', p: { xs: 2, md: 4 } }}>
+                    
+                    {/* Categories and Overview Toolbar */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3, px: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', flex: 1 }}>
+                            {CATEGORIES.map(cat => {
+                                const count = entries.filter((e: CalendarEntry) => e.category === cat.id).length;
+                                return (
+                                    <Chip 
+                                        key={cat.id} 
+                                        icon={cat.icon} 
+                                        label={count > 0 ? `${cat.label} ${count}` : cat.label}
+                                        onClick={() => toggleCategory(cat.id)}
+                                        sx={{ 
+                                            borderRadius: 2, 
+                                            fontWeight: 600, 
+                                            bgcolor: visibleCategories[cat.id] ? `${cat.color}15` : '#FFFFFF', 
+                                            color: visibleCategories[cat.id] ? cat.color : '#64748B', 
+                                            border: '1px solid', 
+                                            borderColor: visibleCategories[cat.id] ? `${cat.color}30` : 'rgba(0,0,0,0.08)',
+                                            '&:hover': { bgcolor: visibleCategories[cat.id] ? `${cat.color}25` : '#F8FAFC' },
+                                            '& .MuiChip-icon': { color: visibleCategories[cat.id] ? cat.color : '#94A3B8' }
+                                        }} 
+                                    />
+                                );
+                            })}
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 2, bgcolor: '#FFFFFF', p: 1, px: 2, borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>Completed</Typography>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#10B981' }}>{entries.filter(e => isSameDay(e.date, new Date()) && e.status === 'completed').length}</Typography>
+                            </Box>
+                            <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>Pending</Typography>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#F59E0B' }}>{entries.filter(e => isSameDay(e.date, new Date()) && (!e.status || e.status === 'pending')).length}</Typography>
+                            </Box>
+                            <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>Rescheduled</Typography>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#3B82F6' }}>{entries.filter(e => isSameDay(e.date, new Date()) && e.status === 'rescheduled').length}</Typography>
+                            </Box>
+                        </Box>
+                    </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, px: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Typography variant="h4" sx={{ fontWeight: 800, color: '#0F172A', letterSpacing: '-0.03em' }}>
@@ -1327,11 +1463,11 @@ const PersonalCalendarPage = () => {
                                             return (
                                                 <Box 
                                                     key={entry.id} 
-                                                    onClick={() => { setSelectedTask(entry); setDrawerOpen(true); }}
-                                                    sx={{ position: 'absolute', top: 4, bottom: 4, left, width, p: 1.5, borderRadius: 3, bgcolor: entry.status === 'completed' ? '#F3F4F6' : `${cat?.color}15`, borderLeft: '4px solid', borderColor: entry.status === 'completed' ? '#D1D5DB' : cat?.color, display: 'flex', flexDirection: 'column', cursor: 'pointer', overflow: 'hidden', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', bgcolor: entry.status === 'completed' ? '#E5E7EB' : `${cat?.color}25` } }}
+                                                    onClick={() => { if (entry.status !== 'routine') { setSelectedTask(entry); setDrawerOpen(true); } }}
+                                                    sx={{ position: 'absolute', top: 4, bottom: 4, left, width, p: 1.5, borderRadius: 3, bgcolor: entry.status === 'routine' ? '#F1F5F9' : (entry.status === 'completed' ? '#F3F4F6' : `${cat?.color}15`), borderLeft: '4px solid', borderColor: entry.status === 'routine' ? '#CBD5E1' : (entry.status === 'completed' ? '#D1D5DB' : cat?.color), display: 'flex', flexDirection: 'column', cursor: entry.status === 'routine' ? 'default' : 'pointer', overflow: 'hidden', transition: 'all 0.2s', '&:hover': { transform: entry.status === 'routine' ? 'none' : 'translateY(-1px)', boxShadow: entry.status === 'routine' ? 'none' : '0 4px 6px rgba(0,0,0,0.05)', bgcolor: entry.status === 'routine' ? '#E2E8F0' : (entry.status === 'completed' ? '#E5E7EB' : `${cat?.color}25`) } }}
                                                 >
-                                                    <Typography variant="body2" sx={{ fontWeight: 800, fontSize: '0.85rem', color: entry.status === 'completed' ? '#9CA3AF' : '#111827', textDecoration: entry.status === 'completed' ? 'line-through' : 'none' }} noWrap>{entry.title}</Typography>
-                                                    <Typography variant="caption" sx={{ color: entry.status === 'completed' ? '#9CA3AF' : '#4B5563', fontWeight: 600 }}>{format(entry.date, 'h:mm a')}</Typography>
+                                                    <Typography variant="body2" sx={{ fontWeight: 800, fontSize: '0.85rem', color: entry.status === 'routine' ? '#475569' : (entry.status === 'completed' ? '#9CA3AF' : '#111827'), textDecoration: entry.status === 'completed' ? 'line-through' : 'none', fontStyle: entry.status === 'routine' ? 'italic' : 'normal' }} noWrap>{entry.title}</Typography>
+                                                    {entry.status !== 'routine' && <Typography variant="caption" sx={{ color: entry.status === 'completed' ? '#9CA3AF' : '#4B5563', fontWeight: 600 }}>{format(entry.date, 'h:mm a')}</Typography>}
                                                 </Box>
                                             );
                                         })}
@@ -1347,38 +1483,49 @@ const PersonalCalendarPage = () => {
                     )}
 
                     {view === 'week' && (
-                        <Box ref={scrollContainerRef} sx={{ display: 'flex', flex: 1, overflowY: 'auto', position: 'relative' }}>
-                            <Box sx={{ width: 60, borderRight: '1px solid rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', bgcolor: '#FAFAFA' }}>
-                                <Box sx={{ height: 50, borderBottom: '1px solid rgba(0,0,0,0.03)' }} />
-                                {Array.from({ length: 24 }).map((_, hour) => (
-                                    <Box key={hour} sx={{ height: 60, borderBottom: '1px solid rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'center', pt: 1 }}>
-                                        <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, fontSize: '0.65rem' }}>{format(new Date().setHours(hour, 0, 0, 0), 'ha')}</Typography>
+                        <Box ref={scrollContainerRef} sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', position: 'relative' }}>
+                            {/* Header Row */}
+                            <Box sx={{ display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.03)', bgcolor: '#FAFAFA', position: 'sticky', top: 0, zIndex: 10 }}>
+                                <Box sx={{ width: 80, borderRight: '1px solid rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#FAFAFA' }}>
+                                    <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 800, color: '#9CA3AF', letterSpacing: '0.05em' }}>DAYS</Typography>
+                                    <Box sx={{ width: '40px', height: '1px', bgcolor: 'rgba(0,0,0,0.1)', my: 0.25, transform: 'rotate(-15deg)' }} />
+                                    <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 800, color: '#9CA3AF', letterSpacing: '0.05em' }}>TIME</Typography>
+                                </Box>
+                                {eachDayOfInterval({ start: startOfWeek(currentDate), end: endOfWeek(currentDate) }).map((day, idx) => (
+                                    <Box key={idx} sx={{ flex: 1, height: 60, borderRight: '1px solid rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: isSameDay(day, new Date()) ? 'rgba(99, 102, 241, 0.05)' : '#FFFFFF' }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{format(day, 'EEE')}</Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: isSameDay(day, new Date()) ? 800 : 600, color: isSameDay(day, new Date()) ? '#6366F1' : '#111827' }}>{format(day, 'd')}</Typography>
                                     </Box>
                                 ))}
                             </Box>
-                            {eachDayOfInterval({ start: startOfWeek(currentDate), end: endOfWeek(currentDate) }).map((day, idx) => (
-                                <Box key={idx} sx={{ flex: 1, borderRight: '1px solid rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                                    <Box sx={{ height: 50, borderBottom: '1px solid rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: isSameDay(day, new Date()) ? 'rgba(156, 39, 176, 0.05)' : 'transparent' }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{format(day, 'EEE')}</Typography>
-                                        <Typography variant="body2" sx={{ fontWeight: isSameDay(day, new Date()) ? 800 : 600, color: isSameDay(day, new Date()) ? '#9C27B0' : '#111827' }}>{format(day, 'd')}</Typography>
+                            
+                            {/* Grid Rows */}
+                            {Array.from({ length: 24 }).map((_, hour) => (
+                                <Box key={hour} sx={{ display: 'flex', minHeight: 90, borderBottom: '1px solid rgba(0,0,0,0.02)' }}>
+                                    {/* Time Label Column */}
+                                    <Box sx={{ width: 80, borderRight: '1px solid rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: '#FAFAFA', flexShrink: 0 }}>
+                                        <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 700, fontSize: '0.7rem' }}>{format(new Date().setHours(hour, 0, 0, 0), 'ha')}</Typography>
                                     </Box>
-                                    <Box sx={{ flex: 1, position: 'relative' }}>
-                                        {Array.from({ length: 24 }).map((_, hour) => (
-                                            <Box key={hour} sx={{ height: 60, borderBottom: '1px solid rgba(0,0,0,0.02)' }} />
-                                        ))}
-                                        {filteredEntries.filter((e: CalendarEntry) => isSameDay(e.date, day)).map((entry: CalendarEntry) => {
-                                            const cat = CATEGORIES.find(c => c.id === entry.category);
-                                            return (
-                                                <Box 
-                                                    key={entry.id} 
-                                                    onClick={() => { setSelectedTask(entry); setDrawerOpen(true); }}
-                                                    sx={{ position: 'absolute', top: (entry.date.getHours() * 60) + (entry.date.getMinutes() / 60 * 60), left: 4, right: 4, minHeight: 30, p: 0.75, borderRadius: 2, bgcolor: `${cat?.color}15`, borderLeft: '3px solid', borderColor: cat?.color, display: 'flex', flexDirection: 'column', cursor: 'pointer', overflow: 'hidden', '&:hover': { bgcolor: `${cat?.color}25` } }}
-                                                >
-                                                    <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.7rem', lineHeight: 1.2, color: '#111827' }} noWrap>{entry.title}</Typography>
-                                                </Box>
-                                            );
-                                        })}
-                                    </Box>
+                                    
+                                    {/* Day Cells */}
+                                    {eachDayOfInterval({ start: startOfWeek(currentDate), end: endOfWeek(currentDate) }).map((day, idx) => (
+                                        <Box key={idx} sx={{ flex: 1, borderRight: '1px solid rgba(0,0,0,0.03)', position: 'relative', px: 0.5 }}>
+                                            {filteredEntries.filter((e: CalendarEntry) => isSameDay(e.date, day) && e.date.getHours() === hour).map((entry: CalendarEntry, i: number, arr: any[]) => {
+                                                const cat = CATEGORIES.find(c => c.id === entry.category);
+                                                const width = `calc(${100 / arr.length}% - 2px)`;
+                                                const left = `calc(${(100 / arr.length) * i}% + 1px)`;
+                                                return (
+                                                    <Box 
+                                                        key={entry.id} 
+                                                        onClick={() => { if (entry.status !== 'routine') { setSelectedTask(entry); setDrawerOpen(true); } }}
+                                                        sx={{ position: 'absolute', top: 2, bottom: 2, left, width, p: 0.5, borderRadius: 1.5, bgcolor: entry.status === 'routine' ? '#F1F5F9' : (entry.status === 'completed' ? '#F3F4F6' : `${cat?.color}15`), borderLeft: '3px solid', borderColor: entry.status === 'routine' ? '#CBD5E1' : (entry.status === 'completed' ? '#D1D5DB' : cat?.color), display: 'flex', flexDirection: 'column', cursor: entry.status === 'routine' ? 'default' : 'pointer', overflow: 'hidden', transition: 'all 0.2s', '&:hover': { transform: entry.status === 'routine' ? 'none' : 'translateY(-1px)', boxShadow: entry.status === 'routine' ? 'none' : '0 2px 4px rgba(0,0,0,0.05)', bgcolor: entry.status === 'routine' ? '#E2E8F0' : (entry.status === 'completed' ? '#E5E7EB' : `${cat?.color}25`) } }}
+                                                    >
+                                                        <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.65rem', lineHeight: 1.1, color: entry.status === 'routine' ? '#475569' : (entry.status === 'completed' ? '#9CA3AF' : '#111827'), textDecoration: entry.status === 'completed' ? 'line-through' : 'none', fontStyle: entry.status === 'routine' ? 'italic' : 'normal' }} noWrap>{entry.title}</Typography>
+                                                    </Box>
+                                                );
+                                            })}
+                                        </Box>
+                                    ))}
                                 </Box>
                             ))}
                         </Box>
