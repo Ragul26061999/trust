@@ -788,7 +788,7 @@ const NoteTakingPageContent = () => {
           <Grid container spacing={3} sx={{ mb: 4 }}>
             {[
               {
-                title: t('note_taking.total_notes'),
+                title: t('total_notes'),
                 value: notes.length,
                 progress: 100,
                 icon: <TaskIcon size={24} />,
