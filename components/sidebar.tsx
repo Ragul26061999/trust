@@ -281,8 +281,8 @@ const Sidebar = () => {
               src="/6-removebg-preview.png"
               alt="Time OS Logo"
               width={120}
-              height={20}
-              objectFit="contain"
+              height={30}
+              style={{ objectFit: 'contain', height: 'auto', width: '120px' }}
               priority={true}
             />
           ) : (
