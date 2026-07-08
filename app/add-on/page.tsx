@@ -572,7 +572,7 @@ const AddOnPageContent = () => {
           </Box>
 
           {/* Main Content Grid */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3 }}>
             {/* Left Column - Table */}
             <Card elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
               <CardContent>

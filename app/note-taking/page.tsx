@@ -79,6 +79,8 @@ import { useRouter } from 'next/navigation';
 import { addCalendarEntry, getCalendarEntries } from '../../lib/personal-calendar-db';
 import { addProfessionalTask } from '../../lib/professional-db';
 import { getNotes, addNote, updateNote, deleteNote, markNoteAsConverted, Note, addNoteWithAttachments, getNotesWithAttachments, deleteNoteWithAttachments, NoteAttachment } from '../../lib/notes-db';
+import { SearchPanel } from '../../components/analytics/SearchPanel';
+import { UnifiedSearchResult, TaskHistoryEntry, searchAllItems, getTaskHistory } from '../../lib/analytics-db';
 
 import DrawingCanvas from '../../components/drawing-canvas';
 import FileUpload from '../../components/file-upload';
@@ -121,9 +123,119 @@ const DynamicTheme = () => {
   });
 };
 
+// ─── Reusable KPICard Component ───
+const KPICard = ({ icon: Icon, label, value, color, suffix, subLabel }: { icon: any, label: string, value: string | number, color: string, suffix?: string, subLabel?: string }) => {
+  const { theme } = useCustomTheme();
+  const isDark = theme.palette?.mode === 'dark';
+
+  return (
+    <Card sx={{
+      height: 115,
+      borderRadius: 4,
+      border: '1px solid',
+      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 18px rgba(149,157,165,0.05)',
+      background: isDark 
+        ? `linear-gradient(135deg, ${alpha('#1e293b', 0.8)} 0%, ${alpha('#0f172a', 0.8)} 100%)`
+        : `linear-gradient(135deg, #ffffff 0%, ${alpha('#f8fafc', 0.8)} 100%)`,
+      backdropFilter: 'blur(12px)',
+      position: 'relative',
+      overflow: 'hidden',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      '&:hover': {
+        transform: 'translateY(-4px)',
+        boxShadow: `0 12px 30px ${alpha(color, 0.15)}`,
+        borderColor: alpha(color, 0.4),
+        '& .kpi-icon-container': {
+          transform: 'scale(1.05)',
+          background: `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.8)} 100%)`,
+          color: '#fff',
+        }
+      }
+    }}>
+      <CardContent sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
+        <Box 
+          className="kpi-icon-container"
+          sx={{
+            width: 48,
+            height: 48,
+            borderRadius: 3.5,
+            bgcolor: alpha(color, 0.1),
+            color: color,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.3s ease',
+            flexShrink: 0
+          }}
+        >
+          {Icon}
+        </Box>
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.68rem' }}>
+            {label}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+            <Typography variant="h5" fontWeight={900} sx={{ fontSize: '1.35rem', color: isDark ? '#f8fafc' : '#0f172a', lineHeight: 1.1 }}>
+              {value}
+            </Typography>
+            {suffix && (
+              <Typography variant="body2" fontWeight={800} color="text.secondary">
+                {suffix}
+              </Typography>
+            )}
+          </Box>
+          {subLabel && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600} noWrap sx={{ fontSize: '0.7rem' }}>
+                {subLabel}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
 const NoteTakingPageContent = () => {
   const { theme } = useCustomTheme();
   const { user, logout } = useAuth();
+  
+  // Global Search State
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState<UnifiedSearchResult[]>([]);
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+  const [globalSelectedItem, setGlobalSelectedItem] = useState<UnifiedSearchResult | null>(null);
+  const [globalTaskHistory, setGlobalTaskHistory] = useState<TaskHistoryEntry[]>([]);
+
+  useEffect(() => {
+    if (!user || !globalSearchQuery.trim()) {
+      setGlobalSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setGlobalSearchLoading(true);
+      try {
+        const results = await searchAllItems(user.id, globalSearchQuery);
+        setGlobalSearchResults(results);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setGlobalSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [globalSearchQuery, user]);
+
+  const handleGlobalSelectItem = async (item: UnifiedSearchResult) => {
+    setGlobalSelectedItem(item);
+    if (user) {
+      const history = await getTaskHistory(user.id, item.id);
+      setGlobalTaskHistory(history);
+    }
+  };
+
   const { addAlarm } = useTimeEngine();
   const { t } = useTranslations('common');
   const router = useRouter();
@@ -680,210 +792,206 @@ const NoteTakingPageContent = () => {
     <Box
       sx={{
         flexGrow: 1,
-        pb: 8
+        minHeight: '100vh',
+        pb: 8,
+        background: (theme) => theme.palette.mode === 'dark'
+          ? 'linear-gradient(135deg, #0f172a 0%, #4c1d95 100%)'
+          : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #e9d5ff 100%)'
       }}
     >
-      {/* Top App Bar with modern design */}
-      <AppBar
-        position="static"
-        elevation={0}
+      {/* Premium Glassmorphism Header */}
+      <Box
         sx={{
-          bgcolor: 'background.paper',
-          color: 'text.primary',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          bgcolor: (theme) => alpha(theme.palette.background.paper, 0.85),
+          backdropFilter: 'blur(20px)',
           borderBottom: '1px solid',
           borderColor: 'divider',
-          borderRadius: 0,
-          mb: 0
+          px: { xs: 2, md: 4 },
+          py: 2,
         }}
       >
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            onClick={handleGoBack}
-            aria-label="back"
-            sx={{
-              color: 'text.primary',
-              '&:hover': {
-                bgcolor: 'action.hover',
-                borderRadius: 2
-              }
-            }}
-          >
-            <LucideIcon icon={ArrowBackIcon} size={20} />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700, color: 'text.primary' }}>
-            {t('note_taking.title')}
-          </Typography>
-
-          {/* Time Range Selector in Header */}
-          <FormControl
-            size="small"
-            sx={{
-              minWidth: 180,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 3,
-                bgcolor: 'background.paper',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                border: '1px solid',
-                borderColor: 'divider',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1, flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 } }}>
+            <IconButton
+              edge="start"
+              onClick={handleGoBack}
+              sx={{ 
+                color: 'text.primary',
                 '&:hover': {
-                  boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                  borderColor: '#6750A4'
-                },
-                '&:focus-within': {
-                  boxShadow: '0 8px 30px rgba(103, 80, 164, 0.15)',
-                  borderColor: '#6750A4'
-                }
-              }
-            }}
-          >
-            <Select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              displayEmpty
-              sx={{
-                '& .MuiSelect-select': {
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  fontWeight: 600,
-                  color: 'text.primary'
+                  bgcolor: 'action.hover',
+                  borderRadius: 2
                 }
               }}
             >
-              <MenuItem value="7days">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <LucideIcon icon={CalendarIcon} size={16} sx={{ color: '#6750A4' }} />
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Last 7 Days</Typography>
-                </Box>
-              </MenuItem>
-              <MenuItem value="30days">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <LucideIcon icon={TrendingUpIcon} size={16} sx={{ color: '#10b981' }} />
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Last 30 Days</Typography>
-                </Box>
-              </MenuItem>
-              <MenuItem value="90days">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <LucideIcon icon={TimelineIcon} size={16} sx={{ color: '#f59e0b' }} />
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Last 90 Days</Typography>
-                </Box>
-              </MenuItem>
-              <MenuItem value="1year">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <LucideIcon icon={TargetIcon} size={16} sx={{ color: '#ef4444' }} />
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Last Year</Typography>
-                </Box>
-              </MenuItem>
-            </Select>
-          </FormControl>
-        </Toolbar>
-      </AppBar>
+              <LucideIcon icon={ArrowBackIcon} size={20} />
+            </IconButton>
+            <Box 
+              sx={{ 
+                width: { xs: 40, md: 48 }, 
+                height: { xs: 40, md: 48 }, 
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, #6750A4 0%, #4c1d95 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 20px rgba(103, 80, 164, 0.35)'
+              }}
+            >
+              <TaskIcon size={24} color="white" />
+            </Box>
+            <Box>
+              <Typography 
+                variant="h4" 
+                sx={{ 
+                  fontWeight: 800, 
+                  mb: 0.5,
+                  fontSize: { xs: '1.5rem', md: '2.125rem' },
+                  background: 'linear-gradient(135deg, #6750A4 0%, #4c1d95 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  lineHeight: 1.2
+                }}
+              >
+                {t('note_taking.title')}
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: 'text.secondary',
+                  fontSize: { xs: '0.875rem', md: '1rem' },
+                  fontWeight: 500,
+                  mt: 0.5
+                }}
+              >
+                Manage your notes and convert them to tasks
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: { xs: 1, md: 2 }, flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center' }}>
+            <Box sx={{ minWidth: 200, maxWidth: 350 }}>
+              <SearchPanel
+                results={globalSearchResults}
+                searchQuery={globalSearchQuery}
+                onSearchChange={setGlobalSearchQuery}
+                onSelectItem={handleGlobalSelectItem}
+                selectedItem={globalSelectedItem}
+                taskHistory={globalTaskHistory}
+                onClose={() => { setGlobalSelectedItem(null); setGlobalTaskHistory([]); }}
+                loading={globalSearchLoading}
+              />
+            </Box>
+            <FormControl
+              size="small"
+              sx={{
+                minWidth: 180,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 3,
+                  bgcolor: 'background.paper',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  '&:hover': {
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                    borderColor: '#6750A4'
+                  },
+                  '&:focus-within': {
+                    boxShadow: '0 8px 30px rgba(103, 80, 164, 0.15)',
+                    borderColor: '#6750A4'
+                  }
+                }
+              }}
+            >
+              <Select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                displayEmpty
+                sx={{
+                  '& .MuiSelect-select': {
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    fontWeight: 600,
+                    color: 'text.primary'
+                  }
+                }}
+              >
+                <MenuItem value="7days">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <LucideIcon icon={CalendarIcon} size={16} sx={{ color: '#6750A4' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Last 7 Days</Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="30days">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <LucideIcon icon={TrendingUpIcon} size={16} sx={{ color: '#10b981' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Last 30 Days</Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="90days">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <LucideIcon icon={TimelineIcon} size={16} sx={{ color: '#f59e0b' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Last 90 Days</Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="1year">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <LucideIcon icon={TargetIcon} size={16} sx={{ color: '#ef4444' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Last Year</Typography>
+                  </Box>
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </Box>
+      </Box>
 
       <Fade in timeout={350}>
         <Container maxWidth="xl" sx={{ py: 4 }}>
           {/* KPI Cards */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            {[
-              {
-                title: t('total_notes'),
-                value: notes.length,
-                progress: 100,
-                icon: <TaskIcon size={24} />,
-                color: '#6750A4',
-                gradient: 'linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)',
-              },
-              {
-                title: 'Converted Tasks',
-                value: notes.filter(note => note.converted_to_task).length,
-                progress: notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0,
-                icon: <CheckCircleIcon size={24} />,
-                color: '#10B981',
-                gradient: 'linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)',
-              },
-              {
-                title: 'Conversion Rate',
-                value: `${notes.length > 0 ? Math.round((notes.filter(note => note.converted_to_task).length / notes.length) * 100) : 0}%`,
-                progress: notes.length > 0 ? (notes.filter(note => note.converted_to_task).length / notes.length) * 100 : 0,
-                icon: <TrendingUpIcon size={24} />,
-                color: '#F59E0B',
-                gradient: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)',
-              },
-              {
-                title: 'Active Notes',
-                value: notes.filter(note => !note.converted_to_task).length,
-                progress: notes.length > 0 ? (notes.filter(note => !note.converted_to_task).length / notes.length) * 100 : 0,
-                icon: <TimelineIcon size={24} />,
-                color: '#3B82F6',
-                gradient: 'linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)',
-              }
-            ].map((kpi, index) => (
-              <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
-                <Card
-                  sx={{
-                    height: 120,
-                    background: kpi.gradient,
-                    border: 'none',
-                    borderRadius: 6,
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
-                    backdropFilter: 'blur(10px)',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: `0 16px 48px ${alpha(kpi.color, 0.2)}`,
-                      '& .card-icon': {
-                        transform: 'scale(1.15) rotate(5deg)',
-                        boxShadow: `0 8px 24px ${alpha(kpi.color, 0.4)}`,
-                      }
-                    },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      bottom: 0,
-                      width: 6,
-                      background: kpi.color,
-                      opacity: 0.8,
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', fontSize: '0.85rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1, mb: 0.5 }}>
-                          {kpi.title}
-                        </Typography>
-                        <Typography variant="h3" sx={{ fontWeight: 900, color: kpi.color, fontSize: '2.5rem', lineHeight: 1 }}>
-                          {kpi.value}
-                        </Typography>
-                      </Box>
-                      <Box
-                        className="card-icon"
-                        sx={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: 4,
-                          background: kpi.color,
-                          color: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          boxShadow: `0 4px 12px ${alpha(kpi.color, 0.3)}`
-                        }}
-                      >
-                        {kpi.icon}
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KPICard 
+                icon={<TaskIcon size={22} />} 
+                label={t('total_notes')}
+                value={notes.length} 
+                color="#6750A4"
+                subLabel="All stored notes" 
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KPICard 
+                icon={<CheckCircleIcon size={22} />} 
+                label="Converted Tasks" 
+                value={notes.filter(note => note.converted_to_task).length} 
+                color="#10B981"
+                subLabel="Successfully converted" 
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KPICard 
+                icon={<TrendingUpIcon size={22} />} 
+                label="Conversion Rate" 
+                value={notes.length > 0 ? Math.round((notes.filter(note => note.converted_to_task).length / notes.length) * 100) : 0} 
+                suffix="%"
+                color="#F59E0B"
+                subLabel="Overall progress" 
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KPICard 
+                icon={<TimelineIcon size={22} />} 
+                label="Active Notes" 
+                value={notes.filter(note => !note.converted_to_task).length} 
+                color="#3B82F6"
+                subLabel="Waiting for action" 
+              />
+            </Grid>
           </Grid>
 
           {/* Add Note Button */}

@@ -22,7 +22,10 @@ import {
   InputAdornment,
   alpha,
   Autocomplete,
-  Fab
+  Fab,
+  Card,
+  CardContent,
+  useTheme
 } from '@mui/material';
 import { 
   ChevronLeft as ChevronLeftIcon, 
@@ -46,28 +49,29 @@ import {
   startOfMonth, 
   endOfMonth, 
   startOfWeek, 
-  endOfWeek, 
-  eachDayOfInterval, 
+  endOfWeek,
+  eachDayOfInterval,
   isSameMonth, 
   isSameDay,
   parseISO,
   isValid
 } from 'date-fns';
+import { SearchPanel } from '../../components/analytics/SearchPanel';
+import { UnifiedSearchResult, TaskHistoryEntry, searchAllItems, getTaskHistory } from '../../lib/analytics-db';
 
 import { getCalendarEntries } from '../../lib/personal-calendar-db';
 import { getProfessionalTasks } from '../../lib/professional-db';
-import { getNotes } from '../../lib/notes-db';
-
 interface UnifiedEvent {
   id: string;
   title: string;
   date: Date;
   type: 'personal' | 'professional' | 'note';
   color: string;
-  timeStr?: string;
+  timeStr: string;
   status?: string;
   description?: string;
 }
+
 
 let cachedCalendarEvents: UnifiedEvent[] | null = null;
 
@@ -77,19 +81,52 @@ const CalendarPageContent = () => {
   const [events, setEvents] = useState<UnifiedEvent[]>(cachedCalendarEvents || []);
   const [loading, setLoading] = useState(!cachedCalendarEvents);
   
-  const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
+  const [selectedDayGroup, setSelectedDayGroup] = useState<{ date: Date, type: string, events: UnifiedEvent[] } | null>(null);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSearchEvent, setSelectedSearchEvent] = useState<UnifiedEvent | null>(null);
+
+  // Global Search State
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState<UnifiedSearchResult[]>([]);
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+  const [globalSelectedItem, setGlobalSelectedItem] = useState<UnifiedSearchResult | null>(null);
+  const [globalTaskHistory, setGlobalTaskHistory] = useState<TaskHistoryEntry[]>([]);
+
+  useEffect(() => {
+    if (!user || !globalSearchQuery.trim()) {
+      setGlobalSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setGlobalSearchLoading(true);
+      try {
+        const results = await searchAllItems(user.id, globalSearchQuery);
+        setGlobalSearchResults(results);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setGlobalSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [globalSearchQuery, user]);
+
+  const handleGlobalSelectItem = async (item: UnifiedSearchResult) => {
+    setGlobalSelectedItem(item);
+    if (user) {
+      const history = await getTaskHistory(user.id, item.id);
+      setGlobalTaskHistory(history);
+    }
+  };
 
   const fetchAllData = async () => {
     if (!user) return;
     if (!cachedCalendarEvents) setLoading(true);
     try {
-      const [personal, professional, notes] = await Promise.all([
+      const [personal, professional] = await Promise.all([
         getCalendarEntries(user.id).catch(() => []),
-        getProfessionalTasks(user.id).catch(() => []),
-        getNotes(user.id).catch(() => [])
+        getProfessionalTasks(user.id).catch(() => [])
       ]);
 
       const formattedEvents: UnifiedEvent[] = [];
@@ -122,21 +159,6 @@ const CalendarPageContent = () => {
             timeStr: p.task_date.includes('T') ? format(d, 'HH:mm') : 'All Day',
             status: p.status,
             description: p.description
-          });
-        }
-      });
-
-      notes.forEach((n: any) => {
-        const d = parseISO(n.created_at);
-        if (isValid(d)) {
-          formattedEvents.push({
-            id: `note-${n.id}`,
-            title: n.title,
-            date: d,
-            type: 'note',
-            color: '#6750A4',
-            timeStr: format(d, 'HH:mm'),
-            description: n.content
           });
         }
       });
@@ -184,10 +206,6 @@ const CalendarPageContent = () => {
 
   const goToToday = () => setCurrentDate(new Date());
 
-  const handleEventClick = (e: React.MouseEvent, event: UnifiedEvent) => {
-    e.stopPropagation();
-    setSelectedEvent(event);
-  };
 
   const getIconForType = (type: string) => {
     switch (type) {
@@ -208,20 +226,93 @@ const CalendarPageContent = () => {
   });
 
   return (
-    <Box sx={{ flexGrow: 1, p: { xs: 1, sm: 3 } }}>
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, mb: 3, gap: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          My Complete Schedule
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Chip icon={<EventIcon />} label="Personal" sx={{ bgcolor: alpha('#9C27B0', 0.1), color: '#9C27B0', fontWeight: 600 }} />
-          <Chip icon={<WorkIcon />} label="Professional" sx={{ bgcolor: alpha('#FF9800', 0.1), color: '#FF9800', fontWeight: 600 }} />
-          <Chip icon={<NoteIcon />} label="Notes" sx={{ bgcolor: alpha('#6750A4', 0.1), color: '#6750A4', fontWeight: 600 }} />
+    <Box sx={{ 
+      flexGrow: 1, 
+      minHeight: '100vh',
+      background: (theme) => theme.palette.mode === 'dark'
+        ? 'linear-gradient(135deg, #0f172a 0%, #064e3b 100%)'
+        : 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%)'
+    }}>
+      <Box
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          bgcolor: (theme) => alpha(theme.palette.background.paper, 0.85),
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          px: { xs: 2, md: 4 },
+          py: 2,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1, flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 } }}>
+            <Box 
+              sx={{ 
+                width: { xs: 40, md: 48 }, 
+                height: { xs: 40, md: 48 }, 
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 20px rgba(76, 175, 80, 0.35)'
+              }}
+            >
+              <EventIcon sx={{ fontSize: 24, color: 'white' }} />
+            </Box>
+            <Box>
+              <Typography 
+                variant="h4" 
+                sx={{ 
+                  fontWeight: 800, 
+                  mb: 0.5,
+                  fontSize: { xs: '1.5rem', md: '2.125rem' },
+                  background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  lineHeight: 1.2
+                }}
+              >
+                My Complete Schedule
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: 'text.secondary',
+                  fontSize: { xs: '0.875rem', md: '1rem' },
+                  fontWeight: 500,
+                  mt: 0.5
+                }}
+              >
+                Manage your personal, professional, and note events
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Box sx={{ minWidth: 200, maxWidth: 350, mr: 2 }}>
+              <SearchPanel
+                results={globalSearchResults}
+                searchQuery={globalSearchQuery}
+                onSearchChange={setGlobalSearchQuery}
+                onSelectItem={handleGlobalSelectItem}
+                selectedItem={globalSelectedItem}
+                taskHistory={globalTaskHistory}
+                onClose={() => { setGlobalSelectedItem(null); setGlobalTaskHistory([]); }}
+                loading={globalSearchLoading}
+              />
+            </Box>
+            <Chip icon={<EventIcon />} label="Personal" sx={{ bgcolor: alpha('#9C27B0', 0.1), color: '#9C27B0', fontWeight: 600 }} />
+            <Chip icon={<WorkIcon />} label="Professional" sx={{ bgcolor: alpha('#FF9800', 0.1), color: '#FF9800', fontWeight: 600 }} />
+          </Box>
         </Box>
       </Box>
 
-      <Paper sx={{ p: 2, borderRadius: 4, boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', lg: 'center' }, mb: 3, gap: 2 }}>
+      <Box sx={{ p: { xs: 1, sm: 3 } }}>
+        <Paper sx={{ p: 2, borderRadius: 4, boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, mb: 3, gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', minWidth: 200 }}>
               {viewMode === 'day' ? format(currentDate, 'MMMM d, yyyy') : format(currentDate, 'MMMM yyyy')}
@@ -386,44 +477,76 @@ const CalendarPageContent = () => {
                   </Typography>
 
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto', flexGrow: 1, pb: 1, '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.1)', borderRadius: '4px' } }}>
-                    {dayEvents.sort((a, b) => a.date.getTime() - b.date.getTime()).map((e) => (
-                      <Box
-                        key={e.id}
-                        onClick={(ev) => handleEventClick(ev, e)}
-                        sx={{
-                          bgcolor: alpha(e.color, 0.12),
-                          color: e.color,
-                          px: 1.5,
-                          py: 1,
-                          borderRadius: 2,
-                          fontSize: viewMode === 'day' ? '0.9rem' : '0.75rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          whiteSpace: viewMode === 'day' ? 'normal' : 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          transition: 'all 0.2s ease',
-                          border: '1px solid',
-                          borderColor: 'transparent',
-                          '&:hover': {
-                            bgcolor: alpha(e.color, 0.2),
-                            borderColor: alpha(e.color, 0.3),
-                            transform: 'translateY(-1px)'
-                          }
-                        }}
-                      >
-                        {getIconForType(e.type)}
-                        <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', gap: 1 }}>
-                          {e.timeStr !== 'All Day' && <span style={{ opacity: 0.8 }}>{e.timeStr}</span>}
-                          <span>{e.title}</span>
-                        </Box>
-                      </Box>
-                    ))}
+                    {(() => {
+                      const personalEvents = dayEvents.filter(e => e.type === 'personal');
+                      const professionalEvents = dayEvents.filter(e => e.type === 'professional');
+                      return (
+                        <>
+                          {personalEvents.length > 0 && (
+                            <Box
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                setSelectedDayGroup({ date: day, type: 'personal', events: personalEvents });
+                              }}
+                              sx={{
+                                bgcolor: alpha('#9C27B0', 0.12),
+                                color: '#9C27B0',
+                                px: 1.5,
+                                py: 1,
+                                borderRadius: 2,
+                                fontSize: viewMode === 'day' ? '0.9rem' : '0.75rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid transparent',
+                                '&:hover': {
+                                  bgcolor: alpha('#9C27B0', 0.2),
+                                  borderColor: alpha('#9C27B0', 0.3),
+                                  transform: 'translateY(-1px)'
+                                }
+                              }}
+                            >
+                              Personal: {personalEvents.length}
+                            </Box>
+                          )}
+                          {professionalEvents.length > 0 && (
+                            <Box
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                setSelectedDayGroup({ date: day, type: 'professional', events: professionalEvents });
+                              }}
+                              sx={{
+                                bgcolor: alpha('#FF9800', 0.12),
+                                color: '#FF9800',
+                                px: 1.5,
+                                py: 1,
+                                borderRadius: 2,
+                                fontSize: viewMode === 'day' ? '0.9rem' : '0.75rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                mt: 0.5,
+                                transition: 'all 0.2s ease',
+                                border: '1px solid transparent',
+                                '&:hover': {
+                                  bgcolor: alpha('#FF9800', 0.2),
+                                  borderColor: alpha('#FF9800', 0.3),
+                                  transform: 'translateY(-1px)'
+                                }
+                              }}
+                            >
+                              Professional: {professionalEvents.length}
+                            </Box>
+                          )}
+                        </>
+                      );
+                    })()}
                     {dayEvents.length === 0 && viewMode === 'day' && (
                       <Typography variant="body1" color="text.secondary" sx={{ mt: 4, textAlign: 'center' }}>
-                        No events or notes for this day.
+                        No events for this day.
                       </Typography>
                     )}
                   </Box>
@@ -432,59 +555,62 @@ const CalendarPageContent = () => {
             })}
           </Box>
       </Paper>
+      </Box>
 
       <Dialog 
-        open={!!selectedEvent} 
-        onClose={() => setSelectedEvent(null)} 
-        maxWidth="sm" 
+        open={!!selectedDayGroup} 
+        onClose={() => setSelectedDayGroup(null)} 
+        maxWidth="md" 
         fullWidth
         PaperProps={{
           sx: { borderRadius: 4, overflow: 'hidden' }
         }}
       >
-        {selectedEvent && (
+        {selectedDayGroup && (
           <>
-            <Box sx={{ height: 8, bgcolor: selectedEvent.color, width: '100%' }} />
-            <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pt: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: alpha(selectedEvent.color, 0.1), color: selectedEvent.color, width: 40, height: 40, borderRadius: 2 }}>
-                {getIconForType(selectedEvent.type)}
+            <Box sx={{ height: 8, bgcolor: selectedDayGroup.type === 'personal' ? '#9C27B0' : '#FF9800', width: '100%' }} />
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: alpha(selectedDayGroup.type === 'personal' ? '#9C27B0' : '#FF9800', 0.1), color: selectedDayGroup.type === 'personal' ? '#9C27B0' : '#FF9800', width: 40, height: 40, borderRadius: 2 }}>
+                  {selectedDayGroup.type === 'personal' ? <EventIcon /> : <WorkIcon />}
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {selectedDayGroup.type === 'personal' ? 'Personal' : 'Professional'} Tasks
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                    {format(selectedDayGroup.date, 'EEEE, MMMM d, yyyy')}
+                  </Typography>
+                </Box>
               </Box>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                {selectedEvent.title}
-              </Typography>
+              <Chip label={`${selectedDayGroup.events.length} Tasks`} sx={{ fontWeight: 600, bgcolor: alpha(selectedDayGroup.type === 'personal' ? '#9C27B0' : '#FF9800', 0.1), color: selectedDayGroup.type === 'personal' ? '#9C27B0' : '#FF9800' }} />
             </DialogTitle>
-            <DialogContent dividers sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
-                    Date & Time
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {format(selectedEvent.date, 'EEEE, MMMM d, yyyy')} {selectedEvent.timeStr !== 'All Day' ? `at ${selectedEvent.timeStr}` : ''}
-                  </Typography>
-                </Box>
+            <DialogContent dividers sx={{ p: 0, bgcolor: alpha('#000', 0.01) }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                {selectedDayGroup.events.map((event, idx) => (
+                  <Box key={event.id} sx={{ p: 3, borderBottom: idx < selectedDayGroup.events.length - 1 ? '1px solid' : 'none', borderColor: 'divider', bgcolor: 'background.paper', transition: 'all 0.2s ease', '&:hover': { bgcolor: alpha(event.color, 0.02) } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700 }}>{event.title}</Typography>
+                      {event.timeStr !== 'All Day' && (
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: event.color, bgcolor: alpha(event.color, 0.1), px: 1.5, py: 0.5, borderRadius: 2 }}>
+                          {event.timeStr}
+                        </Typography>
+                      )}
+                    </Box>
+                    {event.status && (
+                      <Chip label={event.status.toUpperCase()} size="small" variant="outlined" sx={{ fontWeight: 600, mb: 2 }} />
+                    )}
+                    {event.description && (
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', color: 'text.secondary', mt: 1 }}>
+                        {event.description}
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
               </Box>
-              
-              <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-                <Chip label={selectedEvent.type.toUpperCase()} size="small" sx={{ bgcolor: alpha(selectedEvent.color, 0.1), color: selectedEvent.color, fontWeight: 700, letterSpacing: '0.05em' }} />
-                {selectedEvent.status && (
-                  <Chip label={selectedEvent.status.toUpperCase()} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
-                )}
-              </Box>
-
-              {selectedEvent.description && (
-                <Box sx={{ mt: 2, bgcolor: alpha('#000', 0.02), p: 2, borderRadius: 2 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', mb: 1, display: 'block' }}>
-                    Details
-                  </Typography>
-                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                    {selectedEvent.description}
-                  </Typography>
-                </Box>
-              )}
             </DialogContent>
             <DialogActions sx={{ p: 2, px: 3 }}>
-              <Button onClick={() => setSelectedEvent(null)} variant="contained" sx={{ bgcolor: selectedEvent.color, '&:hover': { bgcolor: alpha(selectedEvent.color, 0.8) }, borderRadius: 2, px: 4, textTransform: 'none', fontWeight: 600 }}>
+              <Button onClick={() => setSelectedDayGroup(null)} variant="contained" sx={{ bgcolor: selectedDayGroup.type === 'personal' ? '#9C27B0' : '#FF9800', '&:hover': { bgcolor: alpha(selectedDayGroup.type === 'personal' ? '#9C27B0' : '#FF9800', 0.8) }, borderRadius: 2, px: 4, textTransform: 'none', fontWeight: 600 }}>
                 Close
               </Button>
             </DialogActions>

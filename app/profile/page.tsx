@@ -203,7 +203,7 @@ export default function ProfilePage() {
 
   return (
     <ProtectedLayout>
-      <Box sx={{ width: '100%', minHeight: '100vh', bgcolor: pageBg, pb: 10, overflowX: 'hidden' }}>
+      <Box sx={{ width: '100%', minHeight: '100vh', background: isDark ? 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)' : 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)', pb: 10, overflowX: 'hidden' }}>
         {/* Banner Section */}
         <Box 
           onClick={() => setBannerDialogOpen(true)}

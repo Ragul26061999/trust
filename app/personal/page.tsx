@@ -126,6 +126,8 @@ import {
 } from '../../lib/calendar-integration-service';
 import { convertFromUTC } from '../../lib/timezone-utils';
 import { fetchGoogleCalendarEvents } from '../../lib/google-calendar-service';
+import { SearchPanel } from '../../components/analytics/SearchPanel';
+import { UnifiedSearchResult, TaskHistoryEntry, searchAllItems, getTaskHistory } from '../../lib/analytics-db';
 
 // Category Definitions
 const CATEGORIES = [
@@ -237,6 +239,40 @@ const PersonalCalendarPage = () => {
     const [addMenuAnchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
 
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+    // Global Search State
+    const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+    const [globalSearchResults, setGlobalSearchResults] = useState<UnifiedSearchResult[]>([]);
+    const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+    const [globalSelectedItem, setGlobalSelectedItem] = useState<UnifiedSearchResult | null>(null);
+    const [globalTaskHistory, setGlobalTaskHistory] = useState<TaskHistoryEntry[]>([]);
+
+    useEffect(() => {
+        if (!user || !globalSearchQuery.trim()) {
+            setGlobalSearchResults([]);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            setGlobalSearchLoading(true);
+            try {
+                const results = await searchAllItems(user.id, globalSearchQuery);
+                setGlobalSearchResults(results);
+            } catch (error) {
+                console.error('Search error:', error);
+            } finally {
+                setGlobalSearchLoading(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [globalSearchQuery, user]);
+
+    const handleGlobalSelectItem = async (item: UnifiedSearchResult) => {
+        setGlobalSelectedItem(item);
+        if (user) {
+            const history = await getTaskHistory(user.id, item.id);
+            setGlobalTaskHistory(history);
+        }
+    };
 
     useEffect(() => {
         if (scrollContainerRef.current && (view === 'day' || view === 'week')) {
@@ -1375,7 +1411,18 @@ const PersonalCalendarPage = () => {
                         </MenuItem>
                     </Menu>
 
-                    <TextField size="small" placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} variant="outlined" sx={{ width: 220, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: '#FFFFFF', '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' }, '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.15)' }, '&.Mui-focused fieldset': { borderColor: '#6366F1' } } }} InputProps={{ startAdornment: <SearchIcon sx={{ color: '#94A3B8', mr: 1, fontSize: 18 }} /> }} />
+                    <Box sx={{ minWidth: 200, maxWidth: 350 }}>
+                        <SearchPanel
+                            results={globalSearchResults}
+                            searchQuery={globalSearchQuery}
+                            onSearchChange={setGlobalSearchQuery}
+                            onSelectItem={handleGlobalSelectItem}
+                            selectedItem={globalSelectedItem}
+                            taskHistory={globalTaskHistory}
+                            onClose={() => { setGlobalSelectedItem(null); setGlobalTaskHistory([]); }}
+                            loading={globalSearchLoading}
+                        />
+                    </Box>
                     <IconButton size="small" onClick={() => setOpenSettings(true)} sx={{ borderRadius: 3, color: '#475569', bgcolor: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', '&:hover': { bgcolor: '#F8FAFC' } }}><SettingsIcon fontSize="small" /></IconButton>
                 </Box>
             </Box>

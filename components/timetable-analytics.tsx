@@ -173,7 +173,7 @@ const TimetableAnalytics: React.FC<AnalyticsProps> = ({ timetableEntries: propTi
       <Card sx={{ flex: 1, minWidth: 300 }}>
         <CardHeader title="Time Distribution by Category" />
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={300} minWidth={1} minHeight={1}>
             <PieChart>
               <Pie
                 data={categoryTimeData}
@@ -201,7 +201,7 @@ const TimetableAnalytics: React.FC<AnalyticsProps> = ({ timetableEntries: propTi
       <Card sx={{ flex: 1, minWidth: 300 }}>
         <CardHeader title="Time Distribution by Day" />
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={300} minWidth={1} minHeight={1}>
             <BarChart
               data={dailyTimeData}
               margin={{

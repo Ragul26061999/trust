@@ -64,6 +64,8 @@ import { getCalendarEntries, CalendarEntry } from '../../lib/personal-calendar-d
 import { getNotes, addNote, Note, getNotesWithAttachments, addNoteWithAttachments, updateNote, deleteNoteWithAttachments } from '../../lib/notes-db';
 import { toggleLike, getPostLikes, getPostComments, addComment, PostLike, PostComment } from '../../lib/social-db';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { SearchPanel } from '../../components/analytics/SearchPanel';
+import { UnifiedSearchResult, TaskHistoryEntry, searchAllItems, getTaskHistory } from '../../lib/analytics-db';
 import { 
   Dialog, 
   DialogTitle, 
@@ -152,6 +154,40 @@ const HomeContent = () => {
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [interactionsLoading, setInteractionsLoading] = useState<Record<string, boolean>>({});
+  
+  // Global Search State
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState<UnifiedSearchResult[]>([]);
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+  const [globalSelectedItem, setGlobalSelectedItem] = useState<UnifiedSearchResult | null>(null);
+  const [globalTaskHistory, setGlobalTaskHistory] = useState<TaskHistoryEntry[]>([]);
+
+  useEffect(() => {
+    if (!user || !globalSearchQuery.trim()) {
+      setGlobalSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setGlobalSearchLoading(true);
+      try {
+        const results = await searchAllItems(user.id, globalSearchQuery);
+        setGlobalSearchResults(results);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setGlobalSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [globalSearchQuery, user]);
+
+  const handleGlobalSelectItem = async (item: UnifiedSearchResult) => {
+    setGlobalSelectedItem(item);
+    if (user) {
+      const history = await getTaskHistory(user.id, item.id);
+      setGlobalTaskHistory(history);
+    }
+  };
   
   // Chat state
   const [activeChatUser, setActiveChatUser] = useState<any>(null);
@@ -324,9 +360,6 @@ const HomeContent = () => {
     if (!user) return;
     try {
       if (!cachedHomeData) setLoading(true);
-      // Fetch connections first to get the social feed properly
-      const connectionsDataResult = await getUserConnectionsInfo(user.id);
-      const connectionsData = connectionsDataResult as { connections: string[]; sentRequests: string[]; pendingRequests: string[]; connectionTypes: Record<string, string>; pendingTypes: Record<string, string>; cancelRequests: string[]; };
 
       const results = await Promise.allSettled([
         getProfessionalInfo(user.id),
@@ -336,7 +369,8 @@ const HomeContent = () => {
         getAllUsers(),
         isSupabaseConfigured() && supabase ? supabase!.from('user_profiles').select('avatar_url').eq('user_id', user.id).single() : Promise.resolve({ data: null }),
         getUnreadCounts(user.id),
-        getBannerPreferences(user.id)
+        getBannerPreferences(user.id),
+        getUserConnectionsInfo(user.id)
       ]);
 
       const info = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -347,6 +381,8 @@ const HomeContent = () => {
       const profileData = results[5].status === 'fulfilled' && results[5].value ? (results[5].value as any).data : null;
       const unreadData = results[6].status === 'fulfilled' ? results[6].value : {};
       const bannerData = results[7].status === 'fulfilled' ? (results[7].value as any) : { bannerColor: null, bannerUrl: null };
+      const connectionsDataResult = results[8].status === 'fulfilled' ? results[8].value : { connections: [], sentRequests: [], pendingRequests: [], connectionTypes: {}, pendingTypes: {}, cancelRequests: [] };
+      const connectionsData = connectionsDataResult as { connections: string[]; sentRequests: string[]; pendingRequests: string[]; connectionTypes: Record<string, string>; pendingTypes: Record<string, string>; cancelRequests: string[]; };
 
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const todayTasks = tasksData?.filter((t: any) => t.task_date === todayStr) || [];
@@ -367,26 +403,7 @@ const HomeContent = () => {
       const sortedPosts = notesData || [];
       setPosts(sortedPosts);
 
-      const likesData: Record<string, PostLike[]> = {};
-      const commentsData: Record<string, PostComment[]> = {};
-
-      // Fetch interactions for visible posts
-      if (sortedPosts.length > 0) {
-        const postIds = sortedPosts.map((p: any) => p.id);
-
-        await Promise.all(postIds.map(async (id: string) => {
-          const [pLikes, pComments] = await Promise.all([
-            getPostLikes(id),
-            getPostComments(id)
-          ]);
-          likesData[id] = pLikes;
-          commentsData[id] = pComments;
-        }));
-
-        setLikes(likesData);
-        setComments(commentsData);
-      }
-      
+      // Update cachedHomeData immediately
       cachedHomeData = {
         professionalInfo: info,
         tasks: todayTasks,
@@ -397,12 +414,38 @@ const HomeContent = () => {
         userProfile: profileData,
         bannerColor: bannerData.bannerColor,
         bannerUrl: bannerData.bannerUrl,
-        likes: likesData,
-        comments: commentsData
+        likes: {},
+        comments: {}
       };
+
+      // Unblock the UI to render the page immediately
+      setLoading(false);
+
+      // Fetch interactions for visible posts asynchronously in the background
+      if (sortedPosts.length > 0) {
+        const postIds = sortedPosts.map((p: any) => p.id);
+        const likesData: Record<string, PostLike[]> = {};
+        const commentsData: Record<string, PostComment[]> = {};
+
+        Promise.all(postIds.map(async (id: string) => {
+          const [pLikes, pComments] = await Promise.all([
+            getPostLikes(id),
+            getPostComments(id)
+          ]);
+          setLikes(prev => ({ ...prev, [id]: pLikes }));
+          setComments(prev => ({ ...prev, [id]: pComments }));
+          likesData[id] = pLikes;
+          commentsData[id] = pComments;
+        })).then(() => {
+          if (cachedHomeData) {
+            cachedHomeData.likes = likesData;
+            cachedHomeData.comments = commentsData;
+          }
+        }).catch(err => console.error("Error fetching interactions:", err));
+      }
+      
     } catch (error) {
       console.error('Error fetching home data:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -650,35 +693,24 @@ const HomeContent = () => {
           </Grid>
           
           {/* Search Bar - Full width on mobile, middle on desktop */}
-          <Grid size={{ xs: 12, md: 6 }} sx={{ order: { xs: 3, md: 2 } }}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder={t('home.search_placeholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon size={18} color={theme.palette.text.secondary} />
-                  </InputAdornment>
-                ),
-                sx: { 
-                  borderRadius: 6, 
-                  bgcolor: alpha(theme.palette.background.paper, 0.8),
-                  '& fieldset': { border: '1px solid', borderColor: alpha(theme.palette.divider, 0.1) },
-                  '&:hover fieldset': { borderColor: alpha(theme.palette.primary.main, 0.3) },
-                  '&.Mui-focused fieldset': { borderColor: theme.palette.primary.main, borderWidth: '1px' },
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
-                  transition: 'all 0.2s ease-in-out'
-                }
-              }}
-            />
+          <Grid size={{ xs: 12, md: 6 }} sx={{ order: { xs: 3, md: 2 }, display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ width: '100%', maxWidth: 450 }}>
+              <SearchPanel
+                results={globalSearchResults}
+                searchQuery={globalSearchQuery}
+                onSearchChange={setGlobalSearchQuery}
+                onSelectItem={handleGlobalSelectItem}
+                selectedItem={globalSelectedItem}
+                taskHistory={globalTaskHistory}
+                onClose={() => { setGlobalSelectedItem(null); setGlobalTaskHistory([]); }}
+                loading={globalSearchLoading}
+              />
+            </Box>
           </Grid>
 
           {/* Date - Right side */}
           <Grid size={{ xs: 6, md: 3 }} sx={{ order: { xs: 2, md: 3 }, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: { xs: 1, md: 3 } }}>
-            <Box sx={{ textAlign: 'right', display: { xs: 'none', lg: 'block' } }}>
+            <Box sx={{ textAlign: 'right', display: { xs: 'none', md: 'block' } }}>
               <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1 }}>
                 {format(currentDate, 'EEEE')}
               </Typography>

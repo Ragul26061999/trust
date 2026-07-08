@@ -93,6 +93,11 @@ export interface AnalyticsSummary {
         date: string;
         priority: string;
     }[];
+
+    // Added for Advanced Smart Insights
+    historyLog: TaskHistoryEntry[];
+    avgCycleTimeHours: number;
+    burndownTrend: { date: string; pending: number }[];
 }
 
 // ─── HISTORY LOG FUNCTIONS ───
@@ -413,6 +418,49 @@ export const getFullAnalytics = async (
         }))
     ].sort((a, b) => a.date.localeCompare(b.date));
 
+    // ─── ADVANCED ANALYTICS (Cycle Time & Burndown) ───
+    let totalCycleTimeMs = 0;
+    let completedCountWithHistory = 0;
+    
+    const allCompletedTasks = [...personalEntries, ...professionalTasks].filter(t => t.status === 'completed');
+    allCompletedTasks.forEach(t => {
+        const completedEvent = historyLog.find(h => h.task_id === t.id && h.action === 'completed');
+        const createdEvent = historyLog.find(h => h.task_id === t.id && h.action === 'created');
+        
+        if (completedEvent && createdEvent) {
+            totalCycleTimeMs += new Date(completedEvent.created_at).getTime() - new Date(createdEvent.created_at).getTime();
+            completedCountWithHistory++;
+        } else if (t.created_at) {
+            const end = completedEvent ? completedEvent.created_at : (t.updated_at || new Date().toISOString());
+            const diff = new Date(end).getTime() - new Date(t.created_at).getTime();
+            if (diff > 0) {
+                totalCycleTimeMs += diff;
+                completedCountWithHistory++;
+            }
+        }
+    });
+
+    const avgCycleTimeHours = completedCountWithHistory > 0 
+        ? Math.round((totalCycleTimeMs / completedCountWithHistory) / (1000 * 60 * 60))
+        : 0;
+
+    const burndownTrend: { date: string; pending: number }[] = [];
+    let currentPendingCount = totalTasks - completedTasks;
+    
+    for (let i = 0; i < daysToShow; i++) {
+        const d = new Date(now.getTime() - i * 86400000);
+        const dayLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const dateStr = d.toISOString().split('T')[0];
+        
+        burndownTrend.unshift({ date: dayLabel, pending: currentPendingCount });
+
+        const completedOnDay = historyLog.filter(h => h.action === 'completed' && h.created_at.startsWith(dateStr)).length;
+        const createdOnDay = historyLog.filter(h => h.action === 'created' && h.created_at.startsWith(dateStr)).length;
+        
+        currentPendingCount = currentPendingCount + completedOnDay - createdOnDay;
+        if (currentPendingCount < 0) currentPendingCount = 0;
+    }
+
     return {
         totalTasks,
         completedTasks,
@@ -436,7 +484,10 @@ export const getFullAnalytics = async (
         todaysTasks,
         todaysCompleted,
         todaysTotal,
-        upcomingDeadlines
+        upcomingDeadlines,
+        historyLog,
+        avgCycleTimeHours,
+        burndownTrend
     };
 };
 
@@ -544,49 +595,134 @@ export const searchAllItems = async (
 
 export const getInsights = (analytics: AnalyticsSummary): string[] => {
     const insights: string[] = [];
+    
+    // Combine all tasks to analyze priority
+    const allTasks = [...analytics.personalTasks, ...analytics.professionalTasks];
+    const pendingTasks = allTasks.filter(t => t.status !== 'completed');
+    
+    // 1. High Priority Bottlenecks (Overdue High/Urgent tasks)
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    
+    const overdueHighPriority = pendingTasks.filter(t => {
+        const isHighPriority = t.priority?.toLowerCase() === 'high' || t.priority?.toLowerCase() === 'urgent';
+        const dateStr = (t as any).entry_date || (t as any).task_date;
+        if (!dateStr || !isHighPriority) return false;
+        return new Date(dateStr) < now && dateStr.split('T')[0] !== todayStr;
+    });
 
-    if (analytics.completionRate >= 80) {
-        insights.push(`🏆 Excellent! Your completion rate is ${analytics.completionRate}% — you're crushing it.`);
-    } else if (analytics.completionRate >= 50) {
-        insights.push(`📊 Your completion rate is ${analytics.completionRate}%. Try to close ${analytics.pendingTasks} pending tasks.`);
-    } else if (analytics.totalTasks > 0) {
-        insights.push(`⚠️ Your completion rate is ${analytics.completionRate}%. Focus on completing your ${analytics.pendingTasks} pending tasks.`);
+    if (overdueHighPriority.length > 0) {
+        insights.push(`🚨 You have ${overdueHighPriority.length} overdue High-priority task(s). Tackle these immediately before taking on new work.`);
     }
 
-    if (analytics.activeStreak > 0) {
+    // 2. Prioritization Efficiency
+    const todaysCompletedHigh = analytics.todaysTasks.filter(t => t.status === 'completed' && (t.priority.toLowerCase() === 'high' || t.priority.toLowerCase() === 'urgent')).length;
+    const todaysCompletedLow = analytics.todaysTasks.filter(t => t.status === 'completed' && (t.priority.toLowerCase() === 'low' || t.priority.toLowerCase() === 'medium')).length;
+    const todaysPendingHigh = analytics.todaysTasks.filter(t => t.status !== 'completed' && (t.priority.toLowerCase() === 'high' || t.priority.toLowerCase() === 'urgent')).length;
+
+    if (todaysCompletedLow > 1 && todaysPendingHigh > 0) {
+        insights.push(`⚖️ You completed ${todaysCompletedLow} lower-priority tasks today but left ${todaysPendingHigh} critical task(s) pending. Try focusing on your high-priority items first.`);
+    } else if (todaysCompletedHigh > 0 && todaysPendingHigh === 0) {
+        insights.push(`🎯 Excellent prioritization! You cleared all your High-priority tasks for today.`);
+    }
+
+    // 3. Burnout Warning (Urgent Task Load)
+    const pendingHighCount = pendingTasks.filter(t => t.priority?.toLowerCase() === 'high' || t.priority?.toLowerCase() === 'urgent').length;
+    if (pendingTasks.length > 0) {
+        const highPriorityRatio = (pendingHighCount / pendingTasks.length) * 100;
+        if (highPriorityRatio >= 40) {
+            insights.push(`⚠️ ${Math.round(highPriorityRatio)}% of your backlog is High/Urgent priority. You might be taking on too much critical work. Consider delegating or rescheduling.`);
+        }
+    }
+
+    // 4. Upcoming Critical Deadlines
+    const next48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const criticalDeadlines = analytics.upcomingDeadlines.filter(t => 
+        (t.priority.toLowerCase() === 'high' || t.priority.toLowerCase() === 'urgent') && t.date <= next48Hours
+    );
+
+    if (criticalDeadlines.length > 0) {
+        insights.push(`⏳ Heads up: '${criticalDeadlines[0].title}' is a critical priority task due very soon. Plan your schedule around this.`);
+    }
+
+    // 5. Medium/Low Priority Neglect
+    const pendingLowCount = pendingTasks.filter(t => t.priority?.toLowerCase() === 'low').length;
+    if (pendingLowCount > 10) {
+        insights.push(`🧹 You have ${pendingLowCount} pending Low-priority tasks. Consider spending 30 minutes clearing these quick wins or delete them if no longer relevant.`);
+    }
+
+    // --- ADVANCED INSIGHTS ---
+
+    // 6. Peak Productivity Hours (Time-of-Day Analysis)
+    const completedHistory = analytics.historyLog.filter(h => h.action === 'completed');
+    if (completedHistory.length > 5) {
+        const morningCount = completedHistory.filter(h => {
+            const hour = new Date(h.created_at).getHours();
+            return hour >= 5 && hour < 12;
+        }).length;
+        const afternoonCount = completedHistory.filter(h => {
+            const hour = new Date(h.created_at).getHours();
+            return hour >= 12 && hour < 17;
+        }).length;
+        const eveningCount = completedHistory.filter(h => {
+            const hour = new Date(h.created_at).getHours();
+            return hour >= 17 && hour < 22;
+        }).length;
+        const totalCompleted = completedHistory.length;
+        
+        if (morningCount / totalCompleted >= 0.5) {
+            insights.unshift(`🌅 You complete over 50% of your tasks in the morning. Schedule your most difficult work before noon!`);
+        } else if (afternoonCount / totalCompleted >= 0.5) {
+            insights.unshift(`☀️ You are highly productive in the afternoon. Guard this time for focused work!`);
+        } else if (eveningCount / totalCompleted >= 0.5) {
+            insights.unshift(`🌙 You're a night owl! Over 50% of your tasks are completed in the evening.`);
+        }
+    }
+
+    // 7. Chronic Procrastination (Task Aging & Reschedule Loops)
+    const rescheduleCounts: Record<string, number> = {};
+    analytics.historyLog.filter(h => h.action === 'rescheduled').forEach(h => {
+        rescheduleCounts[h.task_id] = (rescheduleCounts[h.task_id] || 0) + 1;
+    });
+    
+    let worstTask = { id: '', count: 0 };
+    for (const [id, count] of Object.entries(rescheduleCounts)) {
+        if (count > worstTask.count) {
+            worstTask = { id, count };
+        }
+    }
+
+    if (worstTask.count >= 3) {
+        const task = allTasks.find(t => t.id === worstTask.id);
+        if (task && task.status !== 'completed') {
+            insights.unshift(`🐢 The task '${task.title}' has been rescheduled ${worstTask.count} times. Consider breaking this down into smaller, 15-minute sub-tasks to overcome friction.`);
+        }
+    }
+
+    // 8. True Work-Life Balance
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
+    const recentProfessionalCompleted = analytics.professionalTasks.filter(t => t.status === 'completed' && (t.updated_at || t.task_date || '') >= sevenDaysAgo).length;
+    const recentPersonalCompleted = analytics.personalTasks.filter(t => t.status === 'completed' && (t.updated_at || (t as any).entry_date || '') >= sevenDaysAgo).length;
+
+    if (recentProfessionalCompleted > 10 && recentPersonalCompleted <= 2) {
+        insights.unshift(`⚖️ You've completed ${recentProfessionalCompleted} Professional tasks recently but only ${recentPersonalCompleted} Personal tasks. Make sure to schedule time for yourself to avoid burnout.`);
+    } else if (recentPersonalCompleted > 10 && recentProfessionalCompleted <= 2) {
+        insights.unshift(`⚖️ You're doing great on Personal tasks (${recentPersonalCompleted}), but Professional tasks are trailing (${recentProfessionalCompleted}). Need to shift focus?`);
+    }
+
+    // Include some legacy insights to provide a good mix
+    if (analytics.activeStreak > 3) {
         insights.push(`🔥 You're on a ${analytics.activeStreak}-day streak! Keep the momentum going.`);
-    } else {
-        insights.push(`💡 Start your streak by completing at least one task today.`);
     }
 
     if (analytics.rescheduleRatio > 30) {
         insights.push(`🔄 ${analytics.rescheduleRatio}% of your tasks get rescheduled. Consider setting more realistic deadlines.`);
     }
 
-    if (analytics.noteConversionRate > 0) {
-        insights.push(`📝 ${analytics.noteConversionRate}% of your notes become actionable tasks. Great idea capture!`);
-    } else if (analytics.totalNotes > 5) {
-        insights.push(`📝 You have ${analytics.totalNotes} notes but none converted to tasks yet. Review your notes for action items.`);
-    }
-
-    const healthTasks = analytics.categoryDistribution.find(c => c.name.toLowerCase() === 'health');
-    if (healthTasks && analytics.totalTasks > 0) {
-        const healthRatio = (healthTasks.value / analytics.totalTasks) * 100;
-        if (healthRatio < 10) {
-            insights.push(`❤️ Health-related tasks make up only ${Math.round(healthRatio)}% of your activities. Consider adding more wellness tasks.`);
-        }
-    }
-
-    if (analytics.todaysTotal > 0 && analytics.todaysCompleted === analytics.todaysTotal) {
-        insights.push(`✅ All ${analytics.todaysTotal} tasks for today are done! You can relax now.`);
-    } else if (analytics.todaysTotal > 0) {
-        const remaining = analytics.todaysTotal - analytics.todaysCompleted;
-        insights.push(`⏰ ${remaining} task${remaining > 1 ? 's' : ''} remaining for today out of ${analytics.todaysTotal}.`);
-    }
-
     if (insights.length === 0) {
         insights.push('🚀 Start adding tasks and notes to see personalized insights here.');
     }
 
-    return insights;
+    // Return maximum 5 insights to avoid UI clutter
+    return insights.slice(0, 5);
 };

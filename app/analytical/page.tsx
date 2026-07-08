@@ -7,7 +7,7 @@ import ProtectedLayout from '../protected-layout';
 import {
   Box, Container, Typography, Grid, Card, CardContent, IconButton,
   CircularProgress, Fade, Chip, LinearProgress, useTheme, alpha,
-  Select, MenuItem, FormControl, Tooltip
+  Select, MenuItem, FormControl, Tooltip, Snackbar, Alert
 } from '@mui/material';
 import {
   ArrowLeft, BarChart3, TrendingUp, Calendar, Target, Activity,
@@ -19,8 +19,9 @@ import {
   getFullAnalytics, searchAllItems, getTaskHistory, getInsights,
   AnalyticsSummary, UnifiedSearchResult, TaskHistoryEntry
 } from '../../lib/analytics-db';
-import { CompletionTrendChart, DistributionPieChart, StatusBarChart } from '../../components/analytics/AnalyticsCharts';
+import { CompletionTrendChart, DistributionPieChart, StatusBarChart, BurndownChart } from '../../components/analytics/AnalyticsCharts';
 import { SearchPanel } from '../../components/analytics/SearchPanel';
+import { TaskTimelineModal } from '../../components/analytics/TaskTimelineModal';
 
 // ─── PREMIUM HORIZONTAL KPI CARD ───
 const KPICard = ({ icon: Icon, label, value, suffix, color, subLabel, trend }: {
@@ -343,7 +344,10 @@ let cachedAnalytics: AnalyticsSummary = {
   sourceDistribution: [],
   personalTasks: [],
   professionalTasks: [],
-  notes: []
+  notes: [],
+  historyLog: [],
+  avgCycleTimeHours: 0,
+  burndownTrend: []
 };
 let cachedInsights: string[] = [];
 
@@ -362,7 +366,10 @@ const AnalyticalPageContent = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<UnifiedSearchResult | null>(null);
   const [taskHistory, setTaskHistory] = useState<TaskHistoryEntry[]>([]);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [insights, setInsights] = useState<string[]>(cachedInsights);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
 
   // Fetch analytics data
   const fetchData = useCallback(async () => {
@@ -375,6 +382,12 @@ const AnalyticalPageContent = () => {
       cachedInsights = newInsights;
       setAnalytics(data);
       setInsights(newInsights);
+      
+      const criticalInsight = newInsights.find(i => i.includes('⏳ Heads up:'));
+      if (criticalInsight) {
+        setAlertMessage(criticalInsight);
+        setAlertOpen(true);
+      }
     } catch (error) {
       console.error('Error fetching analytics:', error);
     } finally {
@@ -410,13 +423,20 @@ const AnalyticalPageContent = () => {
     if (user) {
       const history = await getTaskHistory(user.id, item.id);
       setTaskHistory(history);
+      setIsTimelineOpen(true);
     }
   };
 
 
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: 'background.default', minHeight: '100vh' }}>
+    <Box sx={{ 
+      flexGrow: 1, 
+      minHeight: '100vh',
+      background: isDark 
+        ? 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)'
+        : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #e0e7ff 100%)'
+    }}>
       {/* Header */}
       <Box sx={{
         position: 'sticky',
@@ -429,11 +449,12 @@ const AnalyticalPageContent = () => {
         px: { xs: 2, md: 4 },
         py: 2
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconButton onClick={() => router.back()} sx={{ color: 'text.primary' }}>
-            <ArrowLeft size={22} />
-          </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+          {/* Left: Title */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+            <IconButton onClick={() => router.back()} sx={{ color: 'text.primary' }}>
+              <ArrowLeft size={22} />
+            </IconButton>
             <Box sx={{
               width: 38, height: 38, borderRadius: 3,
               background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
@@ -454,7 +475,25 @@ const AnalyticalPageContent = () => {
               </Typography>
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+
+          {/* Center: Search */}
+          <Box sx={{ flex: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center' }}>
+            <Box sx={{ width: '100%', maxWidth: 450 }}>
+              <SearchPanel
+                results={searchResults}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSelectItem={handleSelectItem}
+                selectedItem={selectedItem}
+                taskHistory={taskHistory}
+                onClose={() => { setSelectedItem(null); setTaskHistory([]); }}
+                loading={searchLoading}
+              />
+            </Box>
+          </Box>
+
+          {/* Right: Controls */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'flex-end' }}>
             <Tooltip title="Refresh">
               <IconButton onClick={fetchData} sx={{ color: 'text.secondary' }}>
                 <RefreshCw size={18} />
@@ -484,54 +523,47 @@ const AnalyticalPageContent = () => {
       <Fade in timeout={400}>
         <Container maxWidth="xl" sx={{ py: 4 }}>
           {/* KPI Cards Row */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+          <Grid container spacing={3} sx={{ mb: 4, flexWrap: { xs: 'wrap', md: 'nowrap' }, overflowX: { md: 'auto' } }}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
               <KPICard icon={Zap} label="Productivity" value={analytics.productivityScore} suffix="%" color="#6366f1"
                 subLabel="Overall score" trend={analytics.productivityScore >= 50 ? 'up' : 'down'} />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
               <KPICard icon={Target} label="Total Tasks" value={analytics.totalTasks} color="#3b82f6"
                 subLabel={`${analytics.completedTasks} completed`} />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
               <KPICard icon={CheckCircle2} label="Completion" value={analytics.completionRate} suffix="%" color="#10b981"
                 trend={analytics.completionRate >= 50 ? 'up' : 'down'} />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
               <KPICard icon={Flame} label="Streak" value={analytics.activeStreak} suffix=" d" color="#f59e0b"
                 subLabel="Keep going!" trend={analytics.activeStreak > 0 ? 'up' : 'neutral'} />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
               <KPICard icon={RefreshCw} label="Reschedule" value={analytics.rescheduleRatio} suffix="%" color="#ef4444"
                 subLabel={`${analytics.rescheduledTasks} tasks`} trend={analytics.rescheduleRatio > 30 ? 'down' : 'up'} />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
               <KPICard icon={FileText} label="Notes" value={analytics.totalNotes} color="#8b5cf6"
                 subLabel={`${analytics.noteConversionRate}% → tasks`} />
             </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <KPICard icon={Clock} label="Avg Cycle Time" value={analytics.avgCycleTimeHours} suffix="h" color="#ec4899"
+                subLabel="Creation to completion" />
+            </Grid>
           </Grid>
-
-          {/* Deep Search Engine & Lifecycle tracker */}
-          <Box sx={{ mb: 4 }}>
-            <SearchPanel
-              results={searchResults}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onSelectItem={handleSelectItem}
-              selectedItem={selectedItem}
-              taskHistory={taskHistory}
-              onClose={() => { setSelectedItem(null); setTaskHistory([]); }}
-              loading={searchLoading}
-            />
-          </Box>
 
           {/* TWO-COLUMN SIDEBAR LAYOUT (Left: Main Analytics, Right: Pulse & Smart Sidebar) */}
           <Grid container spacing={3}>
             {/* LEFT MAIN CONTENT (8 columns on Desktop) */}
-            <Grid size={{ xs: 12, lg: 8 }}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {/* Section 1: Completion Trend */}
                 <CompletionTrendChart data={analytics.dailyCompletionTrend} />
+
+                {/* Section 1.5: Burndown Velocity */}
+                <BurndownChart data={analytics.burndownTrend} />
 
                 {/* Section 2: Distribution Analytics */}
                 <Grid container spacing={3}>
@@ -549,7 +581,7 @@ const AnalyticalPageContent = () => {
             </Grid>
 
             {/* RIGHT SIDEBAR (4 columns on Desktop) */}
-            <Grid size={{ xs: 12, lg: 4 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {/* 1. Today's Pulse */}
                 <TodaysPulse tasks={analytics.todaysTasks} completed={analytics.todaysCompleted} total={analytics.todaysTotal} />
@@ -567,6 +599,32 @@ const AnalyticalPageContent = () => {
           </Grid>
         </Container>
       </Fade>
+
+      <Snackbar
+        open={alertOpen}
+        autoHideDuration={6000}
+        onClose={() => setAlertOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        sx={{ mt: 8 }}
+      >
+        <Alert 
+          onClose={() => setAlertOpen(false)} 
+          severity="warning" 
+          variant="filled"
+          sx={{ width: '100%', borderRadius: 3, boxShadow: '0 8px 24px rgba(245, 158, 11, 0.25)' }}
+        >
+          {alertMessage}
+        </Alert>
+      </Snackbar>
+
+      {selectedItem && (
+        <TaskTimelineModal
+          open={isTimelineOpen}
+          onClose={() => setIsTimelineOpen(false)}
+          history={taskHistory}
+          taskTitle={selectedItem.title}
+        />
+      )}
     </Box>
   );
 };

@@ -180,3 +180,48 @@ export const StatusBarChart = ({ data }: { data: { name: string; value: number; 
     </Card>
   );
 };
+
+// ─── Burndown Velocity Chart ───
+export const BurndownChart = ({ data }: { data: { date: string; pending: number }[] }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+
+  return (
+    <Card sx={{
+      borderRadius: 4, border: '1px solid', borderColor: 'divider',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.06)', height: '100%',
+      background: isDark ? alpha('#1e293b', 0.6) : '#fff'
+    }}>
+      <CardContent sx={{ p: 3 }}>
+        <Typography variant="h6" fontWeight={800} sx={{ mb: 2, fontSize: '1rem' }}>
+          📉 Burndown Velocity
+        </Typography>
+        <ChartWrapper height={280}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+            <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+              <defs>
+                <linearGradient id="pendingGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: textColor }} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: textColor }} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  background: isDark ? '#1e293b' : '#fff',
+                  border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                  borderRadius: 12, fontSize: 12, fontWeight: 600
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: 12, fontWeight: 600 }} />
+              <Area type="monotone" dataKey="pending" stroke="#ef4444" fill="url(#pendingGrad)" strokeWidth={2.5} name="Pending Backlog" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartWrapper>
+      </CardContent>
+    </Card>
+  );
+};

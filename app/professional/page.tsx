@@ -71,6 +71,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useRouter } from 'next/navigation';
 import { format, parseISO, addDays, isToday, isTomorrow, isThisWeek, startOfWeek, endOfWeek, eachDayOfInterval, subDays, startOfMonth, endOfMonth, isWithinInterval, getYear, getMonth } from 'date-fns';
+import { SearchPanel } from '../../components/analytics/SearchPanel';
+import { UnifiedSearchResult, TaskHistoryEntry, searchAllItems, getTaskHistory } from '../../lib/analytics-db';
 import {
   getProfessionalInfo,
   saveProfessionalInfo,
@@ -87,6 +89,90 @@ import { isSupabaseConfigured } from '../../lib/supabase';
 import TranslatedText from '../../components/translated-text';
 import { checkConflicts } from '../../lib/task-logic-service';
 
+const KPICard = ({ icon: Icon, label, value, suffix, color, subLabel, trend }: {
+  icon: any; label: string; value: number | string; suffix?: string;
+  color: string; subLabel?: string; trend?: 'up' | 'down' | 'neutral';
+}) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
+  return (
+    <Card sx={{
+      height: 115,
+      borderRadius: 4,
+      border: '1px solid',
+      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 18px rgba(149,157,165,0.05)',
+      background: isDark 
+        ? `linear-gradient(135deg, ${alpha('#1e293b', 0.8)} 0%, ${alpha('#0f172a', 0.8)} 100%)`
+        : `linear-gradient(135deg, #ffffff 0%, ${alpha('#f8fafc', 0.8)} 100%)`,
+      backdropFilter: 'blur(12px)',
+      position: 'relative',
+      overflow: 'hidden',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      '&:hover': {
+        transform: 'translateY(-4px)',
+        boxShadow: `0 12px 30px ${alpha(color, 0.15)}`,
+        borderColor: alpha(color, 0.4),
+        '& .kpi-icon-container': {
+          transform: 'scale(1.05)',
+          background: `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.8)} 100%)`,
+          color: '#fff',
+        }
+      }
+    }}>
+      <CardContent sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
+        <Box 
+          className="kpi-icon-container"
+          sx={{
+            width: 48,
+            height: 48,
+            borderRadius: 3.5,
+            bgcolor: alpha(color, 0.1),
+            color: color,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.3s ease',
+            flexShrink: 0
+          }}
+        >
+          <Icon size={22} />
+        </Box>
+
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Typography 
+            variant="caption" 
+            fontWeight={700} 
+            color="text.secondary" 
+            sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.68rem' }}
+          >
+            {label}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+            <Typography variant="h5" fontWeight={900} sx={{ fontSize: '1.35rem', color: isDark ? '#f8fafc' : '#0f172a', lineHeight: 1.1 }}>
+              {value}
+            </Typography>
+            {suffix && (
+              <Typography variant="body2" fontWeight={800} color="text.secondary">
+                {suffix}
+              </Typography>
+            )}
+          </Box>
+          {subLabel && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600} noWrap sx={{ fontSize: '0.7rem' }}>
+                {subLabel}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
+
 const ProfessionalPageContent = () => {
   const { user, logout } = useAuth();
   const { addAlarm } = useTimeEngine();
@@ -100,6 +186,40 @@ const ProfessionalPageContent = () => {
     responsibilities: '',
     experience: '',
   });
+  
+  // Global Search State
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState<UnifiedSearchResult[]>([]);
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+  const [globalSelectedItem, setGlobalSelectedItem] = useState<UnifiedSearchResult | null>(null);
+  const [globalTaskHistory, setGlobalTaskHistory] = useState<TaskHistoryEntry[]>([]);
+
+  useEffect(() => {
+    if (!user || !globalSearchQuery.trim()) {
+      setGlobalSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setGlobalSearchLoading(true);
+      try {
+        const results = await searchAllItems(user.id, globalSearchQuery);
+        setGlobalSearchResults(results);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setGlobalSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [globalSearchQuery, user]);
+
+  const handleGlobalSelectItem = async (item: UnifiedSearchResult) => {
+    setGlobalSelectedItem(item);
+    if (user) {
+      const history = await getTaskHistory(user.id, item.id);
+      setGlobalTaskHistory(history);
+    }
+  };
   
   // State for tasks
   const [tasks, setTasks] = useState<ProfessionalTask[]>([]);
@@ -129,8 +249,7 @@ const ProfessionalPageContent = () => {
   // State for tab navigation
   const [tabValue, setTabValue] = useState(0);
   
-  // State for analytics dialog
-  const [showAnalytics, setShowAnalytics] = useState(false);
+
   
   // State for month/year filtering
   const [filterMode, setFilterMode] = useState<'default' | 'monthYear'>('default');
@@ -622,14 +741,25 @@ ${index + 1}. ${task.title}
   // Main Professional Dashboard
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Box sx={{ 
+        minHeight: '100vh', 
+        background: (theme) => theme.palette.mode === 'dark' 
+          ? 'linear-gradient(135deg, #0f172a 0%, #451a03 100%)' 
+          : 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 50%, #fed7aa 100%)' 
+      }}>
         {/* Header */}
         <Box
           sx={{
-            p: { xs: 2, md: 4 },
+            position: 'sticky',
+            top: 0,
+            zIndex: 100,
+            bgcolor: (theme) => alpha(theme.palette.background.paper, 0.85),
+            backdropFilter: 'blur(20px)',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            px: { xs: 2, md: 4 },
+            py: 2,
             mb: 4,
-            borderBottom: '1px solid rgba(0,0,0,0.08)',
-            position: 'relative',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
@@ -688,29 +818,22 @@ ${index + 1}. ${task.title}
                 >
                   Manage your professional tasks and track performance metrics
                 </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, opacity: 0.7 }}>
-                  {profileInfo.role}, {profileInfo.department} • {profileInfo.experience}
-                </Typography>
+
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', gap: { xs: 1, md: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <Button
-                variant="outlined"
-                onClick={() => setShowAnalytics(true)}
-                startIcon={<BarChartIcon />}
-                sx={{ 
-                  borderRadius: 3, 
-                  textTransform: 'none',
-                  borderColor: 'divider',
-                  color: 'text.primary',
-                  '&:hover': {
-                    bgcolor: 'action.hover',
-                    borderColor: 'primary.main'
-                  }
-                }}
-              >
-                Analytics
-              </Button>
+            <Box sx={{ display: 'flex', gap: { xs: 1, md: 2 }, flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center' }}>
+              <Box sx={{ minWidth: 200, maxWidth: 350 }}>
+                <SearchPanel
+                  results={globalSearchResults}
+                  searchQuery={globalSearchQuery}
+                  onSearchChange={setGlobalSearchQuery}
+                  onSelectItem={handleGlobalSelectItem}
+                  selectedItem={globalSelectedItem}
+                  taskHistory={globalTaskHistory}
+                  onClose={() => { setGlobalSelectedItem(null); setGlobalTaskHistory([]); }}
+                  loading={globalSearchLoading}
+                />
+              </Box>
               <Button
                 variant="outlined"
                 onClick={() => setShowSetupForm(true)}
@@ -731,339 +854,6 @@ ${index + 1}. ${task.title}
           </Box>
         </Box>
 
-        {/* KPI Cards Section */}
-        <Container maxWidth="xl" sx={{ mb: 4 }}>
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 6, md: 3 }}>
-              <Card 
-                sx={{ 
-                  height: 140,
-                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(217, 119, 6, 0.05) 100%)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 4,
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&:hover': {
-                    transform: 'translateY(-8px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(245, 158, 11, 0.2)',
-                    borderColor: '#f59e0b',
-                    '& .card-icon': {
-                      transform: 'scale(1.1) rotate(5deg)',
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      color: 'white'
-                    }
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    width: 4,
-                    background: 'linear-gradient(180deg, #f59e0b 0%, #d97706 100%)',
-                    opacity: 0.8,
-                    transition: 'all 0.3s ease'
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box 
-                      className="card-icon"
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
-                        borderRadius: 3,
-                        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)',
-                        color: '#f59e0b',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
-                      }}
-                    >
-                      <TrendingUpIcon sx={{ fontSize: 20 }} />
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                      Pending Tasks
-                    </Typography>
-                  </Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
-                    {tasks.filter(t => t.status === 'pending').length}
-                  </Typography>
-                  <Box sx={{ position: 'relative' }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={tasks.length > 0 ? (tasks.filter(t => t.status === 'pending').length / tasks.length) * 100 : 0} 
-                      sx={{ 
-                        height: 6, 
-                        borderRadius: 3,
-                        bgcolor: 'rgba(245, 158, 11, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)',
-                          borderRadius: 3,
-                          boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
-                          transition: 'all 0.3s ease'
-                        }
-                      }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 6, md: 3 }}>
-              <Card 
-                sx={{ 
-                  height: 140,
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 4,
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&:hover': {
-                    transform: 'translateY(-8px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(16, 185, 129, 0.2)',
-                    borderColor: '#10b981',
-                    '& .card-icon': {
-                      transform: 'scale(1.1) rotate(5deg)',
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white'
-                    }
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    width: 4,
-                    background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
-                    opacity: 0.8,
-                    transition: 'all 0.3s ease'
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box 
-                      className="card-icon"
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
-                        borderRadius: 3,
-                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
-                        color: '#10b981',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
-                      }}
-                    >
-                      <CheckCircleIcon sx={{ fontSize: 20 }} />
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                      Completed
-                    </Typography>
-                  </Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
-                    {tasks.filter(t => t.status === 'completed').length}
-                  </Typography>
-                  <Box sx={{ position: 'relative' }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={tasks.length > 0 ? (tasks.filter(t => t.status === 'completed').length / tasks.length) * 100 : 0} 
-                      sx={{ 
-                        height: 6, 
-                        borderRadius: 3,
-                        bgcolor: 'rgba(16, 185, 129, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
-                          borderRadius: 3,
-                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
-                          transition: 'all 0.3s ease'
-                        }
-                      }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 6, md: 3 }}>
-              <Card 
-                sx={{ 
-                  height: 140,
-                  background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.05) 100%)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 4,
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&:hover': {
-                    transform: 'translateY(-8px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(239, 68, 68, 0.2)',
-                    borderColor: '#ef4444',
-                    '& .card-icon': {
-                      transform: 'scale(1.1) rotate(5deg)',
-                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                      color: 'white'
-                    }
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    width: 4,
-                    background: 'linear-gradient(180deg, #ef4444 0%, #dc2626 100%)',
-                    opacity: 0.8,
-                    transition: 'all 0.3s ease'
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box 
-                      className="card-icon"
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
-                        borderRadius: 3,
-                        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%)',
-                        color: '#ef4444',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
-                      }}
-                    >
-                      <TimelineIcon sx={{ fontSize: 20 }} />
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                      Rescheduled
-                    </Typography>
-                  </Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
-                    {tasks.filter(t => t.status === 'rescheduled').length}
-                  </Typography>
-                  <Box sx={{ position: 'relative' }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={tasks.length > 0 ? (tasks.filter(t => t.status === 'rescheduled').length / tasks.length) * 100 : 0} 
-                      sx={{ 
-                        height: 6, 
-                        borderRadius: 3,
-                        bgcolor: 'rgba(239, 68, 68, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
-                          borderRadius: 3,
-                          boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)',
-                          transition: 'all 0.3s ease'
-                        }
-                      }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 6, md: 3 }}>
-              <Card 
-                sx={{ 
-                  height: 140,
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 4,
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&:hover': {
-                    transform: 'translateY(-8px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(59, 130, 246, 0.2)',
-                    borderColor: '#3b82f6',
-                    '& .card-icon': {
-                      transform: 'scale(1.1) rotate(5deg)',
-                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                      color: 'white'
-                    }
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    width: 4,
-                    background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
-                    opacity: 0.8,
-                    transition: 'all 0.3s ease'
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box 
-                      className="card-icon"
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
-                        borderRadius: 3,
-                        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)',
-                        color: '#3b82f6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
-                      }}
-                    >
-                      <AssessmentIcon sx={{ fontSize: 20 }} />
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
-                      Completion Rate
-                    </Typography>
-                  </Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontSize: '2rem' }}>
-                    {tasks.length > 0 ? Math.round((tasks.filter(t => t.status === 'completed').length / tasks.length) * 100) : 0}%
-                  </Typography>
-                  <Box sx={{ position: 'relative' }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={tasks.length > 0 ? (tasks.filter(t => t.status === 'completed').length / tasks.length) * 100 : 0} 
-                      sx={{ 
-                        height: 6, 
-                        borderRadius: 3,
-                        bgcolor: 'rgba(59, 130, 246, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
-                          borderRadius: 3,
-                          boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
-                          transition: 'all 0.3s ease'
-                        }
-                      }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        </Container>
 
         <Container maxWidth="xl">
           <Grid container spacing={4}>
@@ -1074,7 +864,7 @@ ${index + 1}. ${task.title}
                   borderRadius: 3, 
                   border: '1px solid rgba(0,0,0,0.08)', 
                   mb: 3,
-                  background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+                  bgcolor: 'background.paper',
                   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
                   transition: 'all 0.3s ease',
                   '&:hover': {
@@ -1281,7 +1071,7 @@ ${index + 1}. ${task.title}
                     sx={{ 
                       p: 8, 
                       textAlign: 'center', 
-                      bgcolor: alpha(theme.palette.background.default, 0.5),
+                      bgcolor: 'background.paper',
                       borderRadius: 4, 
                       border: '2px dashed rgba(0,0,0,0.1)',
                       backdropFilter: 'blur(10px)',
@@ -1784,342 +1574,7 @@ ${index + 1}. ${task.title}
           </DialogActions>
         </Dialog>
 
-        {/* Analytics Dialog */}
-        <Dialog 
-          open={showAnalytics} 
-          onClose={() => setShowAnalytics(false)} 
-          fullWidth 
-          maxWidth="lg"
-          sx={{ '& .MuiDialog-paper': { borderRadius: 3, maxHeight: '90vh' } }}
-        >
-          <DialogTitle 
-            sx={{ 
-              fontWeight: 800, 
-              px: 4, 
-              pt: 4,
-              pb: 2,
-              background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
-              borderBottom: '1px solid rgba(0,0,0,0.08)',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box 
-                sx={{ 
-                  width: 48, 
-                  height: 48, 
-                  borderRadius: 3,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)'
-                }}
-              >
-                <AssessmentIcon sx={{ fontSize: 24, color: 'white' }} />
-              </Box>
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
-                  Professional Task Analytics
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Comprehensive insights into your task performance
-                </Typography>
-              </Box>
-            </Box>
-          </DialogTitle>
-          <DialogContent sx={{ px: 4, py: 3 }}>
-            {(() => {
-              const analytics = getAnalyticsData();
-              return (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {/* Overview Cards */}
-                  <Grid container spacing={3} sx={{ mt: 1 }}>
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                      <Card 
-                        sx={{ 
-                          p: 3,
-                          textAlign: 'center',
-                          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-                          border: '1px solid rgba(102, 126, 234, 0.2)',
-                          borderRadius: 3,
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: '0 8px 30px rgba(102, 126, 234, 0.15)'
-                          }
-                        }}
-                      >
-                        <Box 
-                          sx={{ 
-                            width: 48, 
-                            height: 48, 
-                            borderRadius: 3,
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mx: 'auto',
-                            mb: 2,
-                            boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)'
-                          }}
-                        >
-                          <AssignmentIcon sx={{ fontSize: 24, color: 'white' }} />
-                        </Box>
-                        <Typography variant="h3" sx={{ fontWeight: 800, color: '#667eea', mb: 1 }}>
-                          {analytics.totalTasks}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>
-                          Total Tasks
-                        </Typography>
-                      </Card>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                      <Card 
-                        sx={{ 
-                          p: 3,
-                          textAlign: 'center',
-                          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
-                          border: '1px solid rgba(16, 185, 129, 0.2)',
-                          borderRadius: 3,
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: '0 8px 30px rgba(16, 185, 129, 0.15)'
-                          }
-                        }}
-                      >
-                        <Box 
-                          sx={{ 
-                            width: 48, 
-                            height: 48, 
-                            borderRadius: 3,
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mx: 'auto',
-                            mb: 2,
-                            boxShadow: '0 4px 20px rgba(16, 185, 129, 0.3)'
-                          }}
-                        >
-                          <CheckCircleIcon sx={{ fontSize: 24, color: 'white' }} />
-                        </Box>
-                        <Typography variant="h3" sx={{ fontWeight: 800, color: '#10b981', mb: 1 }}>
-                          {analytics.completedTasks}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>
-                          Completed
-                        </Typography>
-                      </Card>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                      <Card 
-                        sx={{ 
-                          p: 3,
-                          textAlign: 'center',
-                          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)',
-                          border: '1px solid rgba(245, 158, 11, 0.2)',
-                          borderRadius: 3,
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: '0 8px 30px rgba(245, 158, 11, 0.15)'
-                          }
-                        }}
-                      >
-                        <Box 
-                          sx={{ 
-                            width: 48, 
-                            height: 48, 
-                            borderRadius: 3,
-                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mx: 'auto',
-                            mb: 2,
-                            boxShadow: '0 4px 20px rgba(245, 158, 11, 0.3)'
-                          }}
-                        >
-                          <TrendingUpIcon sx={{ fontSize: 24, color: 'white' }} />
-                        </Box>
-                        <Typography variant="h3" sx={{ fontWeight: 800, color: '#f59e0b', mb: 1 }}>
-                          {analytics.completionRate}%
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>
-                          Completion Rate
-                        </Typography>
-                      </Card>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                      <Card 
-                        sx={{ 
-                          p: 3,
-                          textAlign: 'center',
-                          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)',
-                          border: '1px solid rgba(59, 130, 246, 0.2)',
-                          borderRadius: 3,
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: '0 8px 30px rgba(59, 130, 246, 0.15)'
-                          }
-                        }}
-                      >
-                        <Box 
-                          sx={{ 
-                            width: 48, 
-                            height: 48, 
-                            borderRadius: 3,
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mx: 'auto',
-                            mb: 2,
-                            boxShadow: '0 4px 20px rgba(59, 130, 246, 0.3)'
-                          }}
-                        >
-                          <TimelineIcon sx={{ fontSize: 24, color: 'white' }} />
-                        </Box>
-                        <Typography variant="h3" sx={{ fontWeight: 800, color: '#3b82f6', mb: 1 }}>
-                          {analytics.thisWeekTasks}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>
-                          This Week
-                        </Typography>
-                      </Card>
-                    </Grid>
-                  </Grid>
 
-                  {/* Priority Distribution */}
-                  <Card sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <PieChartIcon color="primary" />
-                      Priority Distribution
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {Object.entries(analytics.priorityData).map(([priority, count]) => {
-                        const percentage = analytics.totalTasks > 0 ? (count / analytics.totalTasks) * 100 : 0;
-                        const color = priority === 'High' ? 'error' : priority === 'Medium' ? 'warning' : 'info';
-                        return (
-                          <Box key={priority}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                {priority} Priority
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {count} tasks ({percentage.toFixed(1)}%)
-                              </Typography>
-                            </Box>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={percentage} 
-                              color={color as any}
-                              sx={{ 
-                                height: 8, 
-                                borderRadius: 4,
-                                bgcolor: alpha(theme.palette.background.default, 0.5),
-                              }}
-                            />
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  </Card>
-
-                  {/* Status Overview */}
-                  <Card sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <BarChartIcon color="primary" />
-                      Status Overview
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid size={4}>
-                        <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 2 }}>
-                          <Typography variant="h5" color="success.main" sx={{ fontWeight: 800 }}>
-                            {analytics.statusData.completed}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                            Completed
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid size={4}>
-                        <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha(theme.palette.warning.main, 0.1), borderRadius: 2 }}>
-                          <Typography variant="h5" color="warning.main" sx={{ fontWeight: 800 }}>
-                            {analytics.statusData.pending}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                            Pending
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid size={4}>
-                        <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha(theme.palette.info.main, 0.1), borderRadius: 2 }}>
-                          <Typography variant="h5" color="info.main" sx={{ fontWeight: 800 }}>
-                            {analytics.statusData.rescheduled}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                            Rescheduled
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </Card>
-
-                  {/* Weekly Progress */}
-                  <Card sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <TrendingUpIcon color="primary" />
-                      Weekly Progress
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                          Completed this week
-                        </Typography>
-                        <Typography variant="h5" color="success.main" sx={{ fontWeight: 800 }}>
-                          {analytics.completedThisWeek}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                          vs Last Week
-                        </Typography>
-                        <Typography 
-                          variant="h5" 
-                          sx={{ 
-                            fontWeight: 800,
-                            color: parseFloat(analytics.weeklyProgress) >= 0 ? 'success.main' : 'error.main'
-                          }}
-                        >
-                          {parseFloat(analytics.weeklyProgress) >= 0 ? '+' : ''}{analytics.weeklyProgress}%
-                        </Typography>
-                      </Box>
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                          Completed last week
-                        </Typography>
-                        <Typography variant="h5" color="text.secondary" sx={{ fontWeight: 800 }}>
-                          {analytics.completedLastWeek}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Card>
-                </Box>
-              );
-            })()}
-          </DialogContent>
-          <DialogActions sx={{ p: 4, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-            <Button 
-              onClick={() => setShowAnalytics(false)} 
-              sx={{ fontWeight: 600, borderRadius: 3 }}
-            >
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
 
         {/* Download Menu */}
         <Menu

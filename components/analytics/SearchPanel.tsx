@@ -47,36 +47,46 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
     : results;
 
   return (
-    <Card sx={{
-      borderRadius: 4, border: '1px solid', borderColor: 'divider',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-      background: isDark ? alpha('#1e293b', 0.8) : '#fff',
-      overflow: 'hidden'
-    }}>
-      <CardContent sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight={800} sx={{ mb: 2, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-          🔍 Search Tasks & Notes
-        </Typography>
+    <Box sx={{ position: 'relative', width: '100%', maxWidth: 500, zIndex: 120 }}>
 
-        {/* Search Input */}
+
         <TextField
-          fullWidth size="small" placeholder="Search by title, description, category..."
+          fullWidth size="small" placeholder="Search tasks, notes..."
           value={searchQuery} onChange={(e) => onSearchChange(e.target.value)}
           InputProps={{
-            startAdornment: <InputAdornment position="start"><Search size={18} /></InputAdornment>,
+            startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment>,
             endAdornment: searchQuery && (
               <InputAdornment position="end">
-                <IconButton size="small" onClick={() => onSearchChange('')}><X size={16} /></IconButton>
+                <IconButton size="small" onClick={() => { onSearchChange(''); onClose(); }}><X size={14} /></IconButton>
               </InputAdornment>
             ),
             sx: {
               borderRadius: 3,
-              bgcolor: isDark ? alpha('#334155', 0.5) : alpha('#f1f5f9', 0.8),
-              '& fieldset': { border: 'none' },
-              fontWeight: 600
+              bgcolor: isDark ? alpha('#1e293b', 0.8) : alpha('#ffffff', 0.9),
+              '& fieldset': { border: '1px solid', borderColor: alpha(theme.palette.divider, 0.2) },
+              '&:hover fieldset': { borderColor: alpha(theme.palette.primary.main, 0.4) },
+              '&.Mui-focused fieldset': { borderColor: theme.palette.primary.main, borderWidth: '2px' },
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              transition: 'all 0.2s ease-in-out'
             }
           }}
         />
+
+        {/* Dropdown Results Box */}
+        {(searchQuery || selectedItem) && (
+          <Fade in>
+            <Card sx={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
+              maxHeight: '80vh', overflowY: 'auto',
+              borderRadius: 4, border: '1px solid', borderColor: 'divider',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
+              background: isDark ? alpha('#1e293b', 0.95) : alpha('#ffffff', 0.95),
+              backdropFilter: 'blur(16px)',
+              zIndex: 999
+            }}>
+              <CardContent sx={{ p: 2 }}>
 
         {/* Source Filter Chips */}
         <Box sx={{ display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap' }}>
@@ -173,18 +183,18 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                 <Box>
                   <Typography variant="h6" fontWeight={800} sx={{ fontSize: '1.1rem' }}>
-                    {selectedItem.title}
+                    {selectedItem?.title}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                    <Chip label={sourceConfig[selectedItem.source].label} size="small" sx={{ fontWeight: 700, bgcolor: alpha(sourceConfig[selectedItem.source].color, 0.1), color: sourceConfig[selectedItem.source].color }} />
-                    {selectedItem.status && <Chip label={selectedItem.status} size="small" sx={{ fontWeight: 700, bgcolor: alpha(statusColors[selectedItem.status] || '#6b7280', 0.1), color: statusColors[selectedItem.status] || '#6b7280' }} />}
-                    {selectedItem.priority && <Chip label={selectedItem.priority} size="small" variant="outlined" sx={{ fontWeight: 700 }} />}
+                    {selectedItem?.source && <Chip label={sourceConfig[selectedItem.source as keyof typeof sourceConfig]?.label} size="small" sx={{ fontWeight: 700, bgcolor: alpha(sourceConfig[selectedItem.source as keyof typeof sourceConfig]?.color, 0.1), color: sourceConfig[selectedItem.source as keyof typeof sourceConfig]?.color }} />}
+                    {selectedItem?.status && <Chip label={selectedItem.status} size="small" sx={{ fontWeight: 700, bgcolor: alpha(statusColors[selectedItem.status] || '#6b7280', 0.1), color: statusColors[selectedItem.status] || '#6b7280' }} />}
+                    {selectedItem?.priority && <Chip label={selectedItem.priority} size="small" variant="outlined" sx={{ fontWeight: 700 }} />}
                   </Box>
                 </Box>
                 <IconButton size="small" onClick={onClose}><X size={18} /></IconButton>
               </Box>
 
-              {selectedItem.description && (
+              {selectedItem?.description && (
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6 }}>
                   {selectedItem.description}
                 </Typography>
@@ -194,31 +204,31 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
 
               {/* Detail Grid */}
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                {selectedItem.date && (
+                {selectedItem?.date && (
                   <Box>
                     <Typography variant="caption" color="text.secondary" fontWeight={700}>📅 Date</Typography>
                     <Typography variant="body2" fontWeight={600}>{new Date(selectedItem.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</Typography>
                   </Box>
                 )}
-                {selectedItem.category && (
+                {selectedItem?.category && (
                   <Box>
                     <Typography variant="caption" color="text.secondary" fontWeight={700}>📂 Category</Typography>
                     <Typography variant="body2" fontWeight={600}>{selectedItem.category}</Typography>
                   </Box>
                 )}
-                {selectedItem.department && (
+                {selectedItem?.department && (
                   <Box>
                     <Typography variant="caption" color="text.secondary" fontWeight={700}>🏢 Department</Typography>
                     <Typography variant="body2" fontWeight={600}>{selectedItem.department}</Typography>
                   </Box>
                 )}
-                {selectedItem.role && (
+                {selectedItem?.role && (
                   <Box>
                     <Typography variant="caption" color="text.secondary" fontWeight={700}>👤 Role</Typography>
                     <Typography variant="body2" fontWeight={600}>{selectedItem.role}</Typography>
                   </Box>
                 )}
-                {selectedItem.completion_feedback && (
+                {selectedItem?.completion_feedback && (
                   <Box sx={{ gridColumn: '1 / -1' }}>
                     <Typography variant="caption" color="text.secondary" fontWeight={700}>💬 Feedback</Typography>
                     <Typography variant="body2" fontWeight={600}>{selectedItem.completion_feedback}</Typography>
@@ -269,7 +279,10 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
             </Box>
           </Fade>
         )}
-      </CardContent>
-    </Card>
-  );
+              </CardContent>
+            </Card>
+          </Fade>
+        )}
+      </Box>
+    );
 };

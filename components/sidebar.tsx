@@ -282,7 +282,7 @@ const Sidebar = () => {
               alt="Time OS Logo"
               width={120}
               height={30}
-              style={{ objectFit: 'contain', height: 'auto', width: 'auto', maxWidth: '120px' }}
+              style={{ width: 'auto', height: 'auto' }}
               priority={true}
             />
           ) : (

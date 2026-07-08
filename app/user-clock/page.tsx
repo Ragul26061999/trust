@@ -66,6 +66,8 @@ import { useAuth } from "../../lib/auth-context";
 import { TimeEngineProvider, useTimeEngine } from "../../lib/time-engine";
 import { formatInUserTimezone, getCurrentUserTimezone } from "../../lib/timezone-utils";
 import TranslatedText from "../../components/translated-text";
+import { getCalendarEntries } from "../../lib/personal-calendar-db";
+import { getProfessionalTasks } from "../../lib/professional-db";
 
 type TabKey = "timezone" | "stopwatch" | "bedtime" | "alarm";
 type AlarmSource = "Personal Task" | "Professional Task" | "Note" | "Custom";
@@ -85,7 +87,7 @@ const formatDuration = (ms: number) => {
 };
 
 const UserClockPageContent = () => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const {
@@ -115,7 +117,23 @@ const UserClockPageContent = () => {
     purpose: "",
     start: "",
     end: "",
+    taskId: ""
   });
+  const [activeTasks, setActiveTasks] = useState<{ id: string, title: string, source: string }[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      Promise.all([
+        getCalendarEntries(user.id),
+        getProfessionalTasks(user.id)
+      ]).then(([personal, professional]) => {
+        const pTasks = personal.filter(t => t.status !== 'completed').map(t => ({ id: t.id, title: t.title, source: 'Personal' }));
+        const proTasks = professional.filter(t => t.status !== 'completed').map(t => ({ id: t.id, title: t.title, source: 'Professional' }));
+        setActiveTasks([...pTasks, ...proTasks]);
+      });
+    }
+  }, [user]);
+
   const [stopwatchFilters, setStopwatchFilters] = useState({ date: "", purpose: "" });
 
   const [bedtimeForm, setBedtimeForm] = useState({ sleep: "", wake: "" });
@@ -158,14 +176,20 @@ const UserClockPageContent = () => {
   };
 
   const handleStopwatchSubmit = () => {
-    if (!stopwatchForm.heading || !stopwatchForm.purpose || !stopwatchForm.start || !stopwatchForm.end) return;
+    if (!stopwatchForm.heading || !stopwatchForm.start || !stopwatchForm.end) return;
+    
+    // Encode taskId into purpose if selected
+    const encodedPurpose = stopwatchForm.taskId 
+      ? `[TASK: ${stopwatchForm.taskId}] ${stopwatchForm.purpose}`
+      : stopwatchForm.purpose;
+
     addStopwatchEntry({
       heading: stopwatchForm.heading,
-      purpose: stopwatchForm.purpose,
+      purpose: encodedPurpose,
       startLocalIso: stopwatchForm.start,
       endLocalIso: stopwatchForm.end,
     });
-    setStopwatchForm({ heading: "", purpose: "", start: "", end: "" });
+    setStopwatchForm({ heading: "", purpose: "", start: "", end: "", taskId: "" });
   };
 
   const handleBedtimeSubmit = () => {
@@ -591,8 +615,33 @@ const UserClockPageContent = () => {
                             }
                           }}
                         />
+                        <FormControl fullWidth>
+                          <InputLabel id="task-select-label">Link to Task (Optional)</InputLabel>
+                          <Select
+                            labelId="task-select-label"
+                            label="Link to Task (Optional)"
+                            value={stopwatchForm.taskId}
+                            onChange={(e) => {
+                              const taskId = e.target.value;
+                              const task = activeTasks.find(t => t.id === taskId);
+                              setStopwatchForm(p => ({
+                                ...p,
+                                taskId,
+                                heading: task ? task.title : p.heading
+                              }));
+                            }}
+                            sx={{ borderRadius: 3, bgcolor: 'background.paper' }}
+                          >
+                            <MenuItem value=""><em>None</em></MenuItem>
+                            {activeTasks.map(t => (
+                              <MenuItem key={t.id} value={t.id}>
+                                [{t.source}] {t.title}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
                         <TextField
-                          label="Purpose"
+                          label="Notes / Purpose"
                           value={stopwatchForm.purpose}
                           onChange={(e) => setStopwatchForm((p) => ({ ...p, purpose: e.target.value }))}
                           fullWidth
