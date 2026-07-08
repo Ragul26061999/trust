@@ -36,7 +36,7 @@ export const CompletionTrendChart = ({ data }: { data: { date: string; completed
           📈 Activity Trend
         </Typography>
         <ChartWrapper height={280}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
             <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
               <defs>
                 <linearGradient id="completedGrad" x1="0" y1="0" x2="0" y2="1">
@@ -101,7 +101,7 @@ export const DistributionPieChart = ({ data, title, icon }: {
       <CardContent sx={{ p: 3 }}>
         <Typography variant="h6" fontWeight={800} sx={{ mb: 1, fontSize: '1rem' }}>{icon} {title}</Typography>
         <ChartWrapper height={220}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
             <RePieChart>
               <Pie
                 data={data} cx="50%" cy="50%"
@@ -156,7 +156,7 @@ export const StatusBarChart = ({ data }: { data: { name: string; value: number; 
           📊 Task Status Breakdown
         </Typography>
         <ChartWrapper height={280}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
             <ReBarChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
               <XAxis dataKey="name" tick={{ fontSize: 12, fill: textColor, fontWeight: 600 }} />

@@ -69,11 +69,13 @@ interface UnifiedEvent {
   description?: string;
 }
 
+let cachedCalendarEvents: UnifiedEvent[] | null = null;
+
 const CalendarPageContent = () => {
   const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<UnifiedEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<UnifiedEvent[]>(cachedCalendarEvents || []);
+  const [loading, setLoading] = useState(!cachedCalendarEvents);
   
   const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
@@ -82,7 +84,7 @@ const CalendarPageContent = () => {
 
   const fetchAllData = async () => {
     if (!user) return;
-    setLoading(true);
+    if (!cachedCalendarEvents) setLoading(true);
     try {
       const [personal, professional, notes] = await Promise.all([
         getCalendarEntries(user.id).catch(() => []),
@@ -140,6 +142,7 @@ const CalendarPageContent = () => {
       });
 
       setEvents(formattedEvents);
+      cachedCalendarEvents = formattedEvents;
     } catch (err) {
       console.error('Error fetching calendar data:', err);
     } finally {
@@ -325,14 +328,9 @@ const CalendarPageContent = () => {
           </Box>
         )}
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-            <CircularProgress size={40} thickness={4} />
-          </Box>
-        ) : (
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: viewMode === 'day' ? '1fr' : 'repeat(7, 1fr)',
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: viewMode === 'day' ? '1fr' : 'repeat(7, 1fr)',
             gap: '1px',
             bgcolor: 'divider',
             border: '1px solid',
@@ -433,7 +431,6 @@ const CalendarPageContent = () => {
               );
             })}
           </Box>
-        )}
       </Paper>
 
       <Dialog 

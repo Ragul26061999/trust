@@ -84,23 +84,25 @@ const LucideIcon = ({ icon: Icon, size = 20, style = {} }: any) => (
   <Icon size={size} style={style} />
 );
 
+let cachedHomeData: any = null;
+
 const HomeContent = () => {
   const { user } = useAuth();
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslations('common');
   
-  const [loading, setLoading] = useState(true);
-  const [professionalInfo, setProfessionalInfo] = useState<any>(null);
-  const [tasks, setTasks] = useState<ProfessionalTask[]>([]);
-  const [schedule, setSchedule] = useState<CalendarEntry[]>([]);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(!cachedHomeData);
+  const [professionalInfo, setProfessionalInfo] = useState<any>(cachedHomeData?.professionalInfo || null);
+  const [tasks, setTasks] = useState<ProfessionalTask[]>(cachedHomeData?.tasks || []);
+  const [schedule, setSchedule] = useState<CalendarEntry[]>(cachedHomeData?.schedule || []);
+  const [posts, setPosts] = useState<FeedPost[]>(cachedHomeData?.posts || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
   const [taskLevel, setTaskLevel] = useState('Low');
   const [taskStatus, setTaskStatus] = useState('Pending');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>(cachedHomeData?.allUsers || []);
   const [connectionsInfo, setConnectionsInfo] = useState<{
     connections: string[];
     sentRequests: string[];
@@ -108,7 +110,7 @@ const HomeContent = () => {
     connectionTypes: Record<string, string>;
     pendingTypes: Record<string, string>;
     cancelRequests: string[];
-  }>({ connections: [], sentRequests: [], pendingRequests: [], connectionTypes: {}, pendingTypes: {}, cancelRequests: [] });
+  }>(cachedHomeData?.connectionsInfo || { connections: [], sentRequests: [], pendingRequests: [], connectionTypes: {}, pendingTypes: {}, cancelRequests: [] });
   
   const personalCount = connectionsInfo.connections.filter(id => connectionsInfo.connectionTypes[id] === 'Personal').length;
   const professionalCount = connectionsInfo.connections.filter(id => connectionsInfo.connectionTypes[id] === 'Professional').length;
@@ -139,13 +141,13 @@ const HomeContent = () => {
       console.error(error);
     }
   };
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [bannerColor, setBannerColor] = useState<string | null>(null);
-  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(cachedHomeData?.userProfile || null);
+  const [bannerColor, setBannerColor] = useState<string | null>(cachedHomeData?.bannerColor || null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(cachedHomeData?.bannerUrl || null);
   const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
   // Social states
-  const [likes, setLikes] = useState<Record<string, PostLike[]>>({});
-  const [comments, setComments] = useState<Record<string, PostComment[]>>({});
+  const [likes, setLikes] = useState<Record<string, PostLike[]>>(cachedHomeData?.likes || {});
+  const [comments, setComments] = useState<Record<string, PostComment[]>>(cachedHomeData?.comments || {});
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
@@ -321,7 +323,7 @@ const HomeContent = () => {
   const fetchData = async () => {
     if (!user) return;
     try {
-      setLoading(true);
+      if (!cachedHomeData) setLoading(true);
       // Fetch connections first to get the social feed properly
       const connectionsDataResult = await getUserConnectionsInfo(user.id);
       const connectionsData = connectionsDataResult as { connections: string[]; sentRequests: string[]; pendingRequests: string[]; connectionTypes: Record<string, string>; pendingTypes: Record<string, string>; cancelRequests: string[]; };
@@ -365,11 +367,12 @@ const HomeContent = () => {
       const sortedPosts = notesData || [];
       setPosts(sortedPosts);
 
+      const likesData: Record<string, PostLike[]> = {};
+      const commentsData: Record<string, PostComment[]> = {};
+
       // Fetch interactions for visible posts
       if (sortedPosts.length > 0) {
         const postIds = sortedPosts.map((p: any) => p.id);
-        const likesData: Record<string, PostLike[]> = {};
-        const commentsData: Record<string, PostComment[]> = {};
 
         await Promise.all(postIds.map(async (id: string) => {
           const [pLikes, pComments] = await Promise.all([
@@ -383,6 +386,20 @@ const HomeContent = () => {
         setLikes(likesData);
         setComments(commentsData);
       }
+      
+      cachedHomeData = {
+        professionalInfo: info,
+        tasks: todayTasks,
+        schedule: calData || [],
+        posts: sortedPosts,
+        allUsers: usersData.filter((u: any) => u.id !== user.id),
+        connectionsInfo: connectionsData,
+        userProfile: profileData,
+        bannerColor: bannerData.bannerColor,
+        bannerUrl: bannerData.bannerUrl,
+        likes: likesData,
+        comments: commentsData
+      };
     } catch (error) {
       console.error('Error fetching home data:', error);
     } finally {
@@ -588,29 +605,34 @@ const HomeContent = () => {
     }
   };
 
-  if (loading && !posts.length) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress color="primary" />
-      </Box>
-    );
-  }
+
 
   return (
-    <Box sx={{ pb: 4, px: { xs: 2, md: 4 }, pt: 3, overflowX: 'hidden' }}>
+    <Box sx={{ 
+      pb: 4, 
+      px: { xs: 2, md: 4 }, 
+      pt: 3, 
+      overflowX: 'hidden',
+      minHeight: '100vh',
+      background: theme.palette.mode === 'dark' 
+        ? 'linear-gradient(135deg, #111827 0%, #1f2937 100%)' 
+        : 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)', // Pastel background
+    }}>
       {/* Top Header / Search Bar */}
       <Box sx={{ 
         position: 'sticky', 
         top: 0, 
         zIndex: 1000, 
-        bgcolor: alpha(theme.palette.background.paper, 0.8), 
-        backdropFilter: 'blur(20px)',
+        bgcolor: alpha(theme.palette.background.paper, 0.6), 
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
         borderBottom: '1px solid',
-        borderColor: 'divider',
-        py: 1.5,
+        borderColor: alpha(theme.palette.divider, 0.08),
+        py: 2,
         px: { xs: 2, md: 4 },
         mb: 4,
         mx: { xs: -2, md: -4 }, // counteract parent padding to make header full width
+        boxShadow: '0 4px 30px rgba(0,0,0,0.03)'
       }}>
         <Grid container alignItems="center" spacing={2}>
           <Grid size={{ xs: 6, md: 3 }}>
@@ -638,14 +660,17 @@ const HomeContent = () => {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon size={18} />
+                    <SearchIcon size={18} color={theme.palette.text.secondary} />
                   </InputAdornment>
                 ),
                 sx: { 
-                  borderRadius: 4, 
-                  bgcolor: alpha(theme.palette.action.hover, 0.5),
-                  '& fieldset': { border: 'none' },
-                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                  borderRadius: 6, 
+                  bgcolor: alpha(theme.palette.background.paper, 0.8),
+                  '& fieldset': { border: '1px solid', borderColor: alpha(theme.palette.divider, 0.1) },
+                  '&:hover fieldset': { borderColor: alpha(theme.palette.primary.main, 0.3) },
+                  '&.Mui-focused fieldset': { borderColor: theme.palette.primary.main, borderWidth: '1px' },
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+                  transition: 'all 0.2s ease-in-out'
                 }
               }}
             />
@@ -667,15 +692,19 @@ const HomeContent = () => {
 
       <Grid container spacing={4}>
         {/* Left Column: Professional Section */}
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Box sx={{ position: 'sticky', top: 96 }}>
             <Card sx={{ 
-              borderRadius: 6, 
+              borderRadius: 5, 
               mb: 4, 
               overflow: 'hidden',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.06)',
               border: '1px solid',
-              borderColor: 'divider'
+              borderColor: alpha(theme.palette.divider, 0.08),
+              bgcolor: alpha(theme.palette.background.paper, 0.7),
+              backdropFilter: 'blur(20px)',
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'translateY(-4px)' }
             }}>
               <Box 
                 sx={{ 
@@ -738,10 +767,12 @@ const HomeContent = () => {
             </Card>
 
           <Card sx={{ 
-            borderRadius: 6, 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            borderRadius: 5, 
+            boxShadow: '0 12px 40px rgba(0,0,0,0.06)',
             border: '1px solid',
-            borderColor: 'divider'
+            borderColor: alpha(theme.palette.divider, 0.08),
+            bgcolor: alpha(theme.palette.background.paper, 0.7),
+            backdropFilter: 'blur(20px)'
           }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
@@ -749,7 +780,7 @@ const HomeContent = () => {
                 {t('home.connections')}
               </Typography>
               
-              <List disablePadding>
+              <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {allUsers.length > 0 ? allUsers.map((person, idx) => {
                   const isConnected = connectionsInfo.connections.includes(person.id);
                   const isSent = connectionsInfo.sentRequests.includes(person.id);
@@ -759,7 +790,7 @@ const HomeContent = () => {
                   const unreadMsgCount = unreadCounts[person.id] || 0;
 
                   return (
-                    <ListItem key={person.id} sx={{ px: 0, py: 1.5 }}>
+                    <ListItem key={person.id} sx={{ px: 1.5, py: 1.5, borderRadius: 3, '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.02) } }}>
                       <ListItemAvatar sx={{ minWidth: 50 }}>
                         <Badge
                           overlap="circular"
@@ -774,9 +805,10 @@ const HomeContent = () => {
                       </ListItemAvatar>
                       <ListItemText 
                         primary={displayName}
-                        primaryTypographyProps={{ variant: 'body2', fontWeight: 800 }}
+                        primaryTypographyProps={{ variant: 'body2', fontWeight: 800, noWrap: true }}
                         secondary={person.email}
-                        secondaryTypographyProps={{ variant: 'caption', fontWeight: 500 }}
+                        secondaryTypographyProps={{ variant: 'caption', fontWeight: 500, noWrap: true }}
+                        sx={{ overflow: 'hidden' }}
                       />
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
                         {isConnected ? (
@@ -785,7 +817,7 @@ const HomeContent = () => {
                               <IconButton 
                                 size="small" 
                                 onClick={() => handleOpenChat(person)}
-                                sx={{ color: 'success.main', bgcolor: alpha(theme.palette.success.main, 0.1) }}
+                                sx={{ color: 'success.main', bgcolor: alpha(theme.palette.success.main, 0.2), border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.4), '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.3) } }}
                               >
                                 <MessageIcon size={16} />
                               </IconButton>
@@ -794,7 +826,7 @@ const HomeContent = () => {
                               <IconButton 
                                 size="small" 
                                 onClick={() => handleRemoveConnection(person.id)}
-                                sx={{ color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.1) }}
+                                sx={{ color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.2), border: '1px solid', borderColor: alpha(theme.palette.error.main, 0.4), '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.3) } }}
                               >
                                 <XIcon size={16} />
                               </IconButton>
@@ -802,17 +834,17 @@ const HomeContent = () => {
                           </>
                         ) : isPending ? (
                           <>
-                            <Button size="small" variant="contained" color="primary" sx={{ minWidth: 0, px: 1, borderRadius: 2 }} onClick={() => setConnectionPopup({ open: true, userId: person.id, actionType: 'accept' })}>Accept</Button>
-                            <Button size="small" variant="outlined" color="error" sx={{ minWidth: 0, px: 1, borderRadius: 2 }} onClick={() => handleRejectRequest(person.id)}>Decline</Button>
+                            <Button size="small" variant="contained" color="primary" sx={{ minWidth: 0, px: 1, borderRadius: 2, fontWeight: 700 }} onClick={() => setConnectionPopup({ open: true, userId: person.id, actionType: 'accept' })}>Accept</Button>
+                            <Button size="small" variant="outlined" color="error" sx={{ minWidth: 0, px: 1, borderRadius: 2, fontWeight: 700, bgcolor: alpha(theme.palette.error.main, 0.1) }} onClick={() => handleRejectRequest(person.id)}>Decline</Button>
                           </>
                         ) : isSent ? (
-                          <Button size="small" variant="outlined" color="inherit" sx={{ minWidth: 0, px: 1, borderRadius: 2, fontSize: '0.75rem', fontWeight: 700 }} disabled>Pending</Button>
+                          <Button size="small" variant="outlined" color="info" sx={{ minWidth: 0, px: 1, borderRadius: 2, fontSize: '0.75rem', fontWeight: 800, bgcolor: alpha(theme.palette.info.main, 0.1), border: '1px solid', borderColor: alpha(theme.palette.info.main, 0.3) }} disabled>PENDING</Button>
                         ) : (
                           <Tooltip title="Connect">
                             <IconButton 
                               size="small" 
                               onClick={() => setConnectionPopup({ open: true, userId: person.id, actionType: 'send' })}
-                              sx={{ color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.1) }}
+                              sx={{ color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.2), border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.4), '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.3) } }}
                             >
                               <PlusIcon size={16} />
                             </IconButton>
@@ -843,15 +875,17 @@ const HomeContent = () => {
         </Grid>
 
         {/* Middle Column: Post Feed & Tasks */}
-        <Grid size={{ xs: 12, md: 9 }}>
+        <Grid size={{ xs: 12, md: 8 }}>
           {/* Create Post Section */}
           <Paper sx={{ 
             p: 3, 
-            borderRadius: 6, 
+            borderRadius: 5, 
             mb: 4, 
-            boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.06)',
             border: '1px solid',
-            borderColor: 'divider'
+            borderColor: alpha(theme.palette.divider, 0.08),
+            bgcolor: alpha(theme.palette.background.paper, 0.7),
+            backdropFilter: 'blur(20px)'
           }}>
             <Box sx={{ display: 'flex', gap: 2, mb: selectedImage || selectedDoc ? 1 : 3 }}>
               <Avatar src={userProfile?.avatar_url || (user as any)?.user_metadata?.avatar_url} sx={{ width: 48, height: 48, bgcolor: 'primary.main', fontWeight: 700 }}>{user?.email?.charAt(0).toUpperCase()}</Avatar>
@@ -865,10 +899,11 @@ const HomeContent = () => {
                 variant="outlined"
                 sx={{ 
                   '& .MuiOutlinedInput-root': { 
-                    borderRadius: 4,
-                    bgcolor: alpha(theme.palette.action.hover, 0.3),
-                    '& fieldset': { borderColor: 'transparent' },
-                    '&:hover fieldset': { borderColor: theme.palette.primary.main }
+                    borderRadius: 3,
+                    bgcolor: alpha(theme.palette.background.default, 0.8),
+                    '& fieldset': { borderColor: alpha(theme.palette.divider, 0.1) },
+                    '&:hover fieldset': { borderColor: alpha(theme.palette.primary.main, 0.4) },
+                    '&.Mui-focused fieldset': { borderColor: theme.palette.primary.main }
                   }
                 }}
               />
@@ -1027,12 +1062,16 @@ const HomeContent = () => {
           
           {posts.map((post) => (
             <Card key={post.id} sx={{ 
-              borderRadius: 6, 
+              borderRadius: 5, 
               mb: 4, 
-              boxShadow: '0 4px 25px rgba(0,0,0,0.03)',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.06)',
               border: '1px solid',
-              borderColor: 'divider',
-              overflow: 'hidden'
+              borderColor: alpha(theme.palette.divider, 0.08),
+              bgcolor: alpha(theme.palette.background.paper, 0.7),
+              backdropFilter: 'blur(20px)',
+              overflow: 'hidden',
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'translateY(-2px)' }
             }}>
               <CardContent sx={{ pb: 2, px: 3, pt: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
@@ -1104,14 +1143,16 @@ const HomeContent = () => {
               </CardContent>
               <Divider sx={{ opacity: 0.6 }} />
                 <Box sx={{ 
-                  p: 1.5, 
+                  p: 2, 
                   px: 3, 
                   display: 'flex', 
+                  flexWrap: 'wrap',
+                  gap: 2,
                   justifyContent: 'space-between', 
                   alignItems: 'center',
                   bgcolor: theme.palette.mode === 'dark' ? alpha('#000', 0.2) : alpha(theme.palette.primary.main, 0.02),
                   borderTop: '1px solid',
-                  borderColor: alpha(theme.palette.divider, 0.5)
+                  borderColor: alpha(theme.palette.divider, 0.08)
                 }}>
                   {/* Level Section */}
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -1155,9 +1196,9 @@ const HomeContent = () => {
                         '.MuiSelect-select': { py: 0.5, pl: 2, pr: 4, display: 'flex', alignItems: 'center' },
                       }}
                     >
-                      <MenuItem value="Pending" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>⏳ Pending</MenuItem>
-                      <MenuItem value="In Progress" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>🚀 In Progress</MenuItem>
-                      <MenuItem value="Completed" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>✅ Completed</MenuItem>
+                      <MenuItem value="Pending" sx={{ fontSize: '0.85rem', fontWeight: 600, py: 1 }}>⏳ Pending</MenuItem>
+                      <MenuItem value="In Progress" sx={{ fontSize: '0.85rem', fontWeight: 600, py: 1 }}>🚀 In Progress</MenuItem>
+                      <MenuItem value="Completed" sx={{ fontSize: '0.85rem', fontWeight: 600, py: 1 }}>✅ Completed</MenuItem>
                     </Select>
                   </Box>
 
@@ -1525,9 +1566,15 @@ const HomeContent = () => {
       <Dialog 
         open={connectionPopup?.open || false} 
         onClose={() => setConnectionPopup(null)}
-        PaperProps={{ sx: { borderRadius: 4, p: 2, minWidth: 350 } }}
+        PaperProps={{ sx: { 
+          borderRadius: 5, 
+          p: 3, 
+          minWidth: 350,
+          background: theme.palette.mode === 'dark' ? 'linear-gradient(135deg, #1f2937 0%, #111827 100%)' : 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
+        } }}
       >
-        <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>
+        <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', fontSize: '1.5rem', color: 'primary.main' }}>
           Select Connection Type
         </DialogTitle>
         <DialogContent sx={{ textAlign: 'center', pb: 1 }}>

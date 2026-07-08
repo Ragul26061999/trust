@@ -4,13 +4,14 @@ import { useAuth } from './auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
 import { supabase } from './supabase';
+let cachedIsOnboarded: boolean | null = null;
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [prefLoading, setPrefLoading] = useState(true);
-  const [isOnboarded, setIsOnboarded] = useState(true);
+  const [prefLoading, setPrefLoading] = useState(cachedIsOnboarded === null);
+  const [isOnboarded, setIsOnboarded] = useState(cachedIsOnboarded !== false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -27,6 +28,15 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
         return;
       }
       if (user && pathname !== '/onboarding/routines') {
+        if (cachedIsOnboarded !== null) {
+          setIsOnboarded(cachedIsOnboarded);
+          setPrefLoading(false);
+          if (cachedIsOnboarded === false) {
+             router.push('/onboarding/routines');
+          }
+          return;
+        }
+
         try {
           const { data, error } = await supabase
             .from('user_preferences')
@@ -36,17 +46,21 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
             
           if (!error && data) {
             if (data.is_onboarded_routines === false || data.is_onboarded_routines === null) {
+              cachedIsOnboarded = false;
               setIsOnboarded(false);
               router.push('/onboarding/routines');
             } else {
+              cachedIsOnboarded = true;
               setIsOnboarded(true);
             }
           } else {
             // If error, assume they need onboarding just in case, or ignore if it's missing table
             if (error?.code === '42703') { // Column does not exist
                 console.warn('is_onboarded_routines column missing');
+                cachedIsOnboarded = true;
                 setIsOnboarded(true); // Fail open if migration not run
             } else if (error?.code === 'PGRST116') { // No rows
+                cachedIsOnboarded = false;
                 setIsOnboarded(false);
                 router.push('/onboarding/routines');
             }

@@ -39,22 +39,24 @@ import { getProfessionalTasks } from '../../lib/professional-db';
 import ProfileModal from '../../components/profile-modal';
 import ProtectedLayout from '../protected-layout';
 
+let cachedProfileData: any = null;
+
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const theme = useTheme();
 
-  const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [posts, setPosts] = useState<Note[]>([]);
-  const [bannerColor, setBannerColor] = useState<string | null>(null);
-  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
-  const [connectionsInfo, setConnectionsInfo] = useState<{ connections: string[] }>({ connections: [] });
+  const [loading, setLoading] = useState(!cachedProfileData);
+  const [userProfile, setUserProfile] = useState<any>(cachedProfileData?.userProfile || null);
+  const [posts, setPosts] = useState<Note[]>(cachedProfileData?.posts || []);
+  const [bannerColor, setBannerColor] = useState<string | null>(cachedProfileData?.bannerColor || null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(cachedProfileData?.bannerUrl || null);
+  const [connectionsInfo, setConnectionsInfo] = useState<{ connections: string[] }>(cachedProfileData?.connectionsInfo || { connections: [] });
 
-  const [personalStats, setPersonalStats] = useState<any>({ completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
-  const [professionalStats, setProfessionalStats] = useState<any>({ completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
-  const [notesStats, setNotesStats] = useState<any>({ completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
-  const [posterStats, setPosterStats] = useState<any>({ completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
+  const [personalStats, setPersonalStats] = useState<any>(cachedProfileData?.personalStats || { completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
+  const [professionalStats, setProfessionalStats] = useState<any>(cachedProfileData?.professionalStats || { completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
+  const [notesStats, setNotesStats] = useState<any>(cachedProfileData?.notesStats || { completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
+  const [posterStats, setPosterStats] = useState<any>(cachedProfileData?.posterStats || { completed: 0, inProcess: 0, incomplete: 0, total: 0, completedPct: '0%', inProcessPct: '0%', incompletePct: '0%' });
 
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
@@ -99,7 +101,7 @@ export default function ProfilePage() {
   const fetchProfileData = async () => {
     if (!user) return;
     try {
-      setLoading(true);
+      if (!cachedProfileData) setLoading(true);
       const results = await Promise.allSettled([
         getNotesWithAttachments(user.id),
         isSupabaseConfigured() && supabase ? supabase.from('user_profiles').select('*').eq('user_id', user.id).single() : Promise.resolve({ data: null }),
@@ -131,6 +133,18 @@ export default function ProfilePage() {
       const posterData = (notesData || []).filter((note: any) => note.tags?.includes('social_post'));
       setNotesStats(calculateStats(noteTakingData));
       setPosterStats(calculateStats(posterData));
+      
+      cachedProfileData = {
+        userProfile: profileData,
+        posts: notesData || [],
+        bannerColor: bannerData.bannerColor,
+        bannerUrl: bannerData.bannerUrl,
+        connectionsInfo: connsData,
+        personalStats: calculateStats(personalTasks || []),
+        professionalStats: calculateStats(professionalTasks || []),
+        notesStats: calculateStats(noteTakingData),
+        posterStats: calculateStats(posterData)
+      };
     } catch (error) {
       console.error('Error fetching profile data:', error);
     } finally {
@@ -178,16 +192,6 @@ export default function ProfilePage() {
       console.error("Error saving banner:", error);
     }
   };
-
-  if (loading) {
-    return (
-      <ProtectedLayout>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-          <CircularProgress color="primary" />
-        </Box>
-      </ProtectedLayout>
-    );
-  }
 
   // Color values adapting to the theme
   const isDark = theme.palette.mode === 'dark';

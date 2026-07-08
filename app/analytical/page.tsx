@@ -320,6 +320,33 @@ const UpcomingDeadlines = ({ deadlines }: { deadlines: AnalyticsSummary['upcomin
 // ─── MAIN PAGE CONTENT ───
 // ═══════════════════════════════════════════════
 
+let cachedAnalytics: AnalyticsSummary = {
+  productivityScore: 0,
+  totalTasks: 0,
+  completedTasks: 0,
+  pendingTasks: 0,
+  completionRate: 0,
+  activeStreak: 0,
+  rescheduleRatio: 0,
+  rescheduledTasks: 0,
+  totalNotes: 0,
+  notesConvertedToTasks: 0,
+  noteConversionRate: 0,
+  dailyCompletionTrend: [],
+  categoryDistribution: [],
+  priorityDistribution: [],
+  statusDistribution: [],
+  todaysTasks: [],
+  todaysCompleted: 0,
+  todaysTotal: 0,
+  upcomingDeadlines: [],
+  sourceDistribution: [],
+  personalTasks: [],
+  professionalTasks: [],
+  notes: []
+};
+let cachedInsights: string[] = [];
+
 const AnalyticalPageContent = () => {
   const { user } = useAuth();
   const { t } = useTranslations('common');
@@ -327,24 +354,27 @@ const AnalyticalPageContent = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
-  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState<AnalyticsSummary>(cachedAnalytics);
+  const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('30days');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UnifiedSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<UnifiedSearchResult | null>(null);
   const [taskHistory, setTaskHistory] = useState<TaskHistoryEntry[]>([]);
-  const [insights, setInsights] = useState<string[]>([]);
+  const [insights, setInsights] = useState<string[]>(cachedInsights);
 
   // Fetch analytics data
   const fetchData = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
+    if (!cachedAnalytics) setLoading(true);
     try {
       const data = await getFullAnalytics(user.id, timeRange);
+      cachedAnalytics = data;
+      const newInsights = getInsights(data);
+      cachedInsights = newInsights;
       setAnalytics(data);
-      setInsights(getInsights(data));
+      setInsights(newInsights);
     } catch (error) {
       console.error('Error fetching analytics:', error);
     } finally {
@@ -383,16 +413,7 @@ const AnalyticalPageContent = () => {
     }
   };
 
-  if (loading || !analytics) {
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 3 }}>
-        <CircularProgress size={50} thickness={4} sx={{ color: '#6366f1' }} />
-        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.secondary', opacity: 0.7, fontSize: '1rem' }}>
-          Analyzing your performance data...
-        </Typography>
-      </Box>
-    );
-  }
+
 
   return (
     <Box sx={{ flexGrow: 1, bgcolor: 'background.default', minHeight: '100vh' }}>
