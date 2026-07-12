@@ -12,7 +12,7 @@ import {
 import {
   ArrowLeft, BarChart3, TrendingUp, Calendar, Target, Activity,
   Zap, Sparkles, RefreshCw, FileText, Briefcase, CheckCircle2,
-  Clock, Flame, ArrowUpRight, ArrowDownRight, AlertTriangle
+  Clock, Flame, ArrowUpRight, ArrowDownRight, AlertTriangle, Hash
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -120,6 +120,77 @@ const KPICard = ({ icon: Icon, label, value, suffix, color, subLabel, trend }: {
     </Card>
   );
 };
+
+// ─── Trending Hashtags ───
+const TrendingHashtags = ({ notes }: { notes: AnalyticsSummary['notes'] }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
+  const hashtagCounts: Record<string, number> = {};
+  notes.forEach(note => {
+    const text = `${note.title || ''} ${note.content || ''}`;
+    const tags = text.match(/#[\w]+/g) || [];
+    tags.forEach(tag => {
+      const lowerTag = tag.toLowerCase();
+      hashtagCounts[lowerTag] = (hashtagCounts[lowerTag] || 0) + 1;
+    });
+  });
+
+  const sortedHashtags = Object.entries(hashtagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15);
+
+  return (
+    <Card sx={{
+      borderRadius: 4,
+      border: '1px solid',
+      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+      background: isDark
+        ? `linear-gradient(135deg, ${alpha('#1e293b', 0.8)} 0%, ${alpha('#0f172a', 0.6)} 100%)`
+        : 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)',
+    }}>
+      <CardContent sx={{ p: 3 }}>
+        <Typography variant="h6" fontWeight={800} sx={{ mb: 2, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Hash size={18} color="#10b981" /> Trending Topics
+        </Typography>
+        {sortedHashtags.length === 0 ? (
+          <Typography color="text.secondary" sx={{ textAlign: 'center', py: 3, fontSize: 14 }}>
+            No hashtags used yet. Add #tags to your posts!
+          </Typography>
+        ) : (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {sortedHashtags.map(([tag, count]) => (
+              <Chip
+                key={tag}
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="body2" fontWeight={700}>{tag}</Typography>
+                    <Box sx={{ 
+                      bgcolor: isDark ? alpha('#fff', 0.2) : alpha('#000', 0.1),
+                      px: 0.8, py: 0.2, borderRadius: 2, fontSize: '0.7rem', fontWeight: 800
+                    }}>
+                      {count}
+                    </Box>
+                  </Box>
+                }
+                sx={{
+                  bgcolor: isDark ? alpha('#10b981', 0.1) : alpha('#10b981', 0.15),
+                  color: isDark ? '#34d399' : '#059669',
+                  border: '1px solid', borderColor: isDark ? alpha('#10b981', 0.2) : alpha('#10b981', 0.3),
+                  '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 8px rgba(16, 185, 129, 0.2)' },
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer'
+                }}
+              />
+            ))}
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 
 // ─── Today's Pulse Component ───
 const TodaysPulse = ({ tasks, completed, total }: {
@@ -588,6 +659,9 @@ const AnalyticalPageContent = () => {
 
                 {/* 2. Smart Insights */}
                 <InsightsCard insights={insights} />
+
+                {/* 2.5 Trending Topics / Hashtags */}
+                <TrendingHashtags notes={analytics.notes} />
 
                 {/* 3. Upcoming Deadlines */}
                 <UpcomingDeadlines deadlines={analytics.upcomingDeadlines} />

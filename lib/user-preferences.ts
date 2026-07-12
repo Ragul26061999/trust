@@ -40,23 +40,9 @@ export const applyTheme = (theme: any) => {
     // Handle theme mode
     const themeMode = theme.themeMode || 'light';
     
-    if (themeMode === 'auto') {
-      // Auto mode - detect system preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        root.classList.add('dark-mode');
-        root.classList.remove('light-mode');
-      } else {
-        root.classList.add('light-mode');
-        root.classList.remove('dark-mode');
-      }
-    } else if (themeMode === 'dark') {
-      root.classList.add('dark-mode');
-      root.classList.remove('light-mode');
-    } else {
-      root.classList.add('light-mode');
-      root.classList.remove('dark-mode');
-    }
+    // Always force light mode as per user request
+    root.classList.add('light-mode');
+    root.classList.remove('dark-mode');
     
     // Apply custom colors
     root.style.setProperty('--primary-color', theme.primaryColor || DEFAULT_THEME.primaryColor);
@@ -117,23 +103,11 @@ export const ensureThemeApplied = () => {
     
     // Force re-application if needed
     setTimeout(() => {
-      const isDarkMode = document.documentElement.classList.contains('dark-mode');
-      if (!isDarkMode && preferences.themeMode === 'dark') {
-        document.documentElement.classList.add('dark-mode');
-        document.documentElement.classList.remove('light-mode');
-      } else if (isDarkMode && preferences.themeMode === 'light') {
-        document.documentElement.classList.add('light-mode');
-        document.documentElement.classList.remove('dark-mode');
-      }
-      
-      // Also apply to body for extra safety
-      if (preferences.themeMode === 'dark') {
-        document.body.classList.add('dark-mode');
-        document.body.classList.remove('light-mode');
-      } else {
-        document.body.classList.add('light-mode');
-        document.body.classList.remove('dark-mode');
-      }
+      // Always force light mode as per user request
+      document.documentElement.classList.add('light-mode');
+      document.documentElement.classList.remove('dark-mode');
+      document.body.classList.add('light-mode');
+      document.body.classList.remove('dark-mode');
     }, 100);
     
     // Final check and force application
@@ -145,14 +119,9 @@ export const ensureThemeApplied = () => {
       root.classList.remove('light-mode', 'dark-mode');
       body.classList.remove('light-mode', 'dark-mode');
       
-      // Apply correct classes
-      if (preferences.themeMode === 'dark') {
-        root.classList.add('dark-mode');
-        body.classList.add('dark-mode');
-      } else {
-        root.classList.add('light-mode');
-        body.classList.add('light-mode');
-      }
+      // Apply correct classes (force light mode)
+      root.classList.add('light-mode');
+      body.classList.add('light-mode');
       
       // Apply CSS variables
       root.style.setProperty('--primary-color', preferences.primaryColor || DEFAULT_THEME.primaryColor);

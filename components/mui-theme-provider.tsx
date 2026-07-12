@@ -132,27 +132,12 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   };
 
   useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark-mode');
-    setMuiTheme(buildMuiTheme(isDarkMode));
+    setMuiTheme(buildMuiTheme(false));
   }, [customTheme]);
 
   // Listen for theme changes
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const isDarkMode = document.documentElement.classList.contains('dark-mode');
-      setMuiTheme(buildMuiTheme(isDarkMode));
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    });
-
-    // Also check immediately
-    const isDarkMode = document.documentElement.classList.contains('dark-mode');
-    setMuiTheme(buildMuiTheme(isDarkMode));
-
-    return () => observer.disconnect();
+    setMuiTheme(buildMuiTheme(false));
   }, [customTheme]);
 
   return <MuiThemeProvider theme={muiTheme}>{children}</MuiThemeProvider>;

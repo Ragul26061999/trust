@@ -52,16 +52,12 @@ export class ThemeValidator {
     let needsFix = false;
     
     // Validate root element
-    if (preferences.themeMode === 'dark' && !hasDarkMode) {
-      needsFix = true;
-    } else if (preferences.themeMode === 'light' && !hasLightMode) {
+    if (!hasLightMode) {
       needsFix = true;
     }
     
     // Validate body element
-    if (preferences.themeMode === 'dark' && !bodyHasDarkMode) {
-      needsFix = true;
-    } else if (preferences.themeMode === 'light' && !bodyHasLightMode) {
+    if (!bodyHasLightMode) {
       needsFix = true;
     }
     
@@ -115,13 +111,9 @@ export class ThemeValidator {
     const root = document.documentElement;
     const body = document.body;
     
-    const rootCorrect = mode === 'dark' ? 
-      root.classList.contains('dark-mode') && !root.classList.contains('light-mode') :
-      root.classList.contains('light-mode') && !root.classList.contains('dark-mode');
+    const rootCorrect = root.classList.contains('light-mode') && !root.classList.contains('dark-mode');
       
-    const bodyCorrect = mode === 'dark' ? 
-      body.classList.contains('dark-mode') && !body.classList.contains('light-mode') :
-      body.classList.contains('light-mode') && !body.classList.contains('dark-mode');
+    const bodyCorrect = body.classList.contains('light-mode') && !body.classList.contains('dark-mode');
     
     return rootCorrect && bodyCorrect;
   }
