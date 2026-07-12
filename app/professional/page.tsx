@@ -91,6 +91,7 @@ import {
 import { isSupabaseConfigured } from '../../lib/supabase';
 import TranslatedText from '../../components/translated-text';
 import { checkConflicts } from '../../lib/task-logic-service';
+import * as chrono from 'chrono-node';
 
 const KPICard = ({ icon: Icon, label, value, suffix, color, subLabel, trend }: {
   icon: any; label: string; value: number | string; suffix?: string;
@@ -478,31 +479,105 @@ const ProfessionalPageContent = () => {
       // For now, we simulate the AI task breakdown.
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const generatedTasks = [
-        {
-          title: "Analyze Requirements",
-          description: "Review the initial scope and extract key deliverables based on JD.",
-          priority: "High"
-        },
-        {
-          title: "Develop Architecture Plan",
-          description: "Design the chronological timeline layout and database schema changes.",
-          priority: "Medium"
-        },
-        {
-          title: "Implement UI/UX Components",
-          description: "Build the drag-and-drop interface and efficiency badges.",
-          priority: "Medium"
+      // Heuristic Task Extractor to parse the user's paragraph
+      const extractTasksFromText = (text: string) => {
+        // Split by newlines, bullet points, or sentences
+        let chunks = text.split(/\n+|•|- /).map(c => c.trim()).filter(c => c.length > 10);
+        
+        if (chunks.length <= 1) {
+          // If it's just one big paragraph, split by sentences
+          chunks = text.split(/(?<=[.?!])\s+/).map(c => c.trim()).filter(c => c.length > 10);
         }
-      ];
+
+        const actionKeywords = ['develop', 'design', 'manage', 'create', 'build', 'ensure', 'implement', 'analyze', 'review', 'test', 'deploy', 'maintain', 'coordinate', 'lead', 'support', 'collaborate', 'participate', 'write', 'handle', 'monitor', 'optimize', 'will', 'must', 'responsible'];
+
+        // Filter chunks that sound like tasks
+        let taskChunks = chunks.filter(chunk => {
+          const lower = chunk.toLowerCase();
+          return actionKeywords.some(kw => lower.includes(kw));
+        });
+
+        // If filtering removed everything, just use the original chunks
+        if (taskChunks.length === 0) taskChunks = chunks;
+
+        return taskChunks.map(chunk => {
+          // Clean up chunk
+          let cleanChunk = chunk.replace(/^[\d\.\)]+\s*/, ''); // Remove leading numbers like "1. "
+          
+          // Generate Title (first 4-6 words that make sense)
+          const words = cleanChunk.split(' ');
+          let title = cleanChunk;
+          if (words.length > 5) {
+            title = words.slice(0, 5).join(' ') + '...';
+          }
+          
+          // Extract Priority
+          const lowerChunk = cleanChunk.toLowerCase();
+          let priority = 'Medium';
+          if (lowerChunk.includes('urgent') || lowerChunk.includes('critical') || lowerChunk.includes('key') || lowerChunk.includes('core') || lowerChunk.includes('must') || lowerChunk.includes('required')) {
+            priority = 'High';
+          } else if (lowerChunk.includes('optional') || lowerChunk.includes('plus') || lowerChunk.includes('bonus') || lowerChunk.includes('minor')) {
+            priority = 'Low';
+          }
+
+          // Extract Duration (e.g., "2 hours", "30 mins")
+          let durationMinutes = 90; // Default 1.5 hours
+          const durationMatch = lowerChunk.match(/(\d+|one|two|three|four|five|half|an?)\s*(hour|hr|minute|min)s?/i);
+          if (durationMatch) {
+            const numStr = durationMatch[1].toLowerCase();
+            let amount = 1;
+            if (numStr === 'half') amount = 0.5;
+            else if (['one', 'a', 'an'].includes(numStr)) amount = 1;
+            else if (numStr === 'two') amount = 2;
+            else if (numStr === 'three') amount = 3;
+            else if (numStr === 'four') amount = 4;
+            else if (numStr === 'five') amount = 5;
+            else amount = parseFloat(numStr) || 1;
+            
+            const unit = durationMatch[2].toLowerCase();
+            if (unit.startsWith('hour') || unit.startsWith('hr')) {
+              durationMinutes = amount * 60;
+            } else if (unit.startsWith('min')) {
+              durationMinutes = amount;
+            }
+          }
+
+          // Extract Absolute Start Time using chrono-node
+          let startTimeIso = null;
+          const parsedTime = chrono.parse(cleanChunk);
+          if (parsedTime.length > 0 && parsedTime[0].start) {
+             const parsedDate = parsedTime[0].start.date();
+             // If a time was specified (not just a date like "tomorrow"), use it
+             if (parsedTime[0].start.isCertain('hour')) {
+               startTimeIso = parsedDate.toISOString();
+             }
+          }
+          
+          return {
+            title: title.charAt(0).toUpperCase() + title.slice(1),
+            description: cleanChunk,
+            priority,
+            durationMinutes,
+            startTimeIso
+          };
+        });
+      };
+
+      const generatedTasks = extractTasksFromText(jdText).slice(0, 10); // Limit to 10 tasks to prevent overloading
 
       const newDbTasks: ProfessionalTask[] = [];
-      const baseDate = new Date();
-      baseDate.setHours(9, 0, 0, 0); // Start scheduling at 9:00 AM
+      
+      // We will schedule sequentially starting at 9:00 AM, 
+      // but if a task specifies an absolute time, we jump to that time.
+      let currentScheduleTime = new Date();
+      currentScheduleTime.setHours(9, 0, 0, 0);
 
       for (let i = 0; i < generatedTasks.length; i++) {
          const t = generatedTasks[i];
-         const taskTime = new Date(baseDate.getTime() + i * 90 * 60000); // Add 1.5 hours per task
+         
+         // Use the AI extracted absolute time, otherwise use our sequential tracker
+         const taskTime = t.startTimeIso ? new Date(t.startTimeIso) : new Date(currentScheduleTime);
+         
          const taskData = {
            user_id: user.id,
            title: t.title,
@@ -511,11 +586,15 @@ const ProfessionalPageContent = () => {
            role: profileInfo.role,
            responsibilities: profileInfo.responsibilities,
            experience: profileInfo.experience,
-           task_date: format(new Date(), 'yyyy-MM-dd'),
+           task_date: format(taskTime, 'yyyy-MM-dd'),
            scheduled_start_time: taskTime.toISOString(),
            priority: t.priority,
            status: 'pending',
          };
+         
+         // Advance the sequential tracker for the NEXT task by this task's duration
+         currentScheduleTime = new Date(taskTime.getTime() + t.durationMinutes * 60000);
+         
          const result = await addProfessionalTask(taskData);
          if (result) newDbTasks.push(result);
       }

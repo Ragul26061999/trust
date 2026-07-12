@@ -11,6 +11,7 @@ import {
 import { addCalendarEntry } from '../lib/personal-calendar-db';
 import { addProfessionalTask } from '../lib/professional-db';
 import { addNote } from '../lib/notes-db';
+import * as chrono from 'chrono-node';
 
 interface VoiceSchedulerModalProps {
   open: boolean;
@@ -47,29 +48,55 @@ function speak(text: string, onEnd?: () => void) {
 }
 
 function parseDate(text: string): string {
-  const lower = text.toLowerCase();
   const d = new Date();
-  if (lower.includes('tomorrow')) d.setDate(d.getDate() + 1);
-  else if (lower.includes('next week')) d.setDate(d.getDate() + 7);
-  else if (lower.includes('day after')) d.setDate(d.getDate() + 2);
-  // Try to parse month + number e.g. "May 25"
-  const monthMatch = lower.match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/);
-  if (monthMatch) {
-    const months: Record<string, number> = {
-      january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
-      july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
-    };
-    const monthIndex = months[monthMatch[1]];
-    const dateNum = parseInt(monthMatch[2]);
-    d.setMonth(monthIndex, dateNum);
+
+  // 1. Check strict YYYY-MM-DD
+  const yyyymmddMatch = text.match(/\b(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})\b/);
+  // 2. Check strict DD/MM/YYYY
+  const ddmmyyyyMatch = text.match(/\b(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.\s]+(\d{2,4}))?\b/);
+
+  if (yyyymmddMatch) {
+    d.setFullYear(parseInt(yyyymmddMatch[1], 10), parseInt(yyyymmddMatch[2], 10) - 1, parseInt(yyyymmddMatch[3], 10));
+  } else if (ddmmyyyyMatch) {
+    const day = parseInt(ddmmyyyyMatch[1], 10);
+    const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+    let year = d.getFullYear();
+    if (ddmmyyyyMatch[3]) {
+      year = parseInt(ddmmyyyyMatch[3], 10);
+      if (year < 100) year += 2000;
+    }
+    d.setFullYear(year, month, day);
+  } else {
+    // 3. NLP Parsing with chrono-node
+    const parsed = chrono.parseDate(text);
+    if (parsed) {
+      d.setTime(parsed.getTime());
+    } else {
+      // 4. Fallback manual checks
+      const lower = text.toLowerCase().trim();
+      if (lower.includes('day after tomorrow') || lower.includes('day after')) {
+        d.setDate(d.getDate() + 2);
+      } else if (lower.includes('tomorrow')) {
+        d.setDate(d.getDate() + 1);
+      } else if (lower.includes('next week')) {
+        d.setDate(d.getDate() + 7);
+      } else {
+        const timestamp = Date.parse(text);
+        if (!isNaN(timestamp)) d.setTime(timestamp);
+      }
+    }
   }
-  return d.toISOString().split('T')[0];
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function parseType(text: string): 'personal' | 'professional' | 'note' {
   const lower = text.toLowerCase();
-  if (lower.includes('professional') || lower.includes('work')) return 'professional';
-  if (lower.includes('note') || lower.includes('remember')) return 'note';
+  if (lower.match(/\b(work|professional|job|office|business|meeting)\b/)) return 'professional';
+  if (lower.match(/\b(note|remember|idea|thought|journal|write)\b/)) return 'note';
   return 'personal';
 }
 
@@ -158,6 +185,23 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
     }
   }, [open]);
 
+  const startListening = useCallback(() => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setErrorMessage('');
+    setLiveTranscript('');
+    try {
+      recognitionRef.current?.start();
+      setIsListening(true);
+    } catch (e) {
+      console.error('Failed to start recording:', e);
+    }
+  }, []);
+
+  const stopListening = useCallback(() => {
+    recognitionRef.current?.stop();
+  }, []);
+
   const startAssistant = () => {
     // Unlock audio context by speaking an empty string
     const unlockMsg = new SpeechSynthesisUtterance('');
@@ -167,7 +211,7 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
     const q = STEP_QUESTIONS['type'];
     setIsSpeaking(true);
     setConversation([{ from: 'ai', text: q }]);
-    speak(q, () => setIsSpeaking(false));
+    speak(q, () => { setIsSpeaking(false); startListening(); });
   };
 
   const addMsg = (from: 'ai' | 'user', text: string) => {
@@ -188,9 +232,9 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
     // Slight delay then speak
     setTimeout(() => {
       addMsg('ai', q);
-      speak(q, () => setIsSpeaking(false));
+      speak(q, () => { setIsSpeaking(false); startListening(); });
     }, 400);
-  }, []);
+  }, [startListening]);
 
   const handleAnswer = useCallback((answer: string) => {
     if (!answer.trim()) return;
@@ -202,7 +246,7 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
       setIsSpeaking(true);
       setTimeout(() => {
         addMsg('ai', confirmText);
-        speak(confirmText, () => setIsSpeaking(false));
+        speak(confirmText, () => { setIsSpeaking(false); startListening(); });
       }, 400);
     };
 
@@ -245,7 +289,7 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
       addMsg('user', answer);
       setLiveTranscript('');
       
-      const isYes = lower.includes('yes') || lower.includes('yeah') || lower.includes('save') || lower.includes('confirm') || lower.includes('ok');
+      const isYes = lower.match(/\b(yes|yeah|yep|sure|ok|okay|save|confirm|do it|perfect|correct|right)\b/) !== null;
       
       if (isYes) {
         handleSave();
@@ -255,7 +299,7 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
         setIsSpeaking(true);
         setTimeout(() => {
           addMsg('ai', msg);
-          speak(msg, () => setIsSpeaking(false));
+          speak(msg, () => { setIsSpeaking(false); startListening(); });
         }, 400);
       } else if (lower.includes('date') || lower.includes('time') || lower.includes('when')) {
         setStep('date');
@@ -263,7 +307,7 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
         setIsSpeaking(true);
         setTimeout(() => {
           addMsg('ai', msg);
-          speak(msg, () => setIsSpeaking(false));
+          speak(msg, () => { setIsSpeaking(false); startListening(); });
         }, 400);
       } else if (lower.includes('description') || lower.includes('detail') || lower.includes('content')) {
         setStep('description');
@@ -271,7 +315,7 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
         setIsSpeaking(true);
         setTimeout(() => {
           addMsg('ai', msg);
-          speak(msg, () => setIsSpeaking(false));
+          speak(msg, () => { setIsSpeaking(false); startListening(); });
         }, 400);
       } else if (lower.includes('type') || lower.includes('category')) {
         setStep('type');
@@ -279,7 +323,7 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
         setIsSpeaking(true);
         setTimeout(() => {
           addMsg('ai', msg);
-          speak(msg, () => setIsSpeaking(false));
+          speak(msg, () => { setIsSpeaking(false); startListening(); });
         }, 400);
       } else {
         const msg = 'No problem! Let\'s start over.';
@@ -289,11 +333,11 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
           setTitle(''); setDescription(''); setDate(new Date().toISOString().split('T')[0]);
           setType('personal');
           const q = STEP_QUESTIONS['type'];
-          setTimeout(() => { addMsg('ai', q); speak(q); }, 600);
+          setTimeout(() => { addMsg('ai', q); speak(q, () => { setIsSpeaking(false); startListening(); }); }, 600);
         });
       }
     }
-  }, [step, type, title, date, description, askNext]);
+  }, [step, type, title, date, description, askNext, startListening]);
 
   useEffect(() => {
     handleAnswerRef.current = handleAnswer;
@@ -337,24 +381,6 @@ export const VoiceSchedulerModal: React.FC<VoiceSchedulerModalProps> = ({ open, 
     }
   };
 
-  const startListening = () => {
-    if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); }
-    setErrorMessage('');
-    setLiveTranscript('');
-    try {
-      recognitionRef.current?.start();
-      setIsListening(true);
-    } catch (e) {
-      console.error('Failed to start recording:', e);
-    }
-  };
-
-  const stopListening = () => {
-    recognitionRef.current?.stop();
-    // Do not call setIsListening(false) or handleAnswer here.
-    // The recognition instance will fire an onresult event with isFinal=true, 
-    // or an onend event, which will handle the final submission and state change.
-  };
 
   const stepIndex = STEPS.indexOf(step);
   const progress = step === 'done' ? 100 : step === 'saving' ? 90 : stepIndex >= 0 ? (stepIndex / (STEPS.length - 1)) * 80 : 0;
