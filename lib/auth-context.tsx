@@ -28,7 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Fallback to localStorage ONLY if Supabase is not configured
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
-            setUser(JSON.parse(storedUser));
+            try {
+              setUser(JSON.parse(storedUser));
+            } catch (e) {
+              localStorage.removeItem('user');
+            }
           }
           setLoading(false);
           return;

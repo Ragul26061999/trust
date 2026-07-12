@@ -31,6 +31,12 @@ export interface ProfessionalTask {
     updated_at?: string;
     before_popup_minutes?: number;
     after_popup_minutes?: number;
+    scheduled_start_time?: string;
+    scheduled_end_time?: string;
+    expected_duration_minutes?: number;
+    actual_duration_minutes?: number;
+    efficiency_percentage?: number;
+    ai_suggested_time?: string;
     // Multimedia fields for converted notes
     drawing_data?: any;
     drawing_thumbnail?: string;
@@ -502,20 +508,25 @@ export const updateProfessionalTaskFeedback = async (taskId: string, feedback: s
     return updateProfessionalTask(taskId, { completion_feedback: feedback, status: 'completed' } as any);
 };
 
-export const rescheduleProfessionalTask = async (taskId: string, newDate: string) => {
+export const rescheduleProfessionalTask = async (taskId: string, newDate: string, scheduledStartTime?: string) => {
     if (!isSupabaseConfigured() || !supabase) {
         console.warn('Supabase is not configured. Simulating task rescheduling for development.');
         return true;
     }
 
     try {
+        const updateData: any = { 
+            scheduled_for: newDate,
+            task_date: newDate,
+            status: 'rescheduled',
+            rescheduled_from: taskId
+        };
+        if (scheduledStartTime) {
+            updateData.scheduled_start_time = scheduledStartTime;
+        }
         const { error } = await supabase
             .from('professional_tasks')
-            .update({ 
-                scheduled_for: newDate,
-                status: 'rescheduled',
-                rescheduled_from: taskId
-            })
+            .update(updateData)
             .eq('id', taskId);
 
         if (error) {

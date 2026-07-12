@@ -19,7 +19,11 @@ export const getUserPreferences = () => {
   if (typeof window !== 'undefined') {
     const savedPreferences = localStorage.getItem('dashboardPreferences');
     if (savedPreferences) {
-      return JSON.parse(savedPreferences);
+      try {
+        return JSON.parse(savedPreferences);
+      } catch (e) {
+        return DEFAULT_THEME;
+      }
     }
   }
   return DEFAULT_THEME;
@@ -101,34 +105,12 @@ export const ensureThemeApplied = () => {
     const preferences = getUserPreferences();
     applyTheme(preferences);
     
-    // Force re-application if needed
-    setTimeout(() => {
-      // Always force light mode as per user request
-      document.documentElement.classList.add('light-mode');
-      document.documentElement.classList.remove('dark-mode');
-      document.body.classList.add('light-mode');
-      document.body.classList.remove('dark-mode');
-    }, 100);
-    
-    // Final check and force application
-    setTimeout(() => {
-      const root = document.documentElement;
-      const body = document.body;
-      
-      // Remove any conflicting classes first
-      root.classList.remove('light-mode', 'dark-mode');
-      body.classList.remove('light-mode', 'dark-mode');
-      
-      // Apply correct classes (force light mode)
-      root.classList.add('light-mode');
-      body.classList.add('light-mode');
-      
-      // Apply CSS variables
-      root.style.setProperty('--primary-color', preferences.primaryColor || DEFAULT_THEME.primaryColor);
-      root.style.setProperty('--secondary-color', preferences.secondaryColor || DEFAULT_THEME.secondaryColor);
-      root.style.setProperty('--background-color', preferences.backgroundColor || DEFAULT_THEME.backgroundColor);
-      root.style.setProperty('--text-color', preferences.textColor || DEFAULT_THEME.textColor);
-      root.style.setProperty('--accent-color', preferences.accentColor || DEFAULT_THEME.accentColor);
-    }, 200);
+    // Force light mode on both root and body synchronously
+    const root = document.documentElement;
+    const body = document.body;
+    root.classList.add('light-mode');
+    root.classList.remove('dark-mode');
+    body.classList.add('light-mode');
+    body.classList.remove('dark-mode');
   }
 };

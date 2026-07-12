@@ -10,7 +10,8 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [prefLoading, setPrefLoading] = useState(cachedIsOnboarded === null);
+  // Default to true (show content) to avoid blocking the page render.
+  // If user hasn't onboarded, the redirect will fire in the background.
   const [isOnboarded, setIsOnboarded] = useState(cachedIsOnboarded !== false);
 
   useEffect(() => {
@@ -23,14 +24,10 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkOnboarding = async () => {
-      if (!supabase) {
-        setPrefLoading(false);
-        return;
-      }
+      if (!supabase) return;
       if (user && pathname !== '/onboarding/routines') {
         if (cachedIsOnboarded !== null) {
           setIsOnboarded(cachedIsOnboarded);
-          setPrefLoading(false);
           if (cachedIsOnboarded === false) {
              router.push('/onboarding/routines');
           }
@@ -67,11 +64,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
           }
         } catch (e) {
           console.error(e);
-        } finally {
-          setPrefLoading(false);
         }
-      } else {
-        setPrefLoading(false);
       }
     };
     
@@ -80,7 +73,8 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     }
   }, [user, loading, pathname, router]);
 
-  if (loading || (user && prefLoading && pathname !== '/onboarding/routines')) {
+  // Only block on auth loading, NOT on onboarding check
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl">

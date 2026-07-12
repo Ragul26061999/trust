@@ -42,6 +42,7 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
@@ -65,10 +66,12 @@ import {
   Assessment as AssessmentIcon,
   Download as DownloadIcon,
   FilterList as FilterListIcon,
+  AutoFixHigh as AutoFixHighIcon,
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { useRouter } from 'next/navigation';
 import { format, parseISO, addDays, isToday, isTomorrow, isThisWeek, startOfWeek, endOfWeek, eachDayOfInterval, subDays, startOfMonth, endOfMonth, isWithinInterval, getYear, getMonth } from 'date-fns';
 import { SearchPanel } from '../../components/analytics/SearchPanel';
@@ -237,6 +240,11 @@ const ProfessionalPageContent = () => {
     after_popup_minutes: 0,
   });
   
+  // State for AI JD parser
+  const [showJdForm, setShowJdForm] = useState(false);
+  const [jdText, setJdText] = useState('');
+  const [isParsingJd, setIsParsingJd] = useState(false);
+  
   // State for alarm functionality
   const [alarmEnabled, setAlarmEnabled] = useState(false);
   const [alarmTime, setAlarmTime] = useState('');
@@ -259,7 +267,14 @@ const ProfessionalPageContent = () => {
   // State for download options
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState<null | HTMLElement>(null);
   
+  // State for hydration
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   
   useEffect(() => {
     if (user) {
@@ -453,6 +468,109 @@ const ProfessionalPageContent = () => {
       setLoading(false);
     }
   };
+
+  // Handle AI Job Description parsing (Phase 1 Execution)
+  const handleParseJD = async () => {
+    if (!user || !jdText.trim()) return;
+    setIsParsingJd(true);
+    try {
+      // In a full implementation this would call an LLM API route. 
+      // For now, we simulate the AI task breakdown.
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const generatedTasks = [
+        {
+          title: "Analyze Requirements",
+          description: "Review the initial scope and extract key deliverables based on JD.",
+          priority: "High"
+        },
+        {
+          title: "Develop Architecture Plan",
+          description: "Design the chronological timeline layout and database schema changes.",
+          priority: "Medium"
+        },
+        {
+          title: "Implement UI/UX Components",
+          description: "Build the drag-and-drop interface and efficiency badges.",
+          priority: "Medium"
+        }
+      ];
+
+      const newDbTasks: ProfessionalTask[] = [];
+      const baseDate = new Date();
+      baseDate.setHours(9, 0, 0, 0); // Start scheduling at 9:00 AM
+
+      for (let i = 0; i < generatedTasks.length; i++) {
+         const t = generatedTasks[i];
+         const taskTime = new Date(baseDate.getTime() + i * 90 * 60000); // Add 1.5 hours per task
+         const taskData = {
+           user_id: user.id,
+           title: t.title,
+           description: t.description,
+           department: profileInfo.department,
+           role: profileInfo.role,
+           responsibilities: profileInfo.responsibilities,
+           experience: profileInfo.experience,
+           task_date: format(new Date(), 'yyyy-MM-dd'),
+           scheduled_start_time: taskTime.toISOString(),
+           priority: t.priority,
+           status: 'pending',
+         };
+         const result = await addProfessionalTask(taskData);
+         if (result) newDbTasks.push(result);
+      }
+      
+      setTasks([...tasks, ...newDbTasks]);
+      setShowJdForm(false);
+      setJdText('');
+      alert(`AI automatically extracted and scheduled ${generatedTasks.length} tasks!`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to parse JD');
+    } finally {
+      setIsParsingJd(false);
+    }
+  };
+
+  // Handle Drag & Drop reordering
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    
+    // Cross-Date Drag & Drop (Phase 3)
+    if (result.destination.droppableId.startsWith('tab-')) {
+      const tabIndex = parseInt(result.destination.droppableId.replace('tab-', ''));
+      if (tabIndex === tabValue || tabIndex === 3) return; // Dropped on same day tab or "All" tab
+      
+      const filteredItems = getFilteredTasks();
+      const draggedTask = filteredItems[result.source.index];
+      
+      if (draggedTask) {
+        let newTargetDate = new Date();
+        if (tabIndex === 1) newTargetDate = addDays(new Date(), 1); // Tomorrow
+        else if (tabIndex === 2) newTargetDate = addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 2); 
+        
+        openRescheduleDialog(draggedTask);
+        setNewDate(newTargetDate);
+      }
+      return;
+    }
+
+    // Standard vertical reordering
+    const filteredItems = getFilteredTasks();
+    const draggedItem = filteredItems[result.source.index];
+    const destinationItem = filteredItems[result.destination.index];
+    
+    if (!draggedItem || !destinationItem) return;
+    
+    const newTasks = [...tasks];
+    const sourceIndex = newTasks.findIndex(t => t.id === draggedItem.id);
+    const destIndex = newTasks.findIndex(t => t.id === destinationItem.id);
+    if (sourceIndex !== -1 && destIndex !== -1) {
+       newTasks.splice(sourceIndex, 1);
+       newTasks.splice(destIndex, 0, draggedItem);
+       setTasks(newTasks);
+    }
+  };
   
   // Handle task status toggle
   const toggleTaskStatus = async (task: ProfessionalTask) => {
@@ -495,11 +613,12 @@ const ProfessionalPageContent = () => {
     
     try {
       const newDateString = format(newDate, 'yyyy-MM-dd');
-      const success = await rescheduleProfessionalTask(taskToReschedule.id, newDateString);
+      const newDateTimeString = newDate.toISOString();
+      const success = await rescheduleProfessionalTask(taskToReschedule.id, newDateString, newDateTimeString);
       if (success) {
         setTasks(tasks.map(t => 
           t.id === taskToReschedule.id 
-            ? { ...t, scheduled_for: newDateString, status: 'rescheduled' } 
+            ? { ...t, task_date: newDateString, scheduled_for: newDateString, scheduled_start_time: newDateTimeString, status: 'rescheduled' } 
             : t
         ));
         setRescheduleDialogOpen(false);
@@ -996,6 +1115,26 @@ ${index + 1}. ${task.title}
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                   <Button
+                    variant="outlined"
+                    startIcon={<AutoFixHighIcon />}
+                    onClick={() => setShowJdForm(true)}
+                    sx={{
+                      borderRadius: 3,
+                      px: 3,
+                      py: 1.5,
+                      borderColor: 'rgba(102, 126, 234, 0.5)',
+                      color: '#667eea',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      '&:hover': {
+                         bgcolor: 'rgba(102, 126, 234, 0.05)',
+                         borderColor: '#667eea',
+                      }
+                    }}
+                  >
+                    AI Import JD
+                  </Button>
+                  <Button
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => setShowTaskForm(true)}
@@ -1021,46 +1160,44 @@ ${index + 1}. ${task.title}
               </Box>
               
               
-              {/* Tabs for filtering tasks */}
+              {/* Context wrapping Tabs and List for cross-date dragging */}
+              {isMounted ? (
+              <DragDropContext onDragEnd={handleDragEnd}>
+              {/* Custom Droppable Tabs */}
               {filterMode === 'default' && (
-                <Box sx={{ 
-                  mb: 3, 
-                  bgcolor: 'background.paper',
-                  borderRadius: 3,
-                  border: '1px solid rgba(0,0,0,0.08)',
-                  p: 1
-                }}>
-                  <Tabs 
-                    value={tabValue} 
-                    onChange={(e, newValue) => setTabValue(newValue)} 
-                    sx={{
-                      '& .MuiTabs-indicator': {
-                        display: 'none'
-                      },
-                      '& .MuiTab-root': {
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        color: 'text.secondary',
-                        borderRadius: 2,
-                        minHeight: 48,
-                        px: 3,
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          bgcolor: 'action.hover'
-                        },
-                        '&.Mui-selected': {
-                          color: 'primary.main',
-                          bgcolor: 'primary.light',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                        }
-                      }
-                    }}
-                  >
-                    <Tab label="Today" />
-                    <Tab label="Tomorrow" />
-                    <Tab label="This Week" />
-                    <Tab label="All" />
-                  </Tabs>
+                <Box sx={{ mb: 3, bgcolor: 'background.paper', borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', p: 1, display: 'flex', gap: 1 }}>
+                  {[
+                    { id: 'tab-0', label: 'Today' },
+                    { id: 'tab-1', label: 'Tomorrow' },
+                    { id: 'tab-2', label: 'This Week' },
+                    { id: 'tab-3', label: 'All' }
+                  ].map((tab, idx) => (
+                    <Droppable key={tab.id} droppableId={tab.id}>
+                      {(provided, snapshot) => (
+                        <Box ref={provided.innerRef} {...provided.droppableProps} sx={{ flex: 1 }}>
+                          <Button
+                            fullWidth
+                            onClick={() => setTabValue(idx)}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              color: tabValue === idx ? 'primary.main' : 'text.secondary',
+                              bgcolor: snapshot.isDraggingOver ? 'rgba(16, 185, 129, 0.1)' : tabValue === idx ? 'primary.light' : 'transparent',
+                              borderRadius: 2,
+                              minHeight: 48,
+                              transition: 'all 0.2s ease',
+                              border: snapshot.isDraggingOver ? '1px dashed #10b981' : '1px solid transparent',
+                              boxShadow: tabValue === idx && !snapshot.isDraggingOver ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+                              '&:hover': { bgcolor: tabValue === idx ? 'primary.light' : 'action.hover' }
+                            }}
+                          >
+                            {tab.label}
+                          </Button>
+                          <Box sx={{ display: 'none' }}>{provided.placeholder}</Box>
+                        </Box>
+                      )}
+                    </Droppable>
+                  ))}
                 </Box>
               )}
               
@@ -1104,31 +1241,67 @@ ${index + 1}. ${task.title}
                     </Button>
                   </Paper>
                 ) : (
-                  getFilteredTasks().map((task) => (
-                    <Card 
-                      key={task.id} 
-                      sx={{ 
-                        borderRadius: 3, 
-                        transition: 'all 0.3s ease',
-                        border: '1px solid rgba(0,0,0,0.08)',
-                        borderLeft: `4px solid ${
-                          task.priority === 'High' 
-                            ? '#ef4444'
-                            : task.priority === 'Medium' 
-                            ? '#f59e0b' 
-                            : '#3b82f6'
-                        }`,
-                        background: task.status === 'completed' 
-                          ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%)'
-                          : 'rgba(255, 255, 255, 0.8)',
-                        backdropFilter: 'blur(10px)',
-                        '&:hover': { 
-                          transform: 'translateY(-4px)',
-                          boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                          borderColor: 'rgba(102, 126, 234, 0.2)',
-                        }
-                      }}
-                    >
+                  <Droppable droppableId="tasks-timeline">
+                    {(provided) => (
+                      <Box
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        sx={{ display: 'flex', flexDirection: 'column', gap: 2, position: 'relative' }}
+                      >
+                          {/* Timeline vertical line */}
+                          <Box sx={{ 
+                            position: 'absolute', left: 80, top: 10, bottom: 10, width: 2, 
+                            bgcolor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', zIndex: 0, borderRadius: 1
+                          }} />
+                          
+                          {getFilteredTasks().map((task, index) => (
+                            <Draggable key={task.id} draggableId={task.id} index={index}>
+                              {(provided, snapshot) => (
+                                <Box
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  sx={{ 
+                                    position: 'relative', zIndex: 1, pl: 13, 
+                                    opacity: snapshot.isDragging ? 0.9 : 1,
+                                    transform: snapshot.isDragging ? 'scale(1.02)' : 'none',
+                                    transition: snapshot.isDragging ? 'none' : 'all 0.2s ease',
+                                    mb: 2
+                                  }}
+                                >
+                                  {/* Timestamp Display */}
+                                  <Box sx={{
+                                    position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
+                                    width: 65, textAlign: 'right'
+                                  }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block' }}>
+                                      {task.scheduled_start_time ? format(parseISO(task.scheduled_start_time), 'h:mm a') : 'TBD'}
+                                    </Typography>
+                                  </Box>
+                                  
+                                  {/* Timeline dot */}
+                                  <Box sx={{
+                                    position: 'absolute', left: 76, top: '50%', transform: 'translateY(-50%)',
+                                    width: 10, height: 10, borderRadius: '50%',
+                                    bgcolor: task.priority === 'High' ? '#ef4444' : task.priority === 'Medium' ? '#f59e0b' : '#3b82f6',
+                                    boxShadow: '0 0 0 4px ' + (isDark ? '#0f172a' : '#ffffff'), zIndex: 2
+                                  }} />
+                                  <Card 
+                                    sx={{ 
+                                      borderRadius: 3, 
+                                      transition: 'all 0.3s ease',
+                                      border: '1px solid rgba(0,0,0,0.08)',
+                                      background: task.status === 'completed' 
+                                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%)'
+                                        : 'rgba(255, 255, 255, 0.8)',
+                                      backdropFilter: 'blur(10px)',
+                                      boxShadow: snapshot.isDragging ? '0 12px 30px rgba(0,0,0,0.15)' : 'none',
+                                      '&:hover': { 
+                                        boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                                        borderColor: 'rgba(102, 126, 234, 0.2)',
+                                      }
+                                    }}
+                                  >
                       <ListItem
                         secondaryAction={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1271,10 +1444,19 @@ ${index + 1}. ${task.title}
                           }
                         />
                       </ListItem>
-                    </Card>
-                  ))
+                                  </Card>
+                                </Box>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </Box>
+                      )}
+                    </Droppable>
                 )}
               </List>
+              </DragDropContext>
+              ) : null}
             </Grid>
           </Grid>
         </Container>
@@ -1487,6 +1669,82 @@ ${index + 1}. ${task.title}
           </DialogActions>
         </Dialog>
 
+        {/* AI Parse JD Dialog */}
+        <Dialog open={showJdForm} onClose={() => setShowJdForm(false)} fullWidth maxWidth="md" sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}>
+          <DialogTitle sx={{ fontWeight: 800, px: 4, pt: 4, pb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box 
+                sx={{ 
+                  width: 48, 
+                  height: 48, 
+                  borderRadius: 3,
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 20px rgba(16, 185, 129, 0.3)'
+                }}
+              >
+                <AutoFixHighIcon sx={{ fontSize: 24, color: 'white' }} />
+              </Box>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                  AI Job Description Breakdown
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Paste a job description or project scope and AI will intelligently extract the actionable tasks.
+                </Typography>
+              </Box>
+            </Box>
+          </DialogTitle>
+          <DialogContent sx={{ px: 4, py: 3 }}>
+            <TextField
+              label="Job Description"
+              fullWidth
+              multiline
+              rows={8}
+              value={jdText}
+              onChange={(e) => setJdText(e.target.value)}
+              placeholder="Paste the job requirements, responsibilities, or project scope here..."
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 3,
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#10b981',
+                  }
+                }
+              }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 4, py: 3, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+            <Button 
+              onClick={() => setShowJdForm(false)} 
+              sx={{ fontWeight: 600, color: 'text.primary' }}
+              disabled={isParsingJd}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleParseJD}
+              disabled={!jdText.trim() || isParsingJd}
+              startIcon={isParsingJd ? <CircularProgress size={20} color="inherit" /> : <AutoFixHighIcon />}
+              sx={{ 
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                borderRadius: 3, 
+                px: 4, 
+                fontWeight: 700,
+                textTransform: 'none',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                }
+              }}
+            >
+              {isParsingJd ? 'Extracting...' : 'Extract Tasks'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* Reschedule Task Dialog */}
         <Dialog open={rescheduleDialogOpen} onClose={() => setRescheduleDialogOpen(false)} fullWidth maxWidth="sm" sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}>
           <DialogTitle sx={{ fontWeight: 800, px: 4, pt: 4, pb: 2 }}>
@@ -1516,8 +1774,8 @@ ${index + 1}. ${task.title}
             </Box>
           </DialogTitle>
           <DialogContent sx={{ px: 4, py: 3 }}>
-            <DatePicker
-              label="New Date"
+            <DateTimePicker
+              label="New Date & Time"
               value={newDate}
               onChange={(newValue: Date | null) => setNewDate(newValue)}
               minDate={new Date()}

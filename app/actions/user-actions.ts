@@ -2,27 +2,37 @@
 
 import { supabaseServer } from '../../lib/supabase-server';
 
-export async function getAllUsers() {
-  const { data: { users }, error } = await supabaseServer.auth.admin.listUsers();
-  
-  if (error) {
-    console.error('Error fetching users:', error);
-    return [];
-  }
-  
-  // Fetch profiles to get avatars
-  const { data: profiles } = await supabaseServer
-    .from('user_profiles')
-    .select('user_id, avatar_url');
-    
-  const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.avatar_url]));
+import { unstable_cache } from 'next/cache';
 
-  return users.map(user => ({
-    id: user.id,
-    email: user.email,
-    name: user.user_metadata?.name || user.email?.split('@')[0] || 'Unknown User',
-    avatarUrl: profileMap.get(user.id) || user.user_metadata?.avatar_url || null
-  }));
+export async function getAllUsers() {
+  const getCachedUsers = unstable_cache(
+    async () => {
+      const { data: { users }, error } = await supabaseServer.auth.admin.listUsers();
+      
+      if (error) {
+        console.error('Error fetching users:', error);
+        return [];
+      }
+      
+      // Fetch profiles to get avatars
+      const { data: profiles } = await supabaseServer
+        .from('user_profiles')
+        .select('user_id, avatar_url');
+        
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.avatar_url]));
+
+      return users.map(user => ({
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name || user.email?.split('@')[0] || 'Unknown User',
+        avatarUrl: profileMap.get(user.id) || user.user_metadata?.avatar_url || null
+      }));
+    },
+    ['all-users'],
+    { revalidate: 60 } // Cache for 60 seconds
+  );
+
+  return getCachedUsers();
 }
 
 export async function getUserConnectionsInfo(userId: string) {
@@ -270,9 +280,12 @@ function decodeFeedNote(note: any): any {
 }
 
 export async function getSocialFeedWithAuthors(userId: string): Promise<FeedPost[]> {
-  try {
-    // 1. Resolve the user's connections from user_preferences
-    const { data: prefData } = await supabaseServer
+  const getCachedFeed = unstable_cache(
+    async (id: string) => {
+      try {
+        // 1. Resolve the user's connections from user_preferences
+        const { data: prefData } = await supabaseServer
+
       .from('user_preferences')
       .select('preferences')
       .eq('user_id', userId)
@@ -284,17 +297,22 @@ export async function getSocialFeedWithAuthors(userId: string): Promise<FeedPost
     // 2. Build the list of user IDs whose posts we want
     const feedUserIds = [userId, ...connectionIds];
 
-    // 3. Fetch posts from all those users (service_role bypasses RLS)
-    const { data: posts, error: postsError } = await supabaseServer
-      .from('notes')
-      .select(`
-        *,
-        note_attachments (*)
-      `)
-      .in('user_id', feedUserIds)
-      .is('converted_to_task', null)
-      .order('created_at', { ascending: false })
-      .limit(100);
+    // 3. Fetch posts AND auth users in parallel (both are independent)
+    const [postsResult, authUsersResult] = await Promise.all([
+      supabaseServer
+        .from('notes')
+        .select(`
+          *,
+          note_attachments (*)
+        `)
+        .in('user_id', feedUserIds)
+        .is('converted_to_task', null)
+        .order('created_at', { ascending: false })
+        .limit(100),
+      supabaseServer.auth.admin.listUsers()
+    ]);
+
+    const { data: posts, error: postsError } = postsResult;
 
     if (postsError) {
       console.error('Error fetching social feed posts:', postsError);
@@ -314,10 +332,10 @@ export async function getSocialFeedWithAuthors(userId: string): Promise<FeedPost
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.avatar_url]));
 
-    // 6. Fetch author metadata (name, email, avatar) from auth.users
-    const { data: { users: authUsers } } = await supabaseServer.auth.admin.listUsers();
+    // 6. Build auth user map from already-fetched data
+    const authUsers = authUsersResult.data?.users || [];
     const authUserMap = new Map(
-      (authUsers || []).map(u => [u.id, {
+      authUsers.map(u => [u.id, {
         name: u.user_metadata?.name || u.email?.split('@')[0] || 'Unknown User',
         email: u.email || '',
         avatar: u.user_metadata?.avatar_url || null
@@ -338,11 +356,17 @@ export async function getSocialFeedWithAuthors(userId: string): Promise<FeedPost
       };
     });
 
-    return enrichedPosts;
-  } catch (error) {
-    console.error('Error in getSocialFeedWithAuthors:', error);
-    return [];
-  }
+      return enrichedPosts;
+    } catch (error) {
+      console.error('Error in getSocialFeedWithAuthors:', error);
+      return [];
+    }
+  },
+  ['social-feed', userId],
+  { revalidate: 15 } // Cache for 15 seconds to support high concurrency
+  );
+  
+  return getCachedFeed(userId);
 }
 
 export async function getSuggestedUsersInfo() {

@@ -5,7 +5,6 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import Sidebar from '../components/sidebar';
 import { Box } from '@mui/material';
-import { getUserPreferencesFromDB } from '../lib/user-preferences-db';
 import ProtectedRoute from '../lib/protected-route';
 
 export default function ProtectedLayout({
@@ -22,24 +21,7 @@ export default function ProtectedLayout({
   const pagesWithoutSidebar = ['/add-on']; // Add other paths that should not have sidebar
   const showSidebar = pathname && !pagesWithoutSidebar.some(page => pathname === page || pathname.startsWith(page + '/') || pathname.startsWith(page + '?'));
   
-  // Fetch user preferences after user is loaded
-  useEffect(() => {
-    if (user && !loading) {
-      const loadUserPreferences = async () => {
-        try {
-          const preferences = await getUserPreferencesFromDB(user.id);
-          if (preferences) {
-            // Preferences are now handled by the theme context
-            console.log('User preferences loaded:', preferences);
-          }
-        } catch (error) {
-          console.error('Error fetching user preferences:', error);
-        }
-      };
-      
-      loadUserPreferences();
-    }
-  }, [user, loading]);
+  // User preferences are loaded by ThemeProvider, no need to duplicate here
 
   // Redirect to login if not authenticated
   useEffect(() => {

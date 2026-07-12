@@ -361,88 +361,109 @@ const HomeContent = () => {
     try {
       if (!cachedHomeData) setLoading(true);
 
-      const results = await Promise.allSettled([
-        getProfessionalInfo(user.id),
-        getProfessionalTasks(user.id),
-        getCalendarEntries(user.id),
-        getSocialFeedWithAuthors(user.id),
-        getAllUsers(),
-        isSupabaseConfigured() && supabase ? supabase!.from('user_profiles').select('avatar_url').eq('user_id', user.id).single() : Promise.resolve({ data: null }),
-        getUnreadCounts(user.id),
-        getBannerPreferences(user.id),
-        getUserConnectionsInfo(user.id)
-      ]);
-
-      const info = results[0].status === 'fulfilled' ? results[0].value : null;
-      const tasksData = results[1].status === 'fulfilled' ? results[1].value : [];
-      const calData = results[2].status === 'fulfilled' ? results[2].value : [];
-      const notesData = results[3].status === 'fulfilled' ? results[3].value : [];
-      const usersData = results[4].status === 'fulfilled' ? results[4].value : [];
-      const profileData = results[5].status === 'fulfilled' && results[5].value ? (results[5].value as any).data : null;
-      const unreadData = results[6].status === 'fulfilled' ? results[6].value : {};
-      const bannerData = results[7].status === 'fulfilled' ? (results[7].value as any) : { bannerColor: null, bannerUrl: null };
-      const connectionsDataResult = results[8].status === 'fulfilled' ? results[8].value : { connections: [], sentRequests: [], pendingRequests: [], connectionTypes: {}, pendingTypes: {}, cancelRequests: [] };
-      const connectionsData = connectionsDataResult as { connections: string[]; sentRequests: string[]; pendingRequests: string[]; connectionTypes: Record<string, string>; pendingTypes: Record<string, string>; cancelRequests: string[]; };
-
       const todayStr = format(new Date(), 'yyyy-MM-dd');
-      const todayTasks = tasksData?.filter((t: any) => t.task_date === todayStr) || [];
-
-      setProfessionalInfo(info);
-      setTasks(todayTasks);
-      setSchedule(calData);
-      setPosts(notesData);
-      setAllUsers(usersData.filter(u => u.id !== user.id)); // Exclude current user
-      setConnectionsInfo(connectionsData);
-      setUserProfile(profileData);
-      setUnreadCounts(unreadData);
-      setBannerColor(bannerData.bannerColor);
-      setBannerUrl(bannerData.bannerUrl);
-      setTasks(todayTasks);
-      setSchedule(calData || []);
-      // Treat notes as posts for the social feed
-      const sortedPosts = notesData || [];
-      setPosts(sortedPosts);
-
-      // Update cachedHomeData immediately
-      cachedHomeData = {
-        professionalInfo: info,
-        tasks: todayTasks,
-        schedule: calData || [],
-        posts: sortedPosts,
-        allUsers: usersData.filter((u: any) => u.id !== user.id),
-        connectionsInfo: connectionsData,
-        userProfile: profileData,
-        bannerColor: bannerData.bannerColor,
-        bannerUrl: bannerData.bannerUrl,
-        likes: {},
-        comments: {}
-      };
-
-      // Unblock the UI to render the page immediately
-      setLoading(false);
-
-      // Fetch interactions for visible posts asynchronously in the background
-      if (sortedPosts.length > 0) {
-        const postIds = sortedPosts.map((p: any) => p.id);
-        const likesData: Record<string, PostLike[]> = {};
-        const commentsData: Record<string, PostComment[]> = {};
-
-        Promise.all(postIds.map(async (id: string) => {
-          const [pLikes, pComments] = await Promise.all([
-            getPostLikes(id),
-            getPostComments(id)
-          ]);
-          setLikes(prev => ({ ...prev, [id]: pLikes }));
-          setComments(prev => ({ ...prev, [id]: pComments }));
-          likesData[id] = pLikes;
-          commentsData[id] = pComments;
-        })).then(() => {
-          if (cachedHomeData) {
-            cachedHomeData.likes = likesData;
-            cachedHomeData.comments = commentsData;
-          }
-        }).catch(err => console.error("Error fetching interactions:", err));
+      
+      // Initialize cachedHomeData if null
+      if (!cachedHomeData) {
+        cachedHomeData = {
+          professionalInfo: null,
+          tasks: [],
+          schedule: [],
+          posts: [],
+          allUsers: [],
+          connectionsInfo: { connections: [], sentRequests: [], pendingRequests: [], connectionTypes: {}, pendingTypes: {}, cancelRequests: [] },
+          userProfile: null,
+          bannerColor: null,
+          bannerUrl: null,
+          likes: {},
+          comments: {}
+        };
       }
+
+      // Fire and forget individual queries to unblock UI immediately
+      getProfessionalInfo(user.id).then(info => {
+        setProfessionalInfo(info);
+        if(cachedHomeData) cachedHomeData.professionalInfo = info;
+      }).catch(console.error);
+
+      getProfessionalTasks(user.id).then(tasksData => {
+        const todayTasks = tasksData?.filter((t: any) => t.task_date === todayStr) || [];
+        setTasks(todayTasks);
+        if(cachedHomeData) cachedHomeData.tasks = todayTasks;
+      }).catch(console.error);
+
+      getCalendarEntries(user.id).then(calData => {
+        setSchedule(calData || []);
+        if(cachedHomeData) cachedHomeData.schedule = calData || [];
+      }).catch(console.error);
+
+      getSocialFeedWithAuthors(user.id).then(notesData => {
+        const sortedPosts = notesData || [];
+        setPosts(sortedPosts);
+        if(cachedHomeData) cachedHomeData.posts = sortedPosts;
+        
+        // Fetch interactions for visible posts asynchronously in the background
+        if (sortedPosts.length > 0) {
+          const postIds = sortedPosts.map((p: any) => p.id);
+          const likesData: Record<string, PostLike[]> = {};
+          const commentsData: Record<string, PostComment[]> = {};
+
+          Promise.all(postIds.map(async (id: string) => {
+            const [pLikes, pComments] = await Promise.all([
+              getPostLikes(id),
+              getPostComments(id)
+            ]);
+            setLikes(prev => ({ ...prev, [id]: pLikes }));
+            setComments(prev => ({ ...prev, [id]: pComments }));
+            likesData[id] = pLikes;
+            commentsData[id] = pComments;
+          })).then(() => {
+            if (cachedHomeData) {
+              cachedHomeData.likes = likesData;
+              cachedHomeData.comments = commentsData;
+            }
+          }).catch(err => console.error("Error fetching interactions:", err));
+        }
+      }).catch(console.error);
+
+      getAllUsers().then(usersData => {
+        const filtered = usersData.filter((u: any) => u.id !== user.id);
+        setAllUsers(filtered);
+        if(cachedHomeData) cachedHomeData.allUsers = filtered;
+      }).catch(console.error);
+
+      if (isSupabaseConfigured() && supabase) {
+        (async () => {
+          try {
+            const result = await supabase.from('user_profiles').select('avatar_url').eq('user_id', user.id).single();
+            setUserProfile(result.data);
+            if(cachedHomeData) cachedHomeData.userProfile = result.data;
+          } catch (error) {
+            console.error(error);
+          }
+        })();
+      }
+
+      getUnreadCounts(user.id).then(unreadData => {
+        setUnreadCounts(unreadData);
+      }).catch(console.error);
+
+      getBannerPreferences(user.id).then((bannerData: any) => {
+        setBannerColor(bannerData?.bannerColor || null);
+        setBannerUrl(bannerData?.bannerUrl || null);
+        if(cachedHomeData) {
+          cachedHomeData.bannerColor = bannerData?.bannerColor || null;
+          cachedHomeData.bannerUrl = bannerData?.bannerUrl || null;
+        }
+      }).catch(console.error);
+
+      getUserConnectionsInfo(user.id).then((connectionsData: any) => {
+        setConnectionsInfo(connectionsData || { connections: [], sentRequests: [], pendingRequests: [], connectionTypes: {}, pendingTypes: {}, cancelRequests: [] });
+        if(cachedHomeData) cachedHomeData.connectionsInfo = connectionsData;
+      }).catch(console.error);
+
+      // Unblock the UI immediately
+      setLoading(false);
       
     } catch (error) {
       console.error('Error fetching home data:', error);
